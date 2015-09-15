@@ -1,0 +1,10 @@
+[package]
+name = "allegro"
+version = "0.1.0"
+authors = ["Ivo Wetzel <ivo.wetzel@googlemail.com>"]
+
+[dependencies]
+rand = "*"
+allegro = "0.0.18"
+allegro-sys = "0.0.18"
+allegro_primitives = "0.0.18"
