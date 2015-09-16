@@ -147,7 +147,6 @@ impl ParticleSystem {
     }
 
     pub fn draw(&mut self, core: &allegro::Core, prim: &PrimitivesAddon, dt: f32) {
-        // TODO have a second list to only iterate over the used particles?
         for p in self.particles.iter_mut() {
             if p.is_active() {
                 if p.step(dt) == false {
