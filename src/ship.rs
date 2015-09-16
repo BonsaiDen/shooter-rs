@@ -97,10 +97,10 @@ impl Ship {
                 my: 0.0,
                 thrust: false
             },
+            input_states: Vec::new(),
             max_speed: 1.5 * scale,
             acceleration: 2.0 * scale,
-            rotation: 120.0,
-            input_states: Vec::new()
+            rotation: 120.0
         }
     }
 
@@ -192,8 +192,7 @@ impl Ship {
 }
 
 fn tick_is_more_recent(a: u8, b: u8) -> bool {
-    (a > b) && (a - b <= 255 / 2)
-    || (b > a) && (b - a > 255 / 2)
+    (a > b) && (a - b <= 255 / 2) || (b > a) && (b - a > 255 / 2)
 }
 
 struct DrawableShip {

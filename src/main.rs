@@ -41,8 +41,8 @@ allegro_main! {
     let back_color = core.map_rgb_f(0.0, 0.0, 0.0);
 
     let mut players = vec![
-        ship::PlayerShip::new(60.0, 60.0, color::Color::red())
-        //ship::PlayerShip::new(140.0, 60.0, color::Color::orange()),
+        ship::PlayerShip::new(60.0, 60.0, color::Color::red()),
+        ship::PlayerShip::new(140.0, 60.0, color::Color::orange()),
         //ship::PlayerShip::new(220.0, 60.0, color::Color::yellow()),
         //ship::PlayerShip::new(300.0, 60.0, color::Color::green()),
         //ship::PlayerShip::new(60.0, 140.0, color::Color::teal()),
@@ -112,11 +112,14 @@ allegro_main! {
                         // Emulate remote server state stuff with a 20 frames
                         // delay
                         if remote_states.len() > 20 {
+                            // TODO apply the states received from the server
                             let first = remote_states.remove(0);
                             p.apply_remote_state(first.0, first.1)
                         }
 
                         p.step(&mut rng, dt);
+
+                        // TODO send input to server
 
                         remote_states.push((tick as u8, p.get_state()));
 
