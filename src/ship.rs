@@ -4,7 +4,6 @@ extern crate allegro_primitives;
 
 use allegro_primitives::*;
 
-use std::collections::VecDeque;
 use particle::ParticleSystem;
 use color::Color;
 use std::f32;
@@ -23,13 +22,13 @@ pub struct ShipState {
     pub x: f32,
     y: f32,
     r: f32,
-    pub mx: f32,
+    mx: f32,
     my: f32,
     thrust: bool
 }
 
 pub struct PlayerShip {
-    pub ship: Ship,
+    ship: Ship,
     drawable: DrawableShip
 }
 
@@ -38,7 +37,7 @@ impl PlayerShip {
     pub fn new(x: f32, y: f32, color: Color) -> PlayerShip {
         PlayerShip {
             ship: Ship::new(x, y, 1.0),
-            drawable: DrawableShip::new(x, y, color)
+            drawable: DrawableShip::new(color, 1.0)
         }
     }
 
@@ -47,7 +46,7 @@ impl PlayerShip {
     }
 
     pub fn remote_step(&mut self, dt: f32, remote_tick: u8, state: ShipState) {
-        self.ship.apply_remote_state(dt, remote_tick, state);
+        self.ship.apply_remote_state(remote_tick, state);
         self.ship.apply_inputs(dt);
     }
 
@@ -73,7 +72,7 @@ impl PlayerShip {
 }
 
 pub struct Ship {
-    pub state: ShipState,
+    state: ShipState,
     base_state: ShipState,
     last_state: ShipState,
     max_speed: f32,
@@ -85,31 +84,18 @@ pub struct Ship {
 impl Ship {
 
     pub fn new(x: f32, y: f32, scale: f32) -> Ship {
+        let state = ShipState {
+            x: x,
+            y: y,
+            r: 0.0,
+            mx: 0.0,
+            my: 0.0,
+            thrust: false
+        };
         Ship {
-            state: ShipState {
-                x: x,
-                y: y,
-                r: 0.0,
-                mx: 0.0,
-                my: 0.0,
-                thrust: false
-            },
-            base_state: ShipState {
-                x: x,
-                y: y,
-                r: 0.0,
-                mx: 0.0,
-                my: 0.0,
-                thrust: false
-            },
-            last_state: ShipState {
-                x: x,
-                y: y,
-                r: 0.0,
-                mx: 0.0,
-                my: 0.0,
-                thrust: false
-            },
+            state: state,
+            base_state: state,
+            last_state: state,
             input_states: Vec::new(),
             max_speed: 90.0 * scale,
             acceleration: 2.0 * scale,
@@ -127,7 +113,7 @@ impl Ship {
 
     }
 
-    pub fn apply_remote_state(&mut self, dt: f32, remote_tick: u8, state: ShipState) {
+    pub fn apply_remote_state(&mut self, remote_tick: u8, state: ShipState) {
 
         self.last_state = self.state;
         self.base_state = state;
@@ -221,8 +207,7 @@ struct DrawableShip {
 
 impl DrawableShip {
 
-    pub fn new(x: f32, y: f32, color: Color) -> DrawableShip {
-        let scale = 1.0;
+    pub fn new(color: Color, scale: f32) -> DrawableShip {
         DrawableShip {
             color_light: color,
             color_mid: color.darken(0.5),
@@ -239,17 +224,32 @@ impl DrawableShip {
         dt: f32, u: f32
     ) {
 
-        let mr = (state.r - last_state.r);
+        let mr = state.r - last_state.r;
         let draw_state = ShipState {
             r: last_state.r + mr.sin().atan2(mr.cos()) * u,
-            x: (last_state.x * (1.0 - u)) + state.x * u,
-            y: (last_state.y * (1.0 - u)) + state.y * u,
+            x: last_state.x * (1.0 - u) + state.x * u,
+            y: last_state.y * (1.0 - u) + state.y * u,
             mx: 0.0,
             my: 0.0,
             thrust: state.thrust
         };
 
-        //println!("{} / {} = {}", last_state.x, state.x, x);
+        let light = self.color_light;
+        let mid = self.color_mid;
+        let scale = self.scale;
+
+        self.draw_triangle(
+            core, prim, &draw_state,
+            mid, scale, scale, 1.15, -8.0, 6.0
+        );
+        self.draw_triangle(
+            core, prim, &draw_state,
+            light, scale, scale, (2 as f32).sqrt(), 12.0, 9.0
+        );
+        self.draw_triangle(
+            core, prim, &draw_state,
+            mid, scale, scale * 0.66, (2 as f32).sqrt(), 12.0, 9.0
+        );
 
         if rng.gen::<u8>() > 20 && draw_state.thrust {
             if let Some(p) = self.particle_system.get() {
@@ -286,23 +286,6 @@ impl DrawableShip {
 
             }
         }
-
-        let light = self.color_light;
-        let mid = self.color_mid;
-        let scale = self.scale;
-
-        self.draw_triangle(
-            core, prim, &draw_state,
-            mid, scale, scale, 1.15, -8.0, 6.0
-        );
-        self.draw_triangle(
-            core, prim, &draw_state,
-            light, scale, scale, (2 as f32).sqrt(), 12.0, 9.0
-        );
-        self.draw_triangle(
-            core, prim, &draw_state,
-            mid, scale, scale * 0.66, (2 as f32).sqrt(), 12.0, 9.0
-        );
 
         self.particle_system.draw(&core, &prim, dt);
 

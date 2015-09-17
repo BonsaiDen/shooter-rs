@@ -8,6 +8,7 @@ use allegro::*;
 use allegro_primitives::*;
 use particle::ParticleSystem;
 use rand::Rng;
+use rand::SeedableRng;
 
 mod color;
 mod particle;
@@ -138,6 +139,13 @@ allegro_main! {
                         }
 
                     }
+
+                    rng.reseed([
+                        ((tick + 7) * 941) as u32,
+                        ((tick + 13) * 227) as u32,
+                        ((tick + 97) * 37) as u32,
+                        ((tick + 659) * 461) as u32
+                    ]);
 
                     tick = (tick + 1) % 256;
 
