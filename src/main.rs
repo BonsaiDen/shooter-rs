@@ -42,7 +42,7 @@ allegro_main! {
 
     let mut players = vec![
         ship::PlayerShip::new(60.0, 60.0, color::Color::red()),
-        ship::PlayerShip::new(140.0, 60.0, color::Color::orange()),
+        //ship::PlayerShip::new(140.0, 60.0, color::Color::orange()),
         //ship::PlayerShip::new(220.0, 60.0, color::Color::yellow()),
         //ship::PlayerShip::new(300.0, 60.0, color::Color::green()),
         //ship::PlayerShip::new(60.0, 140.0, color::Color::teal()),
@@ -58,19 +58,24 @@ allegro_main! {
     let mut redraw = true;
     let mut tick: i32 = 0;
     let mut remote_states: Vec<(u8, ship::ShipState)> = Vec::new();
+    let mut delay = 0;
+    let mut logic_time: f64 = 0.0;
+    let mut last_render_time: f64 = 0.0;
+    let mut render_time: f64 = 0.0;
+    let logic_step = 2;
+    let logic_dt = 1.0 / (60.0 / logic_step as f32);
 
     'exit: loop {
 
         if redraw && q.is_empty() {
 
-            let dt = 1.0 / 60.0;
             core.clear_to_color(back_color);
 
+            let dt = render_time - last_render_time;
+            let u = 1.0 / (logic_dt as f64) * (render_time - logic_time);
             for p in players.iter_mut() {
-                p.draw(&core, &prim, dt);
+                p.draw(&core, &prim, &mut rng, dt as f32, u as f32);
             }
-
-            //particle_system.draw(&core, &prim, dt);
 
             disp.flip();
             redraw = false;
@@ -87,56 +92,65 @@ allegro_main! {
 
 			KeyDown{keycode: k, ..} if (k as u32) < 255 => {
                 key_state[k as usize] = true;
-                //println!("{}", k as u32);
 			},
 
 			KeyUp{keycode: k, ..} if (k as u32) < 255 => {
                 key_state[k as usize] = false;
 			},
 
-            TimerTick{..} => {
+            TimerTick{timestamp: frame_time, ..} => {
 
-                let dt = 1.0 / 60.0;
+                last_render_time = render_time;
+                render_time = frame_time;
 
-                for (i, p) in players.iter_mut().enumerate() {
+                if delay == logic_step {
 
-                    if i == active_ship {
-                        p.input(ship::Input {
-                            tick: tick as u8,
-                            left: key_state[1],
-                            right: key_state[4],
-                            thrust: key_state[23],
-                            fire: false
-                        });
+                    delay = 0;
 
-                        // Emulate remote server state stuff with a 20 frames
-                        // delay
-                        if remote_states.len() > 20 {
-                            // TODO apply the states received from the server
-                            let first = remote_states.remove(0);
-                            p.apply_remote_state(first.0, first.1)
+                    logic_time = frame_time;
+                    for (i, p) in players.iter_mut().enumerate() {
+
+                        if i == active_ship {
+                            p.input(ship::Input {
+                                tick: tick as u8,
+                                left: key_state[1],
+                                right: key_state[4],
+                                thrust: key_state[23],
+                                fire: false
+                            });
+
+                            // Emulate remote server state stuff with a 20 frames
+                            // delay
+                            if remote_states.len() > 20 {
+                                // TODO apply the states received from the server
+                                let first = remote_states.remove(0);
+                                p.remote_step(logic_dt, first.0, first.1);
+
+                            } else {
+                                p.step(logic_dt);
+                            }
+
+                            // TODO send input to server
+                            remote_states.push((tick as u8, p.get_state()));
+
+                        } else {
+                            p.step(logic_dt);
                         }
 
-                        p.step(&mut rng, dt);
-
-                        // TODO send input to server
-
-                        remote_states.push((tick as u8, p.get_state()));
-
-                    } else {
-                        p.step(&mut rng, dt);
                     }
 
-                }
+                    tick = (tick + 1) % 256;
 
-                tick = (tick + 1) % 256;
+                }
+                delay += 1;
+
                 redraw = true
 
             },
 
-	        MouseButtonDown{button: b, ..} => {
-				println!("Mouse button {} pressed", b);
-			},
+	        //MouseButtonDown{button: b, ..} => {
+			//	println!("Mouse button {} pressed", b);
+			//},
 
             _ => () // println!("Some other event...")
 

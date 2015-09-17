@@ -20,16 +20,16 @@ pub struct Input {
 
 #[derive(Copy, Clone)]
 pub struct ShipState {
-    x: f32,
+    pub x: f32,
     y: f32,
     r: f32,
-    mx: f32,
+    pub mx: f32,
     my: f32,
     thrust: bool
 }
 
 pub struct PlayerShip {
-    ship: Ship,
+    pub ship: Ship,
     drawable: DrawableShip
 }
 
@@ -46,31 +46,36 @@ impl PlayerShip {
         self.ship.input(input);
     }
 
-    pub fn apply_remote_state(&mut self, remote_tick: u8, state: ShipState) {
-        self.ship.apply_remote_state(remote_tick, state);
+    pub fn remote_step(&mut self, dt: f32, remote_tick: u8, state: ShipState) {
+        self.ship.apply_remote_state(dt, remote_tick, state);
+        self.ship.apply_inputs(dt);
+    }
+
+    pub fn step(&mut self, dt: f32) {
+        self.ship.apply_local_state();
+        self.ship.apply_inputs(dt);
     }
 
     pub fn get_state(&mut self) -> ShipState  {
         self.ship.state
     }
 
-    pub fn step(&mut self, rng: &mut rand::XorShiftRng, dt: f32) {
-        self.ship.reset_state();
-        // TODO use fixed DT
-        self.ship.apply_inputs(dt);
-        // TODO seed the rng with the tick and some other stuff?
-        self.drawable.step(rng, &self.ship.state, dt);
-    }
-
-    pub fn draw(&mut self, core: &allegro::Core, prim: &PrimitivesAddon, dt: f32) {
-        self.drawable.draw(core, prim, &self.ship, dt);
+    pub fn draw(
+        &mut self, core: &allegro::Core, prim: &PrimitivesAddon,
+        rng: &mut rand::XorShiftRng, dt: f32, u: f32
+    ) {
+        self.drawable.draw(
+            core, prim, rng,
+            &self.ship.state, &self.ship.last_state, dt, u
+        );
     }
 
 }
 
-struct Ship {
-    state: ShipState,
+pub struct Ship {
+    pub state: ShipState,
     base_state: ShipState,
+    last_state: ShipState,
     max_speed: f32,
     acceleration: f32,
     rotation: f32,
@@ -97,8 +102,16 @@ impl Ship {
                 my: 0.0,
                 thrust: false
             },
+            last_state: ShipState {
+                x: x,
+                y: y,
+                r: 0.0,
+                mx: 0.0,
+                my: 0.0,
+                thrust: false
+            },
             input_states: Vec::new(),
-            max_speed: 1.5 * scale,
+            max_speed: 90.0 * scale,
             acceleration: 2.0 * scale,
             rotation: 120.0
         }
@@ -114,8 +127,9 @@ impl Ship {
 
     }
 
-    pub fn apply_remote_state(&mut self, remote_tick: u8, state: ShipState) {
+    pub fn apply_remote_state(&mut self, dt: f32, remote_tick: u8, state: ShipState) {
 
+        self.last_state = self.state;
         self.base_state = state;
         self.state = state;
 
@@ -126,7 +140,8 @@ impl Ship {
 
     }
 
-    pub fn reset_state(&mut self) {
+    pub fn apply_local_state(&mut self) {
+        self.last_state = self.state;
         self.state = self.base_state;
     }
 
@@ -165,15 +180,15 @@ impl Ship {
         state.r += f32::consts::PI / 180.0 * rotation * dt * steer;
 
         if input.thrust {
-            let ax = state.r.cos() * acceleration * dt;
-            let ay = state.r.sin() * acceleration * dt;
-            state.mx += ax;
-            state.my += ay;
+            // Constant time acceleration
+            let m = 60.0 / (1.0 / dt);
+            state.mx += state.r.cos() * acceleration * dt * 60.0 / (1.0 / dt);
+            state.my += state.r.sin() * acceleration * dt * m;
         }
 
         state.thrust = input.thrust;
 
-        // Limit speed
+        // Limit diagonal speed
         let mr = state.my.atan2(state.mx);
         let mut s = ((state.mx * state.mx) + (state.my * state.my)).sqrt();
 
@@ -182,8 +197,9 @@ impl Ship {
             s *= 0.95;
         }
 
-        state.mx = mr.cos() * s.min(max_speed);
-        state.my = mr.sin() * s.min(max_speed);
+        // Limit max speed
+        state.mx = mr.cos() * s.min(max_speed * dt);
+        state.my = mr.sin() * s.min(max_speed * dt);
         state.x += state.mx;
         state.y += state.my;
 
@@ -207,7 +223,6 @@ impl DrawableShip {
 
     pub fn new(x: f32, y: f32, color: Color) -> DrawableShip {
         let scale = 1.0;
-        let ship = Ship::new(x, y, scale);
         DrawableShip {
             color_light: color,
             color_mid: color.darken(0.5),
@@ -217,17 +232,32 @@ impl DrawableShip {
         }
     }
 
-    pub fn step(
-        &mut self, rng: &mut rand::XorShiftRng, state: &ShipState, dt: f32
+    pub fn draw(
+        &mut self, core: &allegro::Core, prim: &PrimitivesAddon,
+        rng: &mut rand::XorShiftRng,
+        state: &ShipState, last_state: &ShipState,
+        dt: f32, u: f32
     ) {
 
-        if rng.gen::<u8>() > 20 && state.thrust {
+        let mr = (state.r - last_state.r);
+        let draw_state = ShipState {
+            r: last_state.r + mr.sin().atan2(mr.cos()) * u,
+            x: (last_state.x * (1.0 - u)) + state.x * u,
+            y: (last_state.y * (1.0 - u)) + state.y * u,
+            mx: 0.0,
+            my: 0.0,
+            thrust: state.thrust
+        };
+
+        //println!("{} / {} = {}", last_state.x, state.x, x);
+
+        if rng.gen::<u8>() > 20 && draw_state.thrust {
             if let Some(p) = self.particle_system.get() {
 
                 // Exhaust angle
                 let w = 0.95;
-                let mr = state.my.atan2(state.mx);
-                let d = state.r - mr;
+                let mr = draw_state.my.atan2(draw_state.mx);
+                let d = draw_state.r - mr;
 
                 // Increase engine velocity when flying backwards
                 let mut dr = d.abs() % (f32::consts::PI * 2.0);
@@ -236,14 +266,14 @@ impl DrawableShip {
                 }
 
                 // Calculate exhaust angle
-                let cs = (1.0 - w) * mr.cos() + w * state.r.cos();
-                let sn = (1.0 - w) * mr.sin() + w * state.r.sin();
+                let cs = (1.0 - w) * mr.cos() + w * draw_state.r.cos();
+                let sn = (1.0 - w) * mr.sin() + w * draw_state.r.sin();
                 let mr = sn.atan2(cs) + f32::consts::PI;
 
                 // Spawn exhaust particles
                 p.color = self.color_light;
-                p.x = state.x + mr.cos() * 9.0 * self.scale + 0.5;
-                p.y = state.y + mr.sin() * 9.0 * self.scale + 0.5;
+                p.x = draw_state.x + mr.cos() * 9.0 * self.scale + 0.5;
+                p.y = draw_state.y + mr.sin() * 9.0 * self.scale + 0.5;
                 p.s = 2.5 * self.scale;
                 p.sms = -1.25 * self.scale;
                 p.v = ((86.0 + rng.gen::<u8>() as f32 / 9.0) * 0.5 + dr * 30.0) * 0.5 * self.scale;
@@ -257,38 +287,41 @@ impl DrawableShip {
             }
         }
 
-    }
-
-    pub fn draw(
-        &mut self, core: &allegro::Core, prim: &PrimitivesAddon, ship: &Ship,
-        dt: f32
-    ) {
-
         let light = self.color_light;
         let mid = self.color_mid;
         let scale = self.scale;
 
-        self.draw_triangle(core, prim, ship, mid, scale, scale, 1.15, -8.0, 6.0);
-        self.draw_triangle(core, prim, ship, light, scale, scale, (2 as f32).sqrt(), 12.0, 9.0);
-        self.draw_triangle(core, prim, ship, mid, scale, scale * 0.66, (2 as f32).sqrt(), 12.0, 9.0);
+        self.draw_triangle(
+            core, prim, &draw_state,
+            mid, scale, scale, 1.15, -8.0, 6.0
+        );
+        self.draw_triangle(
+            core, prim, &draw_state,
+            light, scale, scale, (2 as f32).sqrt(), 12.0, 9.0
+        );
+        self.draw_triangle(
+            core, prim, &draw_state,
+            mid, scale, scale * 0.66, (2 as f32).sqrt(), 12.0, 9.0
+        );
 
         self.particle_system.draw(&core, &prim, dt);
 
     }
 
     fn draw_triangle(
-        &self, core: &allegro::Core, prim: &PrimitivesAddon, ship: &Ship,
-        color: Color, base_scale: f32, body_scale: f32, dr: f32, da: f32, db: f32
+        &self, core: &allegro::Core, prim: &PrimitivesAddon,
+        state: &ShipState, color: Color,
+        base_scale: f32, body_scale: f32, dr: f32, da: f32, db: f32
     ) {
         let beta = f32::consts::PI / dr;
-        let ox = ship.state.r.cos() * -2.0 * base_scale + 0.5;
-        let oy = ship.state.r.sin() * -2.0 * base_scale + 0.5;
-        let ax = ox + ship.state.x + ship.state.r.cos() * da * body_scale;
-        let ay = oy + ship.state.y + ship.state.r.sin() * da * body_scale;
-        let bx = ox + ship.state.x + (ship.state.r + beta).cos() * db * body_scale;
-        let by = oy + ship.state.y + (ship.state.r + beta).sin() * db * body_scale;
-        let cx = ox + ship.state.x + (ship.state.r - beta).cos() * db * body_scale;
-        let cy = oy + ship.state.y + (ship.state.r - beta).sin() * db * body_scale;
+        let ox = state.r.cos() * -2.0 * base_scale + 0.5;
+        let oy = state.r.sin() * -2.0 * base_scale + 0.5;
+        let ax = ox + state.x + state.r.cos() * da * body_scale;
+        let ay = oy + state.y + state.r.sin() * da * body_scale;
+        let bx = ox + state.x + (state.r + beta).cos() * db * body_scale;
+        let by = oy + state.y + (state.r + beta).sin() * db * body_scale;
+        let cx = ox + state.x + (state.r - beta).cos() * db * body_scale;
+        let cy = oy + state.y + (state.r - beta).sin() * db * body_scale;
         prim.draw_triangle(ax, ay, bx, by, cx, cy, color.map_rgb(core), 0.5 * body_scale);
     }
 
