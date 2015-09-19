@@ -1,7 +1,7 @@
 extern crate allegro;
 extern crate allegro_primitives;
 
-use allegro_primitives::*;
+use self::allegro_primitives::PrimitivesAddon;
 use color::Color;
 
 pub struct Particle {

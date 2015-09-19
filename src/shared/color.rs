@@ -111,7 +111,6 @@ pub fn hsl_to_rgb(color: (f32, f32, f32)) -> (u8, u8, u8) {
 
     let (h, s, l) = color;
 
-
     let m2 = if l <= 0.5 { l*(s + 1.0) } else { l + s - l*s };
     let m1 = l*2.0 - m2;
     let h = h / 360.0;

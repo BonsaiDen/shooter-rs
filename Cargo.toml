@@ -8,3 +8,17 @@ rand = "*"
 allegro = "0.0.18"
 allegro-sys = "0.0.18"
 allegro_primitives = "0.0.18"
+clap = "1.4.0"
+
+[[bin]]
+name = "server"
+path = "src/server/main.rs"
+
+[[bin]]
+name = "client"
+path = "src/client/main.rs"
+
+[lib]
+name = "shared"
+path = "src/shared/lib.rs"
+

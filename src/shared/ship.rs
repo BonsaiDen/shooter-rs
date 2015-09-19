@@ -2,12 +2,12 @@ extern crate rand;
 extern crate allegro;
 extern crate allegro_primitives;
 
-use allegro_primitives::*;
-
-use particle::ParticleSystem;
-use color::Color;
+use self::allegro_primitives::PrimitivesAddon;
+use self::rand::Rng;
 use std::f32;
-use rand::Rng;
+
+use color::Color;
+use particle::ParticleSystem;
 
 pub struct Input {
     pub tick: u8,
@@ -19,7 +19,7 @@ pub struct Input {
 
 #[derive(Copy, Clone)]
 pub struct ShipState {
-    pub x: f32,
+    x: f32,
     y: f32,
     r: f32,
     mx: f32,
@@ -29,16 +29,22 @@ pub struct ShipState {
 
 pub struct PlayerShip {
     ship: Ship,
-    drawable: DrawableShip
+    drawable: DrawableShip,
+    local: bool
 }
 
 impl PlayerShip {
 
-    pub fn new(x: f32, y: f32, color: Color) -> PlayerShip {
+    pub fn new(x: f32, y: f32, is_local: bool, color: Color) -> PlayerShip {
         PlayerShip {
             ship: Ship::new(x, y, 1.0),
-            drawable: DrawableShip::new(color, 1.0)
+            drawable: DrawableShip::new(color, 1.0),
+            local: is_local
         }
+    }
+
+    pub fn is_local(&mut self) -> bool {
+        self.local
     }
 
     pub fn input(&mut self, input: Input) {
@@ -71,7 +77,7 @@ impl PlayerShip {
 
 }
 
-pub struct Ship {
+struct Ship {
     state: ShipState,
     base_state: ShipState,
     last_state: ShipState,
@@ -200,7 +206,6 @@ fn tick_is_more_recent(a: u8, b: u8) -> bool {
 struct DrawableShip {
     color_light: Color,
     color_mid: Color,
-    color_dark: Color,
     scale: f32,
     particle_system: ParticleSystem
 }
@@ -211,7 +216,6 @@ impl DrawableShip {
         DrawableShip {
             color_light: color,
             color_mid: color.darken(0.5),
-            color_dark: color.darken(0.75),
             scale: scale,
             particle_system: ParticleSystem::new(50)
         }
