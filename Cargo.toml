@@ -8,7 +8,9 @@ rand = "*"
 allegro = "0.0.18"
 allegro-sys = "0.0.18"
 allegro_primitives = "0.0.18"
+allegro_font = "0.0.18"
 clap = "1.4.0"
+cobalt = "0.4.0"
 
 [[bin]]
 name = "server"
