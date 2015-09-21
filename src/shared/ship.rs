@@ -5,6 +5,7 @@ extern crate allegro_primitives;
 use self::allegro_primitives::PrimitivesAddon;
 use self::rand::Rng;
 use std::f32;
+use std::cmp;
 
 use color::Color;
 use particle::ParticleSystem;
@@ -207,7 +208,8 @@ struct DrawableShip {
     color_light: Color,
     color_mid: Color,
     scale: f32,
-    particle_system: ParticleSystem
+    particle_system: ParticleSystem,
+    particle_count: u32
 }
 
 impl DrawableShip {
@@ -217,7 +219,8 @@ impl DrawableShip {
             color_light: color,
             color_mid: color.darken(0.5),
             scale: scale,
-            particle_system: ParticleSystem::new(50)
+            particle_system: ParticleSystem::new(50),
+            particle_count: 5
         }
     }
 
@@ -233,8 +236,8 @@ impl DrawableShip {
             r: last_state.r + mr.sin().atan2(mr.cos()) * u,
             x: last_state.x * (1.0 - u) + state.x * u,
             y: last_state.y * (1.0 - u) + state.y * u,
-            mx: 0.0,
-            my: 0.0,
+            mx: last_state.mx,
+            my: last_state.my,
             thrust: state.thrust
         };
 
@@ -255,40 +258,57 @@ impl DrawableShip {
             mid, scale, scale * 0.66, (2 as f32).sqrt(), 12.0, 9.0
         );
 
-        if rng.gen::<u8>() > 20 && draw_state.thrust {
-            if let Some(p) = self.particle_system.get() {
+        if draw_state.thrust {
 
-                // Exhaust angle
-                let w = 0.95;
-                let mr = draw_state.my.atan2(draw_state.mx);
-                let d = draw_state.r - mr;
+            if rng.gen::<u8>() > 50 || self.particle_count > 1 {
 
-                // Increase engine velocity when flying backwards
-                let mut dr = d.abs() % (f32::consts::PI * 2.0);
-                if dr > f32::consts::PI  {
-                    dr = f32::consts::PI * 2.0 - dr;
+                // Exhause more particles initially
+                for _ in 0..self.particle_count {
+
+                    if let Some(p) = self.particle_system.get() {
+
+                        // Exhaust angle
+                        let w = 0.95;
+                        let mr = draw_state.my.atan2(draw_state.mx);
+                        let d = draw_state.r - mr;
+
+                        // Increase engine velocity when flying backwards
+                        let mut dr = d.abs() % (f32::consts::PI * 2.0);
+                        if dr > f32::consts::PI  {
+                            dr = f32::consts::PI * 2.0 - dr;
+                        }
+
+                        // Calculate exhaust angle
+                        let cs = (1.0 - w) * mr.cos() + w * draw_state.r.cos();
+                        let sn = (1.0 - w) * mr.sin() + w * draw_state.r.sin();
+                        let mr = sn.atan2(cs) + f32::consts::PI;
+                        let ar = ((rng.gen::<u8>() as f32) / 255.0 - 0.5) * (f32::consts::PI * 0.65);
+
+                        // Spawn exhaust particles
+                        p.color = self.color_light;
+                        p.x = draw_state.x + mr.cos() * 9.0 * self.scale + 0.5;
+                        p.y = draw_state.y + mr.sin() * 9.0 * self.scale + 0.5;
+                        p.s = 2.5 * self.scale;
+                        p.sms = -1.25 * self.scale;
+                        p.v = ((86.0 + rng.gen::<u8>() as f32 / 9.0) * 0.5 + dr * 30.0) * 0.5 * self.scale;
+                        p.vms = 0.0;
+                        p.r = mr - ar * 1.5;
+                        // Spread out exhaust
+                        p.rms = ar * 1.25;
+
+                        p.fadeout = 0.35;
+                        p.lifetime = 0.5;
+                        p.remaining = 0.5;
+
+                    }
                 }
 
-                // Calculate exhaust angle
-                let cs = (1.0 - w) * mr.cos() + w * draw_state.r.cos();
-                let sn = (1.0 - w) * mr.sin() + w * draw_state.r.sin();
-                let mr = sn.atan2(cs) + f32::consts::PI;
-
-                // Spawn exhaust particles
-                p.color = self.color_light;
-                p.x = draw_state.x + mr.cos() * 9.0 * self.scale + 0.5;
-                p.y = draw_state.y + mr.sin() * 9.0 * self.scale + 0.5;
-                p.s = 2.5 * self.scale;
-                p.sms = -1.25 * self.scale;
-                p.v = ((86.0 + rng.gen::<u8>() as f32 / 9.0) * 0.5 + dr * 30.0) * 0.5 * self.scale;
-                p.vms = 0.0;
-                p.r = mr + ((rng.gen::<u8>() as f32) - 96.0) / 96.0;
-                p.rms = ((rng.gen::<u8>() as f32) - 128.0) / 128.0;
-                p.fadeout = 0.25;
-                p.lifetime = 0.5;
-                p.remaining = 0.5;
-
             }
+
+            self.particle_count = 1;
+
+        } else {
+            self.particle_count = cmp::min(self.particle_count + 1, 5);
         }
 
         self.particle_system.draw(&core, &prim, dt);
