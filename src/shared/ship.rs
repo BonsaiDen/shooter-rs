@@ -209,7 +209,8 @@ struct DrawableShip {
     color_mid: Color,
     scale: f32,
     particle_system: ParticleSystem,
-    particle_count: u32
+    particle_count: u32,
+    //last_state: ShipState
 }
 
 impl DrawableShip {
@@ -220,7 +221,16 @@ impl DrawableShip {
             color_mid: color.darken(0.5),
             scale: scale,
             particle_system: ParticleSystem::new(50),
-            particle_count: 5
+            particle_count: 5,
+            /*
+            last_state: ShipState {
+                x: 0.0,
+                y: 0.0,
+                r: 0.0,
+                mx: 0.0,
+                my: 0.0,
+                thrust: false
+            }*/
         }
     }
 
@@ -241,6 +251,15 @@ impl DrawableShip {
             thrust: state.thrust
         };
 
+        /*
+        let dx = self.last_state.x - draw_state.x;
+        let dy = self.last_state.y - draw_state.y;
+        self.last_state = draw_state;
+        let dist = (dx * dx + dy * dy).sqrt();
+        if dist > 1.6 {
+            println!("Dist: {}", dist);
+        }
+        */
         let light = self.color_light;
         let mid = self.color_mid;
         let scale = self.scale;

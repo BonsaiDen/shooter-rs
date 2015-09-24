@@ -84,7 +84,6 @@ impl Particle {
 }
 
 pub struct ParticleSystem {
-    max_particles: usize,
     first_available_particle: usize,
     particles: Vec<Particle>
 }
@@ -115,7 +114,6 @@ impl ParticleSystem {
         }
 
         ParticleSystem {
-            max_particles: max_particles,
             first_available_particle: 0,
             particles: particles
         }

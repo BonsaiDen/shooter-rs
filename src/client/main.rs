@@ -77,6 +77,7 @@ allegro_main! {
     let mut redraw = true;
     let mut last_frame_time: f64 = 0.0;
     let mut last_render_time: f64 = 0.0;
+    let mut last_u = 0.0;
     let mut render_time: f64 = 0.0;
 
     // Network
@@ -88,6 +89,22 @@ allegro_main! {
 
     // Main Loop
     'exit: loop {
+
+        // Rendering
+        if redraw {
+            let dt = render_time - last_render_time;
+            let mut u = 1.0 / (tick_dt as f64) * (render_time - last_tick_time);
+
+            // Smooth out render stutter from interference in out delta time
+            if u < 0.9 && last_u < 0.9 {
+                u *= last_u;
+            }
+            last_u = u;
+
+            game.draw(&core, &prim, &font, &mut network, dt as f32, u as f32);
+            disp.flip();
+            redraw = false;
+        }
 
         // Network Events
         while let Ok(event) = network.try_recv(last_tick_time) {
@@ -110,39 +127,34 @@ allegro_main! {
             }
         }
 
-        // Rendering
-        if redraw && q.is_empty() {
-            let dt = render_time - last_render_time;
-            let u = 1.0 / (tick_dt as f64) * (render_time - last_tick_time);
-            game.draw(&core, &prim, &font, &mut network, dt as f32, u as f32);
-            disp.flip();
-            redraw = false;
-        }
+        // Grab all pending Input Events
+        // This reduces render stutter
+        while q.is_empty() == false {
+            match q.wait_for_event() {
 
-        match q.wait_for_event() {
+                DisplayClose{source: src, ..} => {
+                    assert!(disp.get_event_source().get_event_source() == src);
+                    break 'exit;
+                },
 
-            DisplayClose{source: src, ..} => {
-                assert!(disp.get_event_source().get_event_source() == src);
-                break 'exit;
-            },
+                KeyDown{keycode: k, ..} if (k as u32) < 255 => {
+                    key_state[k as usize] = true;
+                },
 
-            KeyDown{keycode: k, ..} if (k as u32) < 255 => {
-                key_state[k as usize] = true;
-            },
+                KeyUp{keycode: k, ..} if (k as u32) < 255 => {
+                    key_state[k as usize] = false;
+                },
 
-            KeyUp{keycode: k, ..} if (k as u32) < 255 => {
-                key_state[k as usize] = false;
-            },
+                TimerTick{timestamp: t, ..} => {
+                    last_frame_time = t;
+                    last_render_time = render_time;
+                    render_time = t;
+                    redraw = true;
+                },
 
-            TimerTick{timestamp: t, ..} => {
-                last_frame_time = t;
-                last_render_time = render_time;
-                render_time = t;
-                redraw = true
-            },
+                _ => () // println!("Some other event...")
 
-            _ => () // println!("Some other event...")
-
+            }
         }
 
     }
