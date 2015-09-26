@@ -13,6 +13,7 @@ pub struct Game {
     text_color: Color,
     ships: Vec<shared::ship::PlayerShip>,
     remote_states: Vec<(u8, shared::ship::ShipState)>,
+    arena: shared::arena::Arena
 }
 
 impl Game {
@@ -23,7 +24,8 @@ impl Game {
             back_color: core.map_rgb(0, 0, 0),
             text_color: core.map_rgb(255, 255, 255),
             ships: Vec::new(),
-            remote_states: Vec::new()
+            remote_states: Vec::new(),
+            arena: shared::arena::Arena::new(768, 768, 16)
         }
     }
 
@@ -60,7 +62,7 @@ impl Game {
 
     pub fn tick(
         &mut self, network: &mut net::Network, key_state: &[bool; 255],
-        tick: u8, dt: f32
+        initial_tick: bool, tick: u8, dt: f32,
     ) {
 
         // TODO bullets are handled by pre-creating a local object and then
@@ -71,34 +73,6 @@ impl Game {
         // - send full state or diff from last confirmed local tick?
 
         // TODO implement network and events
-        // for e in self.network.events() {
-        //     match e {
-        //         NetworkEvent::JoinResult(joined, tick_rate) => {
-        //             // enable local controls?
-        //         },
-        //         NetworkEvent::Tick(tick) => {
-        //             // set tick value from server?
-        //             // only initially?
-        //             // take highest value received
-        //             // emulate over lost ticks locally run the update handlers
-        //             // below multiple times
-        //         },
-        //         NetworkEvent::ShipState(id, state, local) => {
-        //             if local {
-        //                 // get ship by ID
-        //                 s.remote_step()
-        //             }
-        //         },
-        //         NetworkEvent::ShipCreate(id, state, color, local) => {
-        //             // create ship
-        //             // assign local player color
-        //         },
-        //         NetworkEvent::ShipDestroy(id) => {
-        //             // remove ship by id
-        //         }
-        //     }
-        // }
-
         for s in self.ships.iter_mut() {
 
             if s.is_local() {
@@ -117,10 +91,10 @@ impl Game {
                 if self.remote_states.len() > 20 {
                     // TODO apply the states received from the server
                     let first = self.remote_states.remove(0);
-                    s.remote_step(dt, first.0, first.1);
+                    s.remote_step(dt, initial_tick, first.0, first.1);
 
                 } else {
-                    s.step(dt);
+                    s.step(dt, initial_tick);
                 }
 
                 // TODO send input to server
@@ -134,7 +108,7 @@ impl Game {
                 // BUT there is a maximum tick difference to prevent cheating
 
             } else {
-                s.step(dt);
+                s.step(dt, initial_tick);
             }
 
         }

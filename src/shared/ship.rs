@@ -52,13 +52,13 @@ impl PlayerShip {
         self.ship.input(input);
     }
 
-    pub fn remote_step(&mut self, dt: f32, remote_tick: u8, state: ShipState) {
-        self.ship.apply_remote_state(remote_tick, state);
+    pub fn remote_step(&mut self, dt: f32, set_last_state: bool, remote_tick: u8, state: ShipState) {
+        self.ship.apply_remote_state(remote_tick, set_last_state, state);
         self.ship.apply_inputs(dt);
     }
 
-    pub fn step(&mut self, dt: f32) {
-        self.ship.apply_local_state();
+    pub fn step(&mut self, dt: f32, set_last_state: bool) {
+        self.ship.apply_local_state(set_last_state);
         self.ship.apply_inputs(dt);
     }
 
@@ -120,9 +120,14 @@ impl Ship {
 
     }
 
-    pub fn apply_remote_state(&mut self, remote_tick: u8, state: ShipState) {
+    pub fn apply_remote_state(
+        &mut self, remote_tick: u8, set_last_state: bool, state: ShipState
+    ) {
 
-        self.last_state = self.state;
+        if set_last_state {
+            self.last_state = self.state;
+        }
+
         self.base_state = state;
         self.state = state;
 
@@ -133,8 +138,10 @@ impl Ship {
 
     }
 
-    pub fn apply_local_state(&mut self) {
-        self.last_state = self.state;
+    pub fn apply_local_state(&mut self, set_last_state: bool) {
+        if set_last_state {
+            self.last_state = self.state;
+        }
         self.state = self.base_state;
     }
 
@@ -210,7 +217,7 @@ struct DrawableShip {
     scale: f32,
     particle_system: ParticleSystem,
     particle_count: u32,
-    //last_state: ShipState
+    last_state: ShipState
 }
 
 impl DrawableShip {
@@ -222,7 +229,7 @@ impl DrawableShip {
             scale: scale,
             particle_system: ParticleSystem::new(50),
             particle_count: 5,
-            /*
+
             last_state: ShipState {
                 x: 0.0,
                 y: 0.0,
@@ -230,7 +237,7 @@ impl DrawableShip {
                 mx: 0.0,
                 my: 0.0,
                 thrust: false
-            }*/
+            }
         }
     }
 
@@ -251,15 +258,11 @@ impl DrawableShip {
             thrust: state.thrust
         };
 
-        /*
-        let dx = self.last_state.x - draw_state.x;
-        let dy = self.last_state.y - draw_state.y;
-        self.last_state = draw_state;
-        let dist = (dx * dx + dy * dy).sqrt();
-        if dist > 1.6 {
-            println!("Dist: {}", dist);
-        }
-        */
+
+        //let dx = self.last_state.x - draw_state.x;
+        //let dy = self.last_state.y - draw_state.y;
+        //self.last_state = draw_state;
+
         let light = self.color_light;
         let mid = self.color_mid;
         let scale = self.scale;

@@ -10,7 +10,10 @@ allegro-sys = "0.0.18"
 allegro_primitives = "0.0.18"
 allegro_font = "0.0.18"
 clap = "1.4.0"
-cobalt = "0.4.0"
+
+[dependencies.cobalt]
+version = "0.4.0"
+path = "../cobalt"
 
 [[bin]]
 name = "server"
