@@ -5,14 +5,15 @@ use allegro_primitives::PrimitivesAddon;
 use allegro_font::{Font, FontAlign, FontDrawing};
 
 use shared;
+use shared::entity::{Entity, EntityState, EntityInput};
 use net;
 
 pub struct Game {
     rng: XorShiftRng,
     back_color: Color,
     text_color: Color,
-    ships: Vec<shared::ship::PlayerShip>,
-    remote_states: Vec<(u8, shared::ship::ShipState)>,
+    entities: Vec<Box<Entity>>,
+    remote_states: Vec<(u8, EntityState)>,
     arena: shared::arena::Arena
 }
 
@@ -23,20 +24,20 @@ impl Game {
             rng: XorShiftRng::new_unseeded(),
             back_color: core.map_rgb(0, 0, 0),
             text_color: core.map_rgb(255, 255, 255),
-            ships: Vec::new(),
+            entities: Vec::new(),
             remote_states: Vec::new(),
             arena: shared::arena::Arena::new(768, 768, 16)
         }
     }
 
     pub fn init(&mut self, core: &Core) {
-        self.ships.push(
+        self.entities.push(Box::new(
             shared::ship::PlayerShip::new(
                 60.0, 60.0, true, shared::color::Color::red()
             )
-        );
+        ));
         // TODO implement network and events
-        // self.network.send(NetworkEvent::JoinRequest());
+        // self.network.send(NetworkEvent::JoinRequest()); ??
     }
 
     pub fn draw(
@@ -47,8 +48,10 @@ impl Game {
 
         core.clear_to_color(self.back_color);
 
-        for s in self.ships.iter_mut() {
-            s.draw(&core, &prim, &mut self.rng, dt, u);
+        // Draw all entities
+        // TODO sort order?
+        for e in self.entities.iter_mut() {
+            e.draw(&core, &prim, &mut self.rng, &self.arena, dt, u);
         }
 
         // UI
@@ -61,8 +64,8 @@ impl Game {
     }
 
     pub fn tick(
-        &mut self, network: &mut net::Network, key_state: &[bool; 255],
-        initial_tick: bool, tick: u8, dt: f32,
+        &mut self, network: &mut net::Network, &
+        key_state: &[bool; 255], initial_tick: bool, tick: u8, dt: f32,
     ) {
 
         // TODO bullets are handled by pre-creating a local object and then
@@ -72,12 +75,11 @@ impl Game {
         // TODO server side
         // - send full state or diff from last confirmed local tick?
 
-        // TODO implement network and events
-        for s in self.ships.iter_mut() {
+        for e in self.entities.iter_mut() {
 
-            if s.is_local() {
+            if e.is_local() {
 
-                let input = shared::ship::Input {
+                let input = EntityInput {
                     tick: tick as u8,
                     left: key_state[1] || key_state[82],
                     right: key_state[4] || key_state[83],
@@ -85,20 +87,20 @@ impl Game {
                     fire: false
                 };
 
-                s.input(input);
+                e.input(input);
 
                 // Emulate remote server state stuff with a 20 frames delay
                 if self.remote_states.len() > 20 {
                     // TODO apply the states received from the server
                     let first = self.remote_states.remove(0);
-                    s.remote_step(dt, initial_tick, first.0, first.1);
+                    e.remote_tick(&self.arena, dt, initial_tick, first.0, first.1);
 
                 } else {
-                    s.step(dt, initial_tick);
+                    e.tick(&self.arena, dt, initial_tick);
                 }
 
                 // TODO send input to server
-                self.remote_states.push((tick, s.get_state()));
+                self.remote_states.push((tick, e.get_state()));
 
                 // TODO implement network event
                 // self.network.send(NetworkEvent::Input(input))
@@ -108,7 +110,7 @@ impl Game {
                 // BUT there is a maximum tick difference to prevent cheating
 
             } else {
-                s.step(dt, initial_tick);
+                e.tick(&self.arena, dt, initial_tick);
             }
 
         }

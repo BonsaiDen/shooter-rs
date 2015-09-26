@@ -1,32 +1,14 @@
-extern crate rand;
-extern crate allegro;
-extern crate allegro_primitives;
-
-use self::allegro_primitives::PrimitivesAddon;
-use self::rand::Rng;
 use std::f32;
 use std::cmp;
 
+use allegro;
+use allegro_primitives::PrimitivesAddon;
+use rand::{Rng, XorShiftRng};
+
+use arena::Arena;
 use color::Color;
+use entity::{Entity, EntityState, EntityInput};
 use particle::ParticleSystem;
-
-pub struct Input {
-    pub tick: u8,
-    pub left: bool,
-    pub right: bool,
-    pub thrust: bool,
-    pub fire: bool
-}
-
-#[derive(Copy, Clone)]
-pub struct ShipState {
-    x: f32,
-    y: f32,
-    r: f32,
-    mx: f32,
-    my: f32,
-    thrust: bool
-}
 
 pub struct PlayerShip {
     ship: Ship,
@@ -44,60 +26,69 @@ impl PlayerShip {
         }
     }
 
-    pub fn is_local(&mut self) -> bool {
+}
+
+impl Entity for PlayerShip {
+
+    fn is_local(&self) -> bool {
         self.local
     }
 
-    pub fn input(&mut self, input: Input) {
-        self.ship.input(input);
-    }
-
-    pub fn remote_step(&mut self, dt: f32, set_last_state: bool, remote_tick: u8, state: ShipState) {
-        self.ship.apply_remote_state(remote_tick, set_last_state, state);
-        self.ship.apply_inputs(dt);
-    }
-
-    pub fn step(&mut self, dt: f32, set_last_state: bool) {
-        self.ship.apply_local_state(set_last_state);
-        self.ship.apply_inputs(dt);
-    }
-
-    pub fn get_state(&mut self) -> ShipState  {
+    fn get_state(&mut self) -> EntityState  {
         self.ship.state
     }
 
-    pub fn draw(
-        &mut self, core: &allegro::Core, prim: &PrimitivesAddon,
-        rng: &mut rand::XorShiftRng, dt: f32, u: f32
+    fn input(&mut self, input: EntityInput) {
+        self.ship.input(input);
+    }
+
+    fn remote_tick(
+        &mut self,
+        arena: &Arena,
+        dt: f32, set_last_state: bool, remote_tick: u8, state: EntityState
     ) {
-        self.drawable.draw(
-            core, prim, rng,
-            &self.ship.state, &self.ship.last_state, dt, u
+        self.ship.apply_remote_state(remote_tick, set_last_state, state);
+        self.ship.apply_inputs(arena, dt);
+    }
+
+    fn tick(&mut self, arena: &Arena, dt: f32, set_last_state: bool) {
+        self.ship.apply_local_state(set_last_state);
+        self.ship.apply_inputs(arena, dt);
+    }
+
+    fn draw(
+        &mut self,
+        core: &allegro::Core, prim: &PrimitivesAddon, rng: &mut XorShiftRng,
+        arena: &Arena, dt: f32, u: f32
+    ) {
+        let draw_state = arena.interpolate_state(
+            &self.ship.state, &self.ship.last_state, u
         );
+        self.drawable.draw(core, prim, rng, &draw_state, dt)
     }
 
 }
 
 struct Ship {
-    state: ShipState,
-    base_state: ShipState,
-    last_state: ShipState,
+    state: EntityState,
+    base_state: EntityState,
+    last_state: EntityState,
     max_speed: f32,
     acceleration: f32,
     rotation: f32,
-    input_states: Vec<Input>
+    input_states: Vec<EntityInput>
 }
 
 impl Ship {
 
     pub fn new(x: f32, y: f32, scale: f32) -> Ship {
-        let state = ShipState {
+        let state = EntityState {
             x: x,
             y: y,
             r: 0.0,
             mx: 0.0,
             my: 0.0,
-            thrust: false
+            flags: 0
         };
         Ship {
             state: state,
@@ -110,7 +101,7 @@ impl Ship {
         }
     }
 
-    pub fn input(&mut self, input: Input) {
+    pub fn input(&mut self, input: EntityInput) {
 
         self.input_states.push(input);
 
@@ -121,7 +112,7 @@ impl Ship {
     }
 
     pub fn apply_remote_state(
-        &mut self, remote_tick: u8, set_last_state: bool, state: ShipState
+        &mut self, remote_tick: u8, set_last_state: bool, state: EntityState
     ) {
 
         if set_last_state {
@@ -145,7 +136,7 @@ impl Ship {
         self.state = self.base_state;
     }
 
-    pub fn apply_inputs(&mut self, dt: f32) {
+    pub fn apply_inputs(&mut self, arena: &Arena, dt: f32) {
 
         // Apply unconfirmed inputs on top of last state confirmed by the server
         let mut state = self.base_state;
@@ -159,10 +150,13 @@ impl Ship {
         // Set new local state from replayed inputs
         self.state = state;
 
+        // Handle state wrapping
+        arena.wrap_state(&mut self.state);
+
     }
 
     fn apply_input_to_state(
-        input: &Input, state: &mut ShipState, dt: f32,
+        input: &EntityInput, state: &mut EntityState, dt: f32,
         rotation: f32,
         acceleration: f32,
         max_speed: f32
@@ -184,9 +178,11 @@ impl Ship {
             let m = 60.0 / (1.0 / dt);
             state.mx += state.r.cos() * acceleration * dt * 60.0 / (1.0 / dt);
             state.my += state.r.sin() * acceleration * dt * m;
-        }
+            state.flags = 1;
 
-        state.thrust = input.thrust;
+        } else {
+            state.flags = 0;
+        }
 
         // Limit diagonal speed
         let mr = state.my.atan2(state.mx);
@@ -216,8 +212,7 @@ struct DrawableShip {
     color_mid: Color,
     scale: f32,
     particle_system: ParticleSystem,
-    particle_count: u32,
-    last_state: ShipState
+    particle_count: u32
 }
 
 impl DrawableShip {
@@ -229,58 +224,35 @@ impl DrawableShip {
             scale: scale,
             particle_system: ParticleSystem::new(50),
             particle_count: 5,
-
-            last_state: ShipState {
-                x: 0.0,
-                y: 0.0,
-                r: 0.0,
-                mx: 0.0,
-                my: 0.0,
-                thrust: false
-            }
         }
     }
 
     pub fn draw(
-        &mut self, core: &allegro::Core, prim: &PrimitivesAddon,
-        rng: &mut rand::XorShiftRng,
-        state: &ShipState, last_state: &ShipState,
-        dt: f32, u: f32
+        &mut self,
+        core: &allegro::Core, prim: &PrimitivesAddon, rng: &mut XorShiftRng,
+        state: &EntityState, dt: f32
     ) {
-
-        let mr = state.r - last_state.r;
-        let draw_state = ShipState {
-            r: last_state.r + mr.sin().atan2(mr.cos()) * u,
-            x: last_state.x * (1.0 - u) + state.x * u,
-            y: last_state.y * (1.0 - u) + state.y * u,
-            mx: last_state.mx,
-            my: last_state.my,
-            thrust: state.thrust
-        };
-
-
-        //let dx = self.last_state.x - draw_state.x;
-        //let dy = self.last_state.y - draw_state.y;
-        //self.last_state = draw_state;
 
         let light = self.color_light;
         let mid = self.color_mid;
         let scale = self.scale;
 
+        // Rendering
         self.draw_triangle(
-            core, prim, &draw_state,
-            mid, scale, scale, 1.15, -8.0, 6.0
+            core, prim, &state,
+            mid, scale, scale, 1.15, -9.0, 6.0
         );
         self.draw_triangle(
-            core, prim, &draw_state,
+            core, prim, &state,
             light, scale, scale, (2 as f32).sqrt(), 12.0, 9.0
         );
         self.draw_triangle(
-            core, prim, &draw_state,
+            core, prim, &state,
             mid, scale, scale * 0.66, (2 as f32).sqrt(), 12.0, 9.0
         );
 
-        if draw_state.thrust {
+        // Effects
+        if state.flags & 0x01 == 0x01 {
 
             if rng.gen::<u8>() > 50 || self.particle_count > 1 {
 
@@ -291,8 +263,8 @@ impl DrawableShip {
 
                         // Exhaust angle
                         let w = 0.95;
-                        let mr = draw_state.my.atan2(draw_state.mx);
-                        let d = draw_state.r - mr;
+                        let mr = state.my.atan2(state.mx);
+                        let d = state.r - mr;
 
                         // Increase engine velocity when flying backwards
                         let mut dr = d.abs() % (f32::consts::PI * 2.0);
@@ -301,15 +273,15 @@ impl DrawableShip {
                         }
 
                         // Calculate exhaust angle
-                        let cs = (1.0 - w) * mr.cos() + w * draw_state.r.cos();
-                        let sn = (1.0 - w) * mr.sin() + w * draw_state.r.sin();
+                        let cs = (1.0 - w) * mr.cos() + w * state.r.cos();
+                        let sn = (1.0 - w) * mr.sin() + w * state.r.sin();
                         let mr = sn.atan2(cs) + f32::consts::PI;
                         let ar = ((rng.gen::<u8>() as f32) / 255.0 - 0.5) * (f32::consts::PI * 0.65);
 
                         // Spawn exhaust particles
                         p.color = self.color_light;
-                        p.x = draw_state.x + mr.cos() * 9.0 * self.scale + 0.5;
-                        p.y = draw_state.y + mr.sin() * 9.0 * self.scale + 0.5;
+                        p.x = state.x + mr.cos() * 9.0 * self.scale + 0.5;
+                        p.y = state.y + mr.sin() * 9.0 * self.scale + 0.5;
                         p.s = 2.5 * self.scale;
                         p.sms = -1.25 * self.scale;
                         p.v = ((86.0 + rng.gen::<u8>() as f32 / 9.0) * 0.5 + dr * 30.0) * 0.5 * self.scale;
@@ -339,7 +311,7 @@ impl DrawableShip {
 
     fn draw_triangle(
         &self, core: &allegro::Core, prim: &PrimitivesAddon,
-        state: &ShipState, color: Color,
+        state: &EntityState, color: Color,
         base_scale: f32, body_scale: f32, dr: f32, da: f32, db: f32
     ) {
         let beta = f32::consts::PI / dr;

@@ -18,7 +18,7 @@ impl Arena {
 
     pub fn wrap_state(&self, state: &mut EntityState) {
 
-        let width = (self.height + self.border) as f32;
+        let width = (self.height + self.border * 2) as f32;
         if state.x < 0.0 {
             state.x += width;
 
@@ -26,7 +26,7 @@ impl Arena {
             state.x -= width;
         }
 
-        let height = (self.height + self.border) as f32;
+        let height = (self.height + self.border * 2) as f32;
         if state.y < 0.0 {
             state.y += height;
 
@@ -60,8 +60,8 @@ impl Arena {
         let mr = current.r - last.r;
         EntityState {
             r: last.r + mr.sin().atan2(mr.cos()) * u,
-            x: x,
-            y: y,
+            x: x - self.border as f32,
+            y: y - self.border as f32,
             mx: last.mx,
             my: last.my,
             flags: current.flags

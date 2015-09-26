@@ -46,7 +46,7 @@ allegro_main! {
     core.set_new_display_option(DisplayOption::Samples, 8, DisplayOptionImportance::Require);
 
     // Create display
-    let disp = Display::new(&core, 600, 600).ok().expect("Failed to create OPENGL context.");
+    let disp = Display::new(&core, 768, 768).ok().expect("Failed to create OPENGL context.");
     disp.set_window_title("Rustgame: Shooter");
 
     // Input
