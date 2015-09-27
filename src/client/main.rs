@@ -122,11 +122,21 @@ allegro_main! {
 
                 timer_ticks += 1;
 
+                // TODO rework interpolation logic to work across multiple frames?
                 if timer_ticks == 60 / ticks_per_second {
 
                     let mut ticks_to_render = 0;
                     while let Ok(event) = network.try_recv(last_tick_time) {
                         match event {
+
+                            net::EventType::Connection(_) => {
+                                game.connect(&core);
+                            },
+
+                            // Message Events come before the tick event
+                            net::EventType::Message(_, data) =>  {
+                                game.state(&data);
+                            },
 
                             net::EventType::Tick => {
 
@@ -140,8 +150,8 @@ allegro_main! {
 
                             },
 
-                            net::EventType::Message(_, _) =>  {
-                                // Decode game state in Game
+                            net::EventType::ConnectionLost(_) => {
+                                game.disconnect(&core);
                             },
 
                             _ => {

@@ -1,17 +1,19 @@
-//use std::net::SocketAddr;
 use rand::{SeedableRng, XorShiftRng};
+use std::collections::hash_map::HashMap;
+
 use allegro::{Core, Color};
 use allegro_primitives::PrimitivesAddon;
 use allegro_font::{Font, FontAlign, FontDrawing};
 
 use shared;
 use shared::entity::{Entity, EntityState, EntityInput};
-use net;
+use net::{Network, MessageKind};
 
 pub struct Game {
-    rng: XorShiftRng,
     back_color: Color,
     text_color: Color,
+    rng: XorShiftRng,
+    entity_id_map: HashMap<u32, bool>,
     entities: Vec<Box<Entity>>,
     remote_states: Vec<(u8, EntityState)>,
     arena: shared::arena::Arena
@@ -21,9 +23,10 @@ impl Game {
 
     pub fn new(core: &Core) -> Game {
         Game {
-            rng: XorShiftRng::new_unseeded(),
             back_color: core.map_rgb(0, 0, 0),
             text_color: core.map_rgb(255, 255, 255),
+            rng: XorShiftRng::new_unseeded(),
+            entity_id_map: HashMap::new(),
             entities: Vec::new(),
             remote_states: Vec::new(),
             arena: shared::arena::Arena::new(768, 768, 16)
@@ -31,7 +34,7 @@ impl Game {
     }
 
     pub fn init(&mut self, core: &Core) {
-        self.entities.push(Box::new(
+        self.add_entity(Box::new(
             shared::ship::PlayerShip::new(
                 60.0, 60.0, true, shared::color::Color::red()
             )
@@ -40,31 +43,22 @@ impl Game {
         // self.network.send(NetworkEvent::JoinRequest()); ??
     }
 
-    pub fn draw(
-        &mut self, core: &Core, prim: &PrimitivesAddon, font: &Font,
-        network: &mut net::Network,
-        dt: f32, u: f32
-    ) {
+    pub fn connect(&mut self, core: &Core) {
+        self.reset();
+    }
 
-        core.clear_to_color(self.back_color);
+    pub fn disconnect(&mut self, core: &Core) {
+        self.reset();
+        self.init(core);
+    }
 
-        // Draw all entities
-        // TODO sort order?
-        for e in self.entities.iter_mut() {
-            e.draw(&core, &prim, &mut self.rng, &self.arena, dt, u);
-        }
-
-        // UI
-        let network_state = match network.connected() {
-            true => format!("Connected to server at {}", network.server_addr()),
-            false => format!("Connecting to server at {}...", network.server_addr())
-        };
-        core.draw_text(font, self.text_color, 0.0, 0.0, FontAlign::Left, &network_state[..]);
-
+    pub fn add_entity(&mut self, mut entity: Box<Entity>) {
+        self.entity_id_map.insert(entity.get_id(), true);
+        self.entities.push(entity);
     }
 
     pub fn tick(
-        &mut self, network: &mut net::Network, &
+        &mut self, network: &mut Network, &
         key_state: &[bool; 255], initial_tick: bool, tick: u8, dt: f32,
     ) {
 
@@ -102,8 +96,10 @@ impl Game {
                 // TODO send input to server
                 self.remote_states.push((tick, e.get_state()));
 
-                // TODO implement network event
-                // self.network.send(NetworkEvent::Input(input))
+                // Send all unconfirmed inputs to server
+                let mut input_buffer = Vec::<u8>::new();
+                e.serialize_inputs(&mut input_buffer);
+                network.send(MessageKind::Instant, input_buffer);
 
                 // TODO server side collision is checked on each server tick
                 // positions are warped to the last known local tick of the player
@@ -122,6 +118,79 @@ impl Game {
             ((tick as u32 + 97) * 37) as u32
         ]);
 
+    }
+
+    pub fn state(&mut self, data: &[u8]) {
+
+        // Reset entity ID map existing flag
+        for e in self.entities.iter() {
+            self.entity_id_map.insert(e.get_id(), false);
+        }
+
+        let mut i = 0;
+        while i < data.len() {
+
+            // TODO check number of bytes left
+
+            // Entity ID
+
+            // Entity Type
+
+            // TODO create entites which are not yet in the map
+
+            // Entity State
+
+            // TODO if entity is local apply remote tick to entity
+            // TODO otherwise simply apply state directly
+
+            // TODO trigger create() method on entity
+            // TODO trigger flag() method on entity if any flag changed
+
+            i += 1;
+
+        }
+
+        // Collect missing IDs
+        let removed_ids: Vec<u32> = self.entity_id_map
+                                        .iter()
+                                        .filter(|&(_, v)| *v == false)
+                                        .map(|(&k, _)| k)
+                                        .collect();
+
+        // TODO destroy entities which are no longer in the map
+        for id in removed_ids {
+            // TODO trigger destroy() methods on entity
+        }
+
+    }
+
+    pub fn draw(
+        &mut self, core: &Core, prim: &PrimitivesAddon, font: &Font,
+        network: &mut Network,
+        dt: f32, u: f32
+    ) {
+
+        core.clear_to_color(self.back_color);
+
+        // Draw all entities
+        // TODO sort order?
+        for e in self.entities.iter_mut() {
+            e.draw(&core, &prim, &mut self.rng, &self.arena, dt, u);
+        }
+
+        // UI
+        let network_state = match network.connected() {
+            true => format!("Connected to server at {}", network.server_addr()),
+            false => format!("Connecting to server at {}...", network.server_addr())
+        };
+        core.draw_text(font, self.text_color, 0.0, 0.0, FontAlign::Left, &network_state[..]);
+
+    }
+
+    fn reset(&mut self) {
+        self.remote_states.clear();
+        self.entity_id_map.clear();
+        self.entities.clear();
     }
 
 }

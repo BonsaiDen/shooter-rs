@@ -34,8 +34,23 @@ impl Entity for PlayerShip {
         self.local
     }
 
+    fn get_id(&self) -> u32 {
+        0
+    }
+
+    fn set_id(&mut self, id: u32) {
+    }
+
     fn get_state(&mut self) -> EntityState  {
         self.ship.state
+    }
+
+    fn serialize_state(&self, buffer: &mut Vec<u8>) {
+
+    }
+
+    fn serialize_inputs(&self, buffer: &mut Vec<u8>) {
+
     }
 
     fn input(&mut self, input: EntityInput) {

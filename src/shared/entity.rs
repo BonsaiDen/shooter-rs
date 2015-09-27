@@ -28,7 +28,15 @@ pub trait Entity {
         false
     }
 
+    fn get_id(&self) -> u32;
+
+    fn set_id(&mut self, id: u32);
+
     fn get_state(&mut self) -> EntityState;
+
+    fn serialize_state(&self, buffer: &mut Vec<u8>);
+
+    fn serialize_inputs(&self, buffer: &mut Vec<u8>);
 
     fn input(&mut self, input: EntityInput);
 

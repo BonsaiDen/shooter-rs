@@ -1,7 +1,9 @@
 use std::thread;
 use std::net::SocketAddr;
 use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
-use cobalt::{Config, Client, Connection, ConnectionID, Handler, MessageKind, Server};
+use cobalt::{Config, Client, Connection, ConnectionID, Handler, Server};
+
+pub use cobalt::MessageKind as MessageKind;
 
 pub struct Network {
     addr: SocketAddr,
@@ -42,6 +44,10 @@ impl Network {
 
     pub fn server_addr(&mut self) -> &SocketAddr {
         &self.addr
+    }
+
+    pub fn send(&self, kind: MessageKind, data: Vec<u8>) {
+        self.event_channel.send(kind, data);
     }
 
     pub fn try_recv(&mut self, time: f64) -> Result<EventType, TryRecvError> {
