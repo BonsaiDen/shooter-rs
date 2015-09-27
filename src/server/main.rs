@@ -7,6 +7,8 @@ use std::collections::HashMap;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use cobalt::{Client, Config, Connection, ConnectionID, MessageKind, Handler, Server};
 
+//use shared::ship::Ship;
+
 fn main() {
 
     let args = clap::App::new("server")
@@ -32,14 +34,18 @@ fn main() {
         send_rate: 30,
         .. Config::default()
     };
-    let mut handler = ServerHandler;
+    let mut handler = GameServer;
     let mut server = Server::new(config);
     server.bind(&mut handler, server_addr).unwrap();
 
 }
 
-struct ServerHandler;
-impl Handler<Server> for ServerHandler {
+struct GameServer {
+    entities: Vec<Box<Entity>>,
+    arena: shared::arena::Arena
+}
+
+impl Handler<Server> for GameServer {
 
     fn bind(&mut self, _: &mut Server) {
         println!("Server::bind");
@@ -49,9 +55,21 @@ impl Handler<Server> for ServerHandler {
         &mut self, _: &mut Server,
         connections: &mut HashMap<ConnectionID, Connection>
     ) {
+
+        // Receive inputs
+        for (_, conn) in connections.iter_mut() {
+            // Apply all new inputs and set confirmed client tick
+        }
+
+        // TODO Ticks all entities
+            // TODO send delta based off of last confirmed client tick
+            // TODO perform collision detection based against last confirmed client tick
+
+        // TODO Send state to all clients
         for (_, conn) in connections.iter_mut() {
 
         }
+
     }
 
     fn shutdown(&mut self, _: &mut Server) {
@@ -60,10 +78,7 @@ impl Handler<Server> for ServerHandler {
 
     fn connection(&mut self, _: &mut Server, _: &mut Connection) {
         println!("Server::connection");
-    }
-
-    fn connection_failed(&mut self, _: &mut Server, _: &mut Connection) {
-        println!("Server::connection_failed");
+        // TODO create ship entity
     }
 
     fn connection_packet_lost(
@@ -77,6 +92,7 @@ impl Handler<Server> for ServerHandler {
     }
 
     fn connection_lost(&mut self, _: &mut Server, _: &mut Connection) {
+        // TODO destroy ship entity
         println!("Server::connection_lost");
     }
 

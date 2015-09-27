@@ -7,14 +7,18 @@ use allegro_font::{Font, FontAlign, FontDrawing};
 
 use shared;
 use shared::entity::{Entity, EntityState, EntityInput};
+use shared::entities;
+use shared::drawable::Drawable;
 use net::{Network, MessageKind};
+
+type GameEntity = (Box<Entity>, Box<Drawable>);
 
 pub struct Game {
     back_color: Color,
     text_color: Color,
     rng: XorShiftRng,
     entity_id_map: HashMap<u32, bool>,
-    entities: Vec<Box<Entity>>,
+    entities: Vec<GameEntity>,
     remote_states: Vec<(u8, EntityState)>,
     arena: shared::arena::Arena
 }
@@ -34,15 +38,25 @@ impl Game {
     }
 
     pub fn init(&mut self, core: &Core) {
-        self.add_entity(Box::new(
-            shared::ship::PlayerShip::new(
-                60.0, 60.0, true, shared::color::Color::red()
-            )
-        ));
+
+        let mut player_ship = self.entity_from_kind(
+            0, true, shared::color::Color::red()
+        );
+
+        player_ship.0.set_state(EntityState {
+            x: 400.0,
+            y: 400.0,
+            .. EntityState::default()
+        });
+
+        self.add_entity(player_ship);
+
         // TODO implement network and events
         // self.network.send(NetworkEvent::JoinRequest()); ??
     }
 
+
+    // Networking -------------------------------------------------------------
     pub fn connect(&mut self, core: &Core) {
         self.reset();
     }
@@ -52,8 +66,8 @@ impl Game {
         self.init(core);
     }
 
-    pub fn add_entity(&mut self, mut entity: Box<Entity>) {
-        self.entity_id_map.insert(entity.get_id(), true);
+    pub fn add_entity(&mut self, mut entity: GameEntity) {
+        self.entity_id_map.insert(entity.0.get_id(), true);
         self.entities.push(entity);
     }
 
@@ -68,8 +82,7 @@ impl Game {
 
         // TODO server side
         // - send full state or diff from last confirmed local tick?
-
-        for e in self.entities.iter_mut() {
+        for &mut(ref mut e, _) in self.entities.iter_mut() {
 
             if e.is_local() {
 
@@ -123,7 +136,7 @@ impl Game {
     pub fn state(&mut self, data: &[u8]) {
 
         // Reset entity ID map existing flag
-        for e in self.entities.iter() {
+        for &(ref e, _) in self.entities.iter() {
             self.entity_id_map.insert(e.get_id(), false);
         }
 
@@ -164,6 +177,8 @@ impl Game {
 
     }
 
+
+    // Rendering --------------------------------------------------------------
     pub fn draw(
         &mut self, core: &Core, prim: &PrimitivesAddon, font: &Font,
         network: &mut Network,
@@ -173,9 +188,8 @@ impl Game {
         core.clear_to_color(self.back_color);
 
         // Draw all entities
-        // TODO sort order?
-        for e in self.entities.iter_mut() {
-            e.draw(&core, &prim, &mut self.rng, &self.arena, dt, u);
+        for &mut(ref mut e, ref mut d) in self.entities.iter_mut() {
+            d.draw(&core, &prim, &mut self.rng, &self.arena, &**e, dt, u);
         }
 
         // UI
@@ -185,6 +199,18 @@ impl Game {
         };
         core.draw_text(font, self.text_color, 0.0, 0.0, FontAlign::Left, &network_state[..]);
 
+    }
+
+
+    // Internal ---------------------------------------------------------------
+    fn entity_from_kind(
+        &self, kind: u8, is_local: bool, color: shared::color::Color
+
+    ) -> GameEntity {
+        match kind {
+            0 => entities::ship::Ship(is_local, 1.0, color),
+            _ => unreachable!()
+        }
     }
 
     fn reset(&mut self) {
