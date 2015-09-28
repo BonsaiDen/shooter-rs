@@ -9,6 +9,10 @@ impl Color {
         Color((0x00, 0x00, 0x00))
     }
 
+    pub fn grey() -> Color {
+        Color((0x80, 0x80, 0x80))
+    }
+
     pub fn red() -> Color {
         Color((0xf2, 0x00, 0x26))
     }
@@ -39,6 +43,20 @@ impl Color {
 
     pub fn pink() -> Color {
         Color((0xec, 0x34, 0xa7))
+    }
+
+    pub fn from_id(id: u8) -> Color{
+        match id {
+            0 => Color::red(),
+            1 => Color::orange(),
+            2 => Color::yellow(),
+            3 => Color::green(),
+            4 => Color::teal(),
+            5 => Color::blue(),
+            6 => Color::purple(),
+            7 => Color::pink(),
+            _ => Color::grey()
+        }
     }
 
     pub fn map_rgb(&self, core: &allegro::Core) -> allegro::Color {

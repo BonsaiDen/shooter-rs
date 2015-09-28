@@ -62,6 +62,7 @@ impl Handler<Server> for GameServer {
         }
 
         // TODO Ticks all entities
+            // TODO store last N states of all entities
             // TODO send delta based off of last confirmed client tick
             // TODO perform collision detection based against last confirmed client tick
 
@@ -69,6 +70,14 @@ impl Handler<Server> for GameServer {
         for (_, conn) in connections.iter_mut() {
 
         }
+
+        // TODO bullets are handled by pre-creating a local object and then
+        // syncing it with the remote one, we submit a local ID and the server
+        // return this ID along with the remote object ID when updating
+
+        // TODO server side collision is checked on each server tick
+        // positions are warped to the last known local tick of the player
+        // BUT there is a maximum tick difference to prevent cheating
 
     }
 

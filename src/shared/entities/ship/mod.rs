@@ -7,23 +7,20 @@ use allegro_primitives::PrimitivesAddon;
 
 use arena::Arena;
 use color::Color;
-use entity::{Entity, EntityInput, EntityState};
+use entity::{Entity, EntityInput, EntityState, EntityItem};
 use drawable::Drawable;
 use particle::ParticleSystem;
 
-pub fn Ship(
-    is_local: bool, scale: f32, color: Color
-
-) -> (Box<Entity>, Box<Drawable>) {
+pub fn Ship(scale: f32) -> EntityItem {
     (
-        Box::new(ShipEntity::new(is_local, scale)),
-        Box::new(ShipDrawable::new(scale, color))
+        Box::new(ShipEntity::new(scale)),
+        Box::new(ShipDrawable::new(scale)),
+        false
     )
 }
 
 pub struct ShipEntity {
     id: u32,
-    local: bool,
     state: EntityState,
     base_state: EntityState,
     last_state: EntityState,
@@ -36,7 +33,7 @@ pub struct ShipEntity {
 impl Entity for ShipEntity {
 
     fn is_local(&self) -> bool {
-        self.local
+        self.state.flags & 0x01 == 0x01
     }
 
     fn kind_id(&self) -> u8 {
@@ -56,7 +53,9 @@ impl Entity for ShipEntity {
     }
 
     fn set_state(&mut self, state: EntityState) {
+        let old_flags = self.state.flags;
         self.state = state;
+        self.flags(old_flags, state.flags);
         self.last_state = state;
         self.base_state = state;
     }
@@ -101,7 +100,7 @@ impl Entity for ShipEntity {
 
 impl ShipEntity {
 
-    pub fn new(is_local: bool, scale: f32) -> ShipEntity {
+    pub fn new(scale: f32) -> ShipEntity {
         let state = EntityState {
             x: 0.0,
             y: 0.0,
@@ -112,7 +111,6 @@ impl ShipEntity {
         };
         ShipEntity {
             id: 0,
-            local: is_local,
             state: state,
             base_state: state,
             last_state: state,
@@ -192,10 +190,10 @@ fn apply_input_to_state(
         let m = 60.0 / (1.0 / dt);
         state.mx += state.r.cos() * acceleration * dt * 60.0 / (1.0 / dt);
         state.my += state.r.sin() * acceleration * dt * m;
-        state.flags = 1;
+        state.flags |= 0x02;
 
     } else {
-        state.flags = 0;
+        state.flags &= !0x02;
     }
 
     // Limit diagonal speed
@@ -230,6 +228,11 @@ pub struct ShipDrawable {
 
 impl Drawable for ShipDrawable {
 
+    fn flags(&mut self, old: u8, new: u8) {
+        self.color_light = Color::from_id((new & 0b1110_0000) >> 5);
+        self.color_mid = self.color_light.darken(0.5);
+    }
+
     fn draw(
         &mut self,
         core: &allegro::Core, prim: &PrimitivesAddon, rng: &mut XorShiftRng,
@@ -257,7 +260,7 @@ impl Drawable for ShipDrawable {
         );
 
         // Effects
-        if state.flags & 0x01 == 0x01 {
+        if state.flags & 0x02 == 0x02 {
 
             if rng.gen::<u8>() > 50 || self.particle_count > 1 {
 
@@ -318,13 +321,13 @@ impl Drawable for ShipDrawable {
 
 impl ShipDrawable {
 
-    pub fn new(scale: f32, color: Color) -> ShipDrawable {
+    pub fn new(scale: f32) -> ShipDrawable {
         ShipDrawable {
-            color_light: color,
-            color_mid: color.darken(0.5),
+            color_light: Color::grey(),
+            color_mid: Color::grey().darken(0.5),
             scale: scale,
             particle_system: ParticleSystem::new(50),
-            particle_count: 5,
+            particle_count: 5
         }
     }
 

@@ -1,7 +1,7 @@
 use std::thread;
 use std::net::SocketAddr;
 use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
-use cobalt::{Config, Client, Connection, ConnectionID, Handler, Server};
+use cobalt::{Config, Client, Connection, ConnectionID, Handler};
 
 pub use cobalt::MessageKind as MessageKind;
 

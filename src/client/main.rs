@@ -64,7 +64,6 @@ allegro_main! {
     q.register_event_source(core.get_keyboard_event_source());
     q.register_event_source(core.get_mouse_event_source());
     q.register_event_source(timer.get_event_source());
-    timer.start();
 
     // Tick / Rendering Logic
     let ticks_per_second = 30;
@@ -81,6 +80,7 @@ allegro_main! {
 
     // Network
     let mut network = net::Network::new(ticks_per_second, server_addr);
+    timer.start();
 
     // Game instance
     let mut game = game::Game::new(&core);

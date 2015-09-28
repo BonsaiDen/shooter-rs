@@ -6,19 +6,16 @@ use allegro_primitives::PrimitivesAddon;
 use allegro_font::{Font, FontAlign, FontDrawing};
 
 use shared;
-use shared::entity::{Entity, EntityState, EntityInput};
+use shared::entity::{Entity, EntityInput, EntityState, EntityItem};
 use shared::entities;
 use shared::drawable::Drawable;
 use net::{Network, MessageKind};
-
-type GameEntity = (Box<Entity>, Box<Drawable>);
 
 pub struct Game {
     back_color: Color,
     text_color: Color,
     rng: XorShiftRng,
-    entity_id_map: HashMap<u32, bool>,
-    entities: Vec<GameEntity>,
+    entities: Vec<EntityItem>,
     remote_states: Vec<(u8, EntityState)>,
     arena: shared::arena::Arena
 }
@@ -30,7 +27,6 @@ impl Game {
             back_color: core.map_rgb(0, 0, 0),
             text_color: core.map_rgb(255, 255, 255),
             rng: XorShiftRng::new_unseeded(),
-            entity_id_map: HashMap::new(),
             entities: Vec::new(),
             remote_states: Vec::new(),
             arena: shared::arena::Arena::new(768, 768, 16)
@@ -39,20 +35,18 @@ impl Game {
 
     pub fn init(&mut self, core: &Core) {
 
-        let mut player_ship = self.entity_from_kind(
-            0, true, shared::color::Color::red()
-        );
-
+        let mut player_ship = self.entity_from_kind(0);
+        let flags = 0b0000_0001;
+        player_ship.1.flags(0, flags);
         player_ship.0.set_state(EntityState {
             x: 400.0,
             y: 400.0,
+            flags: flags,
             .. EntityState::default()
         });
 
         self.add_entity(player_ship);
 
-        // TODO implement network and events
-        // self.network.send(NetworkEvent::JoinRequest()); ??
     }
 
 
@@ -66,23 +60,12 @@ impl Game {
         self.init(core);
     }
 
-    pub fn add_entity(&mut self, mut entity: GameEntity) {
-        self.entity_id_map.insert(entity.0.get_id(), true);
-        self.entities.push(entity);
-    }
-
     pub fn tick(
         &mut self, network: &mut Network, &
-        key_state: &[bool; 255], initial_tick: bool, tick: u8, dt: f32,
+        key_state: &[bool; 255], initial_tick: bool, tick: u8, dt: f32
     ) {
 
-        // TODO bullets are handled by pre-creating a local object and then
-        // syncing it with the remote one, we submit a local ID and the server
-        // return this ID along with the remote object ID when updating
-
-        // TODO server side
-        // - send full state or diff from last confirmed local tick?
-        for &mut(ref mut e, _) in self.entities.iter_mut() {
+        for &mut(ref mut e, _, _) in self.entities.iter_mut() {
 
             if e.is_local() {
 
@@ -98,7 +81,6 @@ impl Game {
 
                 // Emulate remote server state stuff with a 20 frames delay
                 if self.remote_states.len() > 20 {
-                    // TODO apply the states received from the server
                     let first = self.remote_states.remove(0);
                     e.remote_tick(&self.arena, dt, initial_tick, first.0, first.1);
 
@@ -106,17 +88,12 @@ impl Game {
                     e.tick(&self.arena, dt, initial_tick);
                 }
 
-                // TODO send input to server
                 self.remote_states.push((tick, e.get_state()));
 
                 // Send all unconfirmed inputs to server
                 let mut input_buffer = Vec::<u8>::new();
                 e.serialize_inputs(&mut input_buffer);
                 network.send(MessageKind::Instant, input_buffer);
-
-                // TODO server side collision is checked on each server tick
-                // positions are warped to the last known local tick of the player
-                // BUT there is a maximum tick difference to prevent cheating
 
             } else {
                 e.tick(&self.arena, dt, initial_tick);
@@ -135,9 +112,9 @@ impl Game {
 
     pub fn state(&mut self, data: &[u8]) {
 
-        // Reset entity ID map existing flag
-        for &(ref e, _) in self.entities.iter() {
-            self.entity_id_map.insert(e.get_id(), false);
+        // Mark all entities as dead
+        for &mut(_, _, mut alive) in self.entities.iter_mut() {
+            alive = false;
         }
 
         let mut i = 0;
@@ -146,12 +123,23 @@ impl Game {
             // TODO check number of bytes left
 
             // Entity ID
+            let id = data[i] as u32; // TODO 255 entity limit?
 
-            // Entity Type
+            // Entity Kind
+            let kind = data[i + 1];
 
             // TODO create entites which are not yet in the map
+            //let entity = if entity_map.contains_key(&id) == false {
+            //    //self.add_entity(self.entity_from_kind(kind));
+            //    // TODO call create method on entity
 
-            // Entity State
+            //} else {
+            //    self.entity_map.get_mut(&id);
+            //};
+
+            // TODO Mark entity as alive
+
+            // Update Entity State
 
             // TODO if entity is local apply remote tick to entity
             // TODO otherwise simply apply state directly
@@ -163,17 +151,19 @@ impl Game {
 
         }
 
-        // Collect missing IDs
-        let removed_ids: Vec<u32> = self.entity_id_map
-                                        .iter()
-                                        .filter(|&(_, v)| *v == false)
-                                        .map(|(&k, _)| k)
-                                        .collect();
+        // Destroy dead entities...
+        self.entities.iter_mut()
+            .filter(|&&mut(_, _, active)| {
+                active == false
 
-        // TODO destroy entities which are no longer in the map
-        for id in removed_ids {
-            // TODO trigger destroy() methods on entity
-        }
+            }).map(|&mut (ref mut e, ref mut d, _)| {
+                e.destroy();
+                d.destroy();
+                ()
+            });
+
+        // ...then remove them from the list
+        self.entities.retain(|&(_, _, active)| active);
 
     }
 
@@ -188,7 +178,7 @@ impl Game {
         core.clear_to_color(self.back_color);
 
         // Draw all entities
-        for &mut(ref mut e, ref mut d) in self.entities.iter_mut() {
+        for &mut(ref mut e, ref mut d, _) in self.entities.iter_mut() {
             d.draw(&core, &prim, &mut self.rng, &self.arena, &**e, dt, u);
         }
 
@@ -203,19 +193,19 @@ impl Game {
 
 
     // Internal ---------------------------------------------------------------
-    fn entity_from_kind(
-        &self, kind: u8, is_local: bool, color: shared::color::Color
-
-    ) -> GameEntity {
+    fn entity_from_kind(&self, kind: u8) -> EntityItem {
         match kind {
-            0 => entities::ship::Ship(is_local, 1.0, color),
+            0 => entities::ship::Ship(1.0),
             _ => unreachable!()
         }
     }
 
+    fn add_entity(&mut self, mut entity: EntityItem) {
+        self.entities.push(entity);
+    }
+
     fn reset(&mut self) {
         self.remote_states.clear();
-        self.entity_id_map.clear();
         self.entities.clear();
     }
 

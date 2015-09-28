@@ -1,4 +1,7 @@
 use arena::Arena;
+use drawable::Drawable;
+
+pub type EntityItem = (Box<Entity>, Box<Drawable>, bool);
 
 pub struct EntityInput {
     pub tick: u8,
@@ -50,6 +53,15 @@ pub trait Entity {
     fn serialize_state(&self, buffer: &mut Vec<u8>);
 
     fn serialize_inputs(&self, buffer: &mut Vec<u8>);
+
+    fn create(&mut self) {
+    }
+
+    fn flags(&mut self, old: u8, new: u8) {
+    }
+
+    fn destroy(&mut self) {
+    }
 
     fn input(&mut self, input: EntityInput);
 
