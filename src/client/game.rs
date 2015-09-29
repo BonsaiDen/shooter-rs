@@ -1,5 +1,4 @@
 use rand::{SeedableRng, XorShiftRng};
-use std::collections::hash_map::HashMap;
 
 use allegro::{Core, Color};
 use allegro_primitives::PrimitivesAddon;
@@ -152,15 +151,12 @@ impl Game {
         }
 
         // Destroy dead entities...
-        self.entities.iter_mut()
-            .filter(|&&mut(_, _, active)| {
-                active == false
-
-            }).map(|&mut (ref mut e, ref mut d, _)| {
+        for &mut (ref mut e, ref mut d, alive) in self.entities.iter_mut() {
+            if alive == false {
                 e.destroy();
                 d.destroy();
-                ()
-            });
+            }
+        }
 
         // ...then remove them from the list
         self.entities.retain(|&(_, _, active)| active);

@@ -10,7 +10,7 @@ pub struct Network {
     server_thread: Option<thread::JoinHandle<()>>,
     event_channel: EventChannel,
     connected: bool,
-    connection_time: f64
+    connection_time: u64
 }
 
 impl Network {
@@ -33,7 +33,7 @@ impl Network {
             server_thread: Some(server_thread),
             event_channel: channel,
             connected: false,
-            connection_time: 0.0
+            connection_time: 0
         }
 
     }
@@ -50,11 +50,11 @@ impl Network {
         self.event_channel.send(kind, data);
     }
 
-    pub fn try_recv(&mut self, time: f64) -> Result<EventType, TryRecvError> {
+    pub fn try_recv(&mut self, time: u64) -> Result<EventType, TryRecvError> {
 
         // Try to reconnect after 3 seconds
-        if self.connection_time != 0.0 && time - self.connection_time > 3.0 {
-            self.connection_time = 0.0;
+        if self.connection_time != 0 && time - self.connection_time > 3000 {
+            self.connection_time = 0;
             self.event_channel.reset();
         }
 
