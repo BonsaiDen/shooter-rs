@@ -4,6 +4,7 @@ use rand::XorShiftRng;
 
 use arena::Arena;
 use entity::Entity;
+use particle::ParticleSystem;
 
 pub trait Drawable {
 
@@ -16,10 +17,10 @@ pub trait Drawable {
     fn destroy(&mut self) {
     }
 
-    // TODO need one global particle system
     fn draw(
         &mut self,
-        core: &allegro::Core, prim: &PrimitivesAddon, rng: &mut XorShiftRng,
+        core: &allegro::Core, prim: &PrimitivesAddon,
+        rng: &mut XorShiftRng, particle_system: &mut ParticleSystem,
         arena: &Arena, entity: &Entity, dt: f32, u: f32
     );
 

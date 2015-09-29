@@ -4,11 +4,13 @@ use allegro::{Core, Color};
 use allegro_primitives::PrimitivesAddon;
 use allegro_font::{Font, FontAlign, FontDrawing};
 
-use shared;
+use net::{Network, MessageKind};
+
+use shared::arena;
 use shared::entity::{Entity, EntityInput, EntityState, EntityItem};
 use shared::entities;
 use shared::drawable::Drawable;
-use net::{Network, MessageKind};
+use shared::particle::ParticleSystem;
 
 pub struct Game {
     back_color: Color,
@@ -16,7 +18,8 @@ pub struct Game {
     rng: XorShiftRng,
     entities: Vec<EntityItem>,
     remote_states: Vec<(u8, EntityState)>,
-    arena: shared::arena::Arena
+    arena: arena::Arena,
+    particle_system: ParticleSystem
 }
 
 impl Game {
@@ -28,7 +31,8 @@ impl Game {
             rng: XorShiftRng::new_unseeded(),
             entities: Vec::new(),
             remote_states: Vec::new(),
-            arena: shared::arena::Arena::new(768, 768, 16)
+            arena: arena::Arena::new(768, 768, 16),
+            particle_system: ParticleSystem::new(1000)
         }
     }
 
@@ -175,8 +179,13 @@ impl Game {
 
         // Draw all entities
         for &mut(ref mut e, ref mut d, _) in self.entities.iter_mut() {
-            d.draw(&core, &prim, &mut self.rng, &self.arena, &**e, dt, u);
+            d.draw(
+                &core, &prim, &mut self.rng, &mut self.particle_system,
+                &self.arena, &**e, dt, u
+            );
         }
+
+        self.particle_system.draw(&core, &prim, dt);
 
         // UI
         let network_state = match network.connected() {

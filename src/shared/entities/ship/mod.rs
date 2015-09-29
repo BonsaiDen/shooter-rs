@@ -222,7 +222,6 @@ pub struct ShipDrawable {
     color_light: Color,
     color_mid: Color,
     scale: f32,
-    particle_system: ParticleSystem,
     particle_count: u32
 }
 
@@ -235,7 +234,8 @@ impl Drawable for ShipDrawable {
 
     fn draw(
         &mut self,
-        core: &allegro::Core, prim: &PrimitivesAddon, rng: &mut XorShiftRng,
+        core: &allegro::Core, prim: &PrimitivesAddon,
+        rng: &mut XorShiftRng, particle_system: &mut ParticleSystem,
         arena: &Arena, entity: &Entity, dt: f32, u: f32
     ) {
 
@@ -267,7 +267,7 @@ impl Drawable for ShipDrawable {
                 // Exhause more particles initially
                 for _ in 0..self.particle_count {
 
-                    if let Some(p) = self.particle_system.get() {
+                    if let Some(p) = particle_system.get() {
 
                         // Exhaust angle
                         let w = 0.95;
@@ -294,13 +294,13 @@ impl Drawable for ShipDrawable {
                         p.sms = -1.25 * self.scale;
                         p.v = ((86.0 + rng.gen::<u8>() as f32 / 9.0) * 0.5 + dr * 30.0) * 0.5 * self.scale;
                         p.vms = 0.0;
-                        p.r = mr - ar * 1.5;
+                        p.r = mr - ar * 1.7;
                         // Spread out exhaust
                         p.rms = ar * 1.25;
 
                         p.fadeout = 0.35;
-                        p.lifetime = 0.5;
-                        p.remaining = 0.5;
+                        p.lifetime = 0.4;
+                        p.remaining = p.lifetime;
 
                     }
                 }
@@ -313,8 +313,6 @@ impl Drawable for ShipDrawable {
             self.particle_count = cmp::min(self.particle_count + 1, 5);
         }
 
-        self.particle_system.draw(&core, &prim, dt);
-
     }
 
 }
@@ -326,7 +324,6 @@ impl ShipDrawable {
             color_light: Color::grey(),
             color_mid: Color::grey().darken(0.5),
             scale: scale,
-            particle_system: ParticleSystem::new(50),
             particle_count: 5
         }
     }

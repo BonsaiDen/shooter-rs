@@ -68,13 +68,14 @@ allegro_main! {
     q.register_event_source(core.get_mouse_event_source());
 
     // Tick / Rendering Logic
-    let ticks_per_second = 30;
+    let ticks_per_second: u32 = 30;
     let tick_dt = 1000000000 / ticks_per_second;
     let mut last_tick_time: u64 = clock_ticks::precise_time_ns();
 
-    let frames_per_second = 60;
-    let frame_dt = 1000000000 / frames_per_second;
+    let frames_per_second: u32 = 60;
+    let frame_dt: u64 = 1000000000 / frames_per_second as u64;
     let mut last_frame_time: u64 = last_tick_time - frame_dt;
+    let mut frames_to_render = 0;
 
     let mut key_state: [bool; 255] = [false; 255];
     let mut tick: i32 = 0;
@@ -126,22 +127,23 @@ allegro_main! {
                     game.state(&data);
                 },
 
-                net::EventType::Tick => {
-                    last_tick_time = frame_time;
-                    game.tick(&mut network, &key_state, true, tick as u8, tick_dt as f32 * 0.000000001);
-                    tick = (tick + 1) % 256;
-                },
-
                 net::EventType::ConnectionLost(_) => {
                     game.disconnect(&core);
                 },
 
-                _ => {
-                    println!("Received a message from network: {:?}", event);
-                }
+                _ => {}
 
             }
         }
+
+        // Local Tick Logic ---------------------------------------------------
+        if frames_to_render == 0 {
+            frames_to_render = frames_per_second / ticks_per_second;
+            last_tick_time = frame_time;
+            game.tick(&mut network, &key_state, true, tick as u8, tick_dt as f32 * 0.000000001);
+            tick = (tick + 1) % 256;
+        }
+
 
         // Rendering ----------------------------------------------------------
         let u = 1.0 / (tick_dt as f32) * (frame_time - last_tick_time) as f32;
@@ -156,6 +158,7 @@ allegro_main! {
 
         let diff = cmp::min(clock_ticks::precise_time_ns() - frame_time, frame_dt);
         thread::sleep(Duration::new(0, (frame_dt - diff) as u32));
+        frames_to_render -= 1;
 
     }
 

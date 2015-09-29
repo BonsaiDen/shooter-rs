@@ -1,6 +1,7 @@
 extern crate allegro;
 extern crate allegro_primitives;
 
+use std::cmp;
 use self::allegro_primitives::PrimitivesAddon;
 use color::Color;
 
@@ -85,6 +86,7 @@ impl Particle {
 
 pub struct ParticleSystem {
     first_available_particle: usize,
+    max_used_particle: usize,
     particles: Vec<Particle>
 }
 
@@ -92,7 +94,7 @@ impl ParticleSystem {
 
     pub fn new(max_particles: usize) -> ParticleSystem {
 
-        let mut particles = vec![];
+        let mut particles = Vec::with_capacity(max_particles);
         for i in 0..max_particles {
             particles.push(Particle {
                 active: false,
@@ -115,6 +117,7 @@ impl ParticleSystem {
 
         ParticleSystem {
             first_available_particle: 0,
+            max_used_particle: 0,
             particles: particles
         }
 
@@ -136,6 +139,7 @@ impl ParticleSystem {
             p.lifetime = 0.8;
             p.remaining = 0.8;
             self.first_available_particle = p.next_available;
+            self.max_used_particle = cmp::max(self.max_used_particle, p.id + 1);
             Some(p)
 
         } else {
@@ -145,17 +149,26 @@ impl ParticleSystem {
     }
 
     pub fn draw(&mut self, core: &allegro::Core, prim: &PrimitivesAddon, dt: f32) {
-        for p in self.particles.iter_mut() {
+
+        let mut max_used_particle = 0;
+
+        for i in 0..self.max_used_particle {
+            let p = self.particles.get_mut(i).unwrap();
             if p.is_active() {
+
                 if p.step(dt) == false {
                     p.next_available = self.first_available_particle;
                     self.first_available_particle = p.id;
 
                 } else {
+                    max_used_particle = cmp::max(p.id + 1, max_used_particle);
                     p.draw(core, prim);
                 }
             }
         }
+
+        self.max_used_particle = max_used_particle;
+
     }
 
 }
