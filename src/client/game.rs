@@ -65,7 +65,7 @@ impl Game {
 
     pub fn tick(
         &mut self, network: &mut Network, &
-        key_state: &[bool; 255], initial_tick: bool, tick: u8, dt: f32
+        key_state: &[bool; 255], tick: u8, dt: f32
     ) {
 
         for &mut(ref mut e, _, _) in self.entities.iter_mut() {
@@ -85,10 +85,10 @@ impl Game {
                 // Emulate remote server state stuff with a 20 frames delay
                 if self.remote_states.len() > 20 {
                     let first = self.remote_states.remove(0);
-                    e.remote_tick(&self.arena, dt, initial_tick, first.0, first.1);
+                    e.remote_tick(&self.arena, dt, first.0, first.1);
 
                 } else {
-                    e.tick(&self.arena, dt, initial_tick);
+                    e.tick(&self.arena, dt);
                 }
 
                 self.remote_states.push((tick, e.get_state()));
@@ -99,7 +99,7 @@ impl Game {
                 network.send(MessageKind::Instant, input_buffer);
 
             } else {
-                e.tick(&self.arena, dt, initial_tick);
+                e.tick(&self.arena, dt);
             }
 
         }

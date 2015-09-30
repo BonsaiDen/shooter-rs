@@ -65,12 +65,12 @@ pub trait Entity {
 
     fn input(&mut self, input: EntityInput);
 
-    fn tick(&mut self, arena: &Arena, dt: f32, set_last_state: bool);
+    fn tick(&mut self, arena: &Arena, dt: f32);
 
     fn remote_tick(
         &mut self,
         arena: &Arena,
-        dt: f32, set_last_state: bool, remote_tick: u8, state: EntityState
+        dt: f32, remote_tick: u8, state: EntityState
     );
 
 }

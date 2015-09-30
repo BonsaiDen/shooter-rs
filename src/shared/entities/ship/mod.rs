@@ -85,14 +85,14 @@ impl Entity for ShipEntity {
     fn remote_tick(
         &mut self,
         arena: &Arena,
-        dt: f32, set_last_state: bool, remote_tick: u8, state: EntityState
+        dt: f32, remote_tick: u8, state: EntityState
     ) {
-        self.apply_remote_state(remote_tick, set_last_state, state);
+        self.apply_remote_state(remote_tick, state);
         self.apply_inputs(arena, dt);
     }
 
-    fn tick(&mut self, arena: &Arena, dt: f32, set_last_state: bool) {
-        self.apply_local_state(set_last_state);
+    fn tick(&mut self, arena: &Arena, dt: f32) {
+        self.apply_local_state();
         self.apply_inputs(arena, dt);
     }
 
@@ -122,13 +122,10 @@ impl ShipEntity {
     }
 
     pub fn apply_remote_state(
-        &mut self, remote_tick: u8, set_last_state: bool, state: EntityState
+        &mut self, remote_tick: u8, state: EntityState
     ) {
 
-        if set_last_state {
-            self.last_state = self.state;
-        }
-
+        self.last_state = self.state;
         self.base_state = state;
         self.state = state;
 
@@ -139,10 +136,8 @@ impl ShipEntity {
 
     }
 
-    pub fn apply_local_state(&mut self, set_last_state: bool) {
-        if set_last_state {
-            self.last_state = self.state;
-        }
+    pub fn apply_local_state(&mut self) {
+        self.last_state = self.state;
         self.state = self.base_state;
     }
 
