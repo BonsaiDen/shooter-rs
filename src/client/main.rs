@@ -93,12 +93,41 @@ allegro_main! {
 
         if redraw {
 
-            // Local Tick Logic -----------------------------------------------
+            // Network Logic --------------------------------------------------
             if frames_to_render == 0 {
-                frames_to_render = frames_per_second / ticks_per_second;
-                last_tick_time = frame_time;
-                game.tick(&mut network, &key_state, tick as u8, tick_dt as f32);
-                tick = (tick + 1) % 256;
+
+                network.tick();
+
+                while let Ok(event) = network.try_recv(frame_time) {
+                    match event {
+
+                        net::EventType::Connection(_) => {
+                            game.connect(&core);
+                        },
+
+                        net::EventType::Tick(_, _) => {
+                            frames_to_render = frames_per_second / ticks_per_second;
+                            last_tick_time = frame_time;
+                            game.tick(&mut network, &key_state, tick as u8, tick_dt as f32);
+                            tick = (tick + 1) % 256;
+                        },
+
+                        // Message Events come before the tick event
+                        net::EventType::Message(_, data) =>  {
+                            // TODO set last_state_time for interpolation of remote
+                            // entities. This means we need another U value.
+                            game.state(&data);
+                        },
+
+                        net::EventType::ConnectionLost(_) => {
+                            game.disconnect(&core);
+                        },
+
+                        _ => {}
+
+                    }
+                }
+
             }
 
             // Rendering ------------------------------------------------------
@@ -140,31 +169,9 @@ allegro_main! {
 
         }
 
-        // Network ------------------------------------------------------------
-        while let Ok(event) = network.try_recv(frame_time) {
-            match event {
-
-                net::EventType::Connection(_) => {
-                    game.connect(&core);
-                },
-
-                // Message Events come before the tick event
-                net::EventType::Message(_, data) =>  {
-                    // TODO set last_state_time for interpolation of remote
-                    // entities. This means we need another U value.
-                    game.state(&data);
-                },
-
-                net::EventType::ConnectionLost(_) => {
-                    game.disconnect(&core);
-                },
-
-                _ => {}
-
-            }
-        }
-
     }
+
+    network.close();
 
 }
 

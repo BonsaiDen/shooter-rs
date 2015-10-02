@@ -188,11 +188,13 @@ impl Game {
         self.particle_system.draw(&core, &prim, dt);
 
         // UI
-        let network_state = match network.connected() {
-            true => format!("Connected to server at {}", network.server_addr()),
-            false => format!("Connecting to server at {}...", network.server_addr())
-        };
-        core.draw_text(font, self.text_color, 0.0, 0.0, FontAlign::Left, &network_state[..]);
+        if let Ok(addr) = network.server_addr() {
+            let network_state = match network.connected() {
+                true => format!("Connected to server at {}", addr),
+                false => format!("Connecting to server at {}...", addr)
+            };
+            core.draw_text(font, self.text_color, 0.0, 0.0, FontAlign::Left, &network_state[..]);
+        }
 
     }
 

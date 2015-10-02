@@ -1,16 +1,21 @@
 use std::thread;
 use std::net::SocketAddr;
 use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
-use cobalt::{Config, Client, Connection, ConnectionID, Handler};
+use cobalt::{
+    Config, Client, Connection, ConnectionID, Handler, SyncToken, UdpSocket
+};
+use std::collections::VecDeque;
 
 pub use cobalt::MessageKind as MessageKind;
 
 pub struct Network {
-    addr: SocketAddr,
-    server_thread: Option<thread::JoinHandle<()>>,
-    event_channel: EventChannel,
+    handler: EventHandler,
+    client: Client,
+    sync_token: SyncToken<UdpSocket>,
     connected: bool,
-    connection_time: f64
+    connection_time: f64,
+    packet_loss: f32,
+    rtt: u32
 }
 
 impl Network {
@@ -18,22 +23,22 @@ impl Network {
     pub fn new(tick_rate: u32, addr: SocketAddr) -> Network {
 
         let mut handler = EventHandler::new();
-        let channel = handler.event_channel();
 
-        let server_thread = thread::spawn(move|| {
-            let mut client = Client::new(Config {
-                send_rate: tick_rate,
-                .. Config::default()
-            });
-            client.connect(&mut handler, addr);
+        let mut client = Client::new(Config {
+            send_rate: tick_rate,
+            .. Config::default()
         });
 
+        let sync_token = client.connect_sync(&mut handler, addr).unwrap();
+
         Network {
-            addr: addr,
-            server_thread: Some(server_thread),
-            event_channel: channel,
+            handler: handler,
+            client: client,
+            sync_token: sync_token,
             connected: false,
-            connection_time: 0.0
+            connection_time: 0.0,
+            packet_loss: 0.0,
+            rtt: 0
         }
 
     }
@@ -42,12 +47,20 @@ impl Network {
         self.connected
     }
 
-    pub fn server_addr(&mut self) -> &SocketAddr {
-        &self.addr
+    pub fn server_addr(&mut self) -> Result<SocketAddr, ()> {
+        self.client.peer_addr().or(Err(()))
     }
 
-    pub fn send(&self, kind: MessageKind, data: Vec<u8>) {
-        self.event_channel.send(kind, data);
+    pub fn send(&mut self, kind: MessageKind, data: Vec<u8>) {
+        self.handler.send(kind, data);
+    }
+
+    pub fn tick(&mut self) {
+        self.client.tick_sync(&mut self.handler, &mut self.sync_token).unwrap();
+    }
+
+    pub fn close(&mut self) {
+        self.client.close_sync(&mut self.handler, &mut self.sync_token).unwrap();
     }
 
     pub fn try_recv(&mut self, time: f64) -> Result<EventType, TryRecvError> {
@@ -55,13 +68,13 @@ impl Network {
         // Try to reconnect after 3 seconds
         if self.connection_time != 0.0 && time - self.connection_time > 3.0 {
             self.connection_time = 0.0;
-            self.event_channel.reset();
+            self.handler.reset();
         }
 
         // Internal event handling
-        match self.event_channel.try_recv() {
+        match self.handler.try_recv() {
 
-            Ok(event) => {
+            Some(event) => {
 
                 match event {
                     EventType::ConnectionFailed(_) => {
@@ -77,6 +90,10 @@ impl Network {
                         self.connection_time = time;
                         self.connected = false;
                     },
+                    EventType::Tick(rtt, packet_loss) => {
+                        self.rtt = rtt;
+                        self.packet_loss = packet_loss;
+                    },
                     _ => ()
                 }
 
@@ -84,7 +101,7 @@ impl Network {
 
             },
 
-            Err(err) => Err(err)
+            None => Err(TryRecvError::Empty)
 
         }
 
@@ -92,12 +109,6 @@ impl Network {
 
 }
 
-impl Drop for Network {
-    fn drop(&mut self ) {
-        self.event_channel.close();
-        self.server_thread.take().unwrap().join().unwrap();
-    }
-}
 
 // To be moved into Cobalt ----------------------------------------------------
 
@@ -107,7 +118,7 @@ pub enum EventType {
     Shutdown,
     Connect,
     Close,
-    Tick, // TODO packet_loss and rtt
+    Tick(u32, f32),
     Message(ConnectionID, Vec<u8>),
     Connection(ConnectionID),
     ConnectionFailed(ConnectionID),
@@ -124,64 +135,42 @@ pub enum Command {
     SendTo(ConnectionID, MessageKind, Vec<u8>)
 }
 
-pub struct EventChannel {
-    receiver: Receiver<EventType>,
-    sender: Sender<Command>
-}
-
-impl EventChannel {
-
-    pub fn try_recv(&self) -> Result<EventType, TryRecvError> {
-        self.receiver.try_recv()
-    }
-
-    pub fn send(&self, kind: MessageKind, data: Vec<u8>) {
-        self.sender.send(Command::Send(kind, data)).unwrap();
-    }
-
-    pub fn reset(&self) {
-        self.sender.send(Command::Reset).unwrap();
-    }
-
-    pub fn close(&self) {
-        self.sender.send(Command::Close).unwrap();
-    }
-
-    pub fn send_to(&self, id: ConnectionID, kind: MessageKind, data: Vec<u8>) {
-        self.sender.send(Command::SendTo(id, kind, data)).unwrap();
-    }
-
-    pub fn shutdown(&self) {
-        self.sender.send(Command::Shutdown).unwrap();
-    }
-
-}
-
 pub struct EventHandler {
-    from_receiver: Option<Receiver<EventType>>,
-    from_sender: Sender<EventType>,
-    to_receiver: Receiver<Command>,
-    to_sender: Option<Sender<Command>>
+    events: VecDeque<EventType>,
+    commands: VecDeque<Command>
 }
 
 impl EventHandler {
 
     pub fn new() -> EventHandler {
-        let (from_sender, from_receiver) = channel::<EventType>();
-        let (to_sender, to_receiver) = channel::<Command>();
         EventHandler {
-            from_receiver: Some(from_receiver),
-            from_sender: from_sender,
-            to_receiver: to_receiver,
-            to_sender: Some(to_sender)
+            events: VecDeque::new(),
+            commands: VecDeque::new()
         }
     }
 
-    pub fn event_channel(&mut self) -> EventChannel {
-        EventChannel {
-            receiver: self.from_receiver.take().unwrap(),
-            sender: self.to_sender.take().unwrap(),
-        }
+    pub fn try_recv(&mut self) -> Option<EventType> {
+        self.events.pop_front()
+    }
+
+    pub fn send(&mut self, kind: MessageKind, data: Vec<u8>) {
+        self.commands.push_back(Command::Send(kind, data));
+    }
+
+    pub fn reset(&mut self) {
+        self.commands.push_back(Command::Reset);
+    }
+
+    pub fn close(&mut self) {
+        self.commands.push_back(Command::Close);
+    }
+
+    pub fn send_to(&mut self, id: ConnectionID, kind: MessageKind, data: Vec<u8>) {
+        self.commands.push_back(Command::SendTo(id, kind, data));
+    }
+
+    pub fn shutdown(&mut self) {
+        self.commands.push_back(Command::Shutdown);
     }
 
 }
@@ -189,7 +178,7 @@ impl EventHandler {
 impl Handler<Client> for EventHandler {
 
     fn connect(&mut self, _: &mut Client) {
-        self.from_sender.send(EventType::Connect).unwrap();
+        self.events.push_back(EventType::Connect);
     }
 
     fn tick_connection(
@@ -202,14 +191,14 @@ impl Handler<Client> for EventHandler {
 
         // Create events from received connection messages
         for msg in conn.received() {
-            self.from_sender.send(EventType::Message(id, msg)).unwrap();
+            self.events.push_back(EventType::Message(id, msg));
         }
 
         // Create a tick event
-        self.from_sender.send(EventType::Tick).unwrap();
+        self.events.push_back(EventType::Tick(conn.rtt(), conn.packet_loss()));
 
         // Handle commands
-        while let Ok(cmd) = self.to_receiver.try_recv() {
+        while let Some(cmd) = self.commands.pop_front() {
             match cmd {
                 Command::Send(kind, data) => {
                     conn.send(kind, data);
@@ -227,29 +216,29 @@ impl Handler<Client> for EventHandler {
     }
 
     fn close(&mut self, _: &mut Client) {
-        self.from_sender.send(EventType::Close).unwrap();
+        self.events.push_back(EventType::Close);
     }
 
     fn connection(&mut self, _: &mut Client, conn: &mut Connection) {
-        self.from_sender.send(EventType::Connection(conn.id())).unwrap();
+        self.events.push_back(EventType::Connection(conn.id()));
     }
 
     fn connection_failed(&mut self, client: &mut Client, conn: &mut Connection) {
-        self.from_sender.send(EventType::ConnectionFailed(conn.id())).unwrap();
+        self.events.push_back(EventType::ConnectionFailed(conn.id()));
     }
 
     fn connection_packet_lost(
         &mut self, _: &mut Client, conn: &mut Connection, data: &[u8]
     ) {
-        self.from_sender.send(EventType::PacketLost(conn.id(), data.to_vec())).unwrap();
+        self.events.push_back(EventType::PacketLost(conn.id(), data.to_vec()));
     }
 
     fn connection_congestion_state(&mut self, _: &mut Client, conn: &mut Connection, state: bool) {
-        self.from_sender.send(EventType::ConnectionCongestionState(conn.id(), state)).unwrap();
+        self.events.push_back(EventType::ConnectionCongestionState(conn.id(), state));
     }
 
     fn connection_lost(&mut self, _: &mut Client, conn: &mut Connection) {
-        self.from_sender.send(EventType::ConnectionLost(conn.id())).unwrap();
+        self.events.push_back(EventType::ConnectionLost(conn.id()));
     }
 
 }
