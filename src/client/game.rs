@@ -96,7 +96,7 @@ impl Game {
                 // Send all unconfirmed inputs to server
                 let mut input_buffer = Vec::<u8>::new();
                 e.serialize_inputs(&mut input_buffer);
-                network.send(MessageKind::Instant, input_buffer);
+                network.send_message(MessageKind::Instant, input_buffer);
 
             } else {
                 e.tick(&self.arena, dt);

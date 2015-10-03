@@ -51,12 +51,17 @@ impl Network {
         self.client.peer_addr().or(Err(()))
     }
 
-    pub fn send(&mut self, kind: MessageKind, data: Vec<u8>) {
-        self.handler.send(kind, data);
+    pub fn receive(&mut self) {
+        self.client.receive_sync(&mut self.handler, &mut self.sync_token);
+        self.client.tick_sync(&mut self.handler, &mut self.sync_token);
     }
 
-    pub fn tick(&mut self) {
-        self.client.tick_sync(&mut self.handler, &mut self.sync_token).unwrap();
+    pub fn send(&mut self) {
+        self.client.send_sync(&mut self.handler, &mut self.sync_token);
+    }
+
+    pub fn send_message(&mut self, kind: MessageKind, data: Vec<u8>) {
+        self.handler.send(kind, data);
     }
 
     pub fn close(&mut self) {
@@ -196,6 +201,8 @@ impl Handler<Client> for EventHandler {
 
         // Create a tick event
         self.events.push_back(EventType::Tick(conn.rtt(), conn.packet_loss()));
+
+        // TODO we somehow need to be able to send a outgoing packet without delay
 
         // Handle commands
         while let Some(cmd) = self.commands.pop_front() {

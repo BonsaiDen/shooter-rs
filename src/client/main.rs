@@ -47,7 +47,8 @@ allegro_main! {
     core.set_new_display_option(DisplayOption::Samples, 8, DisplayOptionImportance::Require);
 
     // Create display
-    let disp = Display::new(&core, 768, 768).ok().expect("Failed to create OPENGL context.");
+    // TODO receive arena size from server
+    let disp = Display::new(&core, 384, 384).ok().expect("Failed to create OPENGL context.");
     disp.set_window_title("Rustgame: Shooter");
 
     // Input
@@ -96,7 +97,7 @@ allegro_main! {
             // Network Logic --------------------------------------------------
             if frames_to_render == 0 {
 
-                network.tick();
+                network.receive();
 
                 while let Ok(event) = network.try_recv(frame_time) {
                     match event {
@@ -114,8 +115,14 @@ allegro_main! {
 
                         // Message Events come before the tick event
                         net::EventType::Message(_, data) =>  {
+                            // Message Types
+                            // 0 = Config
+                            // 1 = State
+                            // 2 = Events
+                            //
                             // TODO set last_state_time for interpolation of remote
                             // entities. This means we need another U value.
+                            // TODO
                             game.state(&data);
                         },
 
@@ -127,6 +134,8 @@ allegro_main! {
 
                     }
                 }
+
+                network.send();
 
             }
 
