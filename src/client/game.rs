@@ -1,16 +1,22 @@
 use rand::{SeedableRng, XorShiftRng};
 
-use allegro::{Core, Color};
+use allegro::{Core, Color, Display};
 use allegro_primitives::PrimitivesAddon;
 use allegro_font::{Font, FontAlign, FontDrawing};
 
 use net::{Network, MessageKind};
 
-use shared::arena;
+use shared::arena::Arena;
 use shared::entity::{Entity, EntityInput, EntityState, EntityItem};
 use shared::entities;
 use shared::drawable::Drawable;
 use shared::particle::ParticleSystem;
+
+enum GameState {
+    Disconnected,
+    Pending,
+    Connected
+}
 
 pub struct Game {
     back_color: Color,
@@ -18,8 +24,9 @@ pub struct Game {
     rng: XorShiftRng,
     entities: Vec<EntityItem>,
     remote_states: Vec<(u8, EntityState)>,
-    arena: arena::Arena,
-    particle_system: ParticleSystem
+    arena: Arena,
+    particle_system: ParticleSystem,
+    state: GameState
 }
 
 impl Game {
@@ -31,36 +38,44 @@ impl Game {
             rng: XorShiftRng::new_unseeded(),
             entities: Vec::new(),
             remote_states: Vec::new(),
-            arena: arena::Arena::new(768, 768, 16),
-            particle_system: ParticleSystem::new(1000)
+            arena: Arena::new(768, 768, 16),
+            state: GameState::Disconnected,
+            particle_system: ParticleSystem::new(1000),
         }
     }
 
-    pub fn init(&mut self, core: &Core) {
+    pub fn init(&mut self, core: &Core, disp: &mut Display, arena: Arena, remote: bool) {
 
-        let mut player_ship = self.entity_from_kind(0);
-        let flags = 0b0000_0001;
-        player_ship.1.flags(0, flags);
-        player_ship.0.set_state(EntityState {
-            x: 400.0,
-            y: 400.0,
-            flags: flags,
-            .. EntityState::default()
-        });
+        // Local Test Play
+        if remote == false {
 
-        self.add_entity(player_ship);
+            let mut player_ship = self.entity_from_kind(0);
+
+            let (x, y) = arena.center();
+            let flags = 0b0000_0001;
+            player_ship.1.flags(0, flags);
+            player_ship.0.set_state(EntityState {
+                x: x as f32,
+                y: y as f32,
+                flags: flags,
+                .. EntityState::default()
+            });
+
+            self.add_entity(player_ship);
+
+        }
+
+        self.arena = arena;
+        disp.resize(self.arena.width() as i32, self.arena.height() as i32);
 
     }
 
 
     // Networking -------------------------------------------------------------
-    pub fn connect(&mut self, core: &Core) {
-        self.reset();
-    }
 
-    pub fn disconnect(&mut self, core: &Core) {
+    pub fn connect(&mut self, core: &Core) {
+        self.state = GameState::Pending;
         self.reset();
-        self.init(core);
     }
 
     pub fn tick(
@@ -113,7 +128,95 @@ impl Game {
 
     }
 
-    pub fn state(&mut self, data: &[u8]) {
+    pub fn message(&mut self, core: &Core, disp: &mut Display, kind: u8, data: &[u8]) {
+        match self.state {
+            GameState::Pending => {
+
+                // Game Configuration
+                if kind == 0 {
+                    // TODO validate message length
+                    self.config(core, disp, data);
+                }
+
+            },
+            GameState::Connected => {
+                // Game State
+                if kind == 1 {
+                    // TODO validate message length?
+                    self.state(data);
+                }
+            },
+            _ => ()
+        }
+    }
+
+    pub fn disconnect(&mut self, core: &Core, disp: &mut Display, arena: Arena) {
+        self.state = GameState::Disconnected;
+        self.reset();
+        self.init(core, disp, arena, false);
+    }
+
+
+    // Rendering --------------------------------------------------------------
+    pub fn draw(
+        &mut self, core: &Core, prim: &PrimitivesAddon, font: &Font,
+        network: &mut Network,
+        dt: f32, u: f32
+    ) {
+
+        core.clear_to_color(self.back_color);
+
+        // Draw all entities
+        for &mut(ref mut e, ref mut d, _) in self.entities.iter_mut() {
+            d.draw(
+                &core, &prim, &mut self.rng, &mut self.particle_system,
+                &self.arena, &**e, dt, u
+            );
+        }
+
+        self.particle_system.draw(&core, &prim, dt);
+
+        // UI
+        if let Ok(addr) = network.server_addr() {
+            let network_state = match network.connected() {
+                true => format!(
+                    "Connected to {} (Ping: {}ms, Packet Loss: {}%)",
+                    addr,
+                    network.rtt() / 2,
+                    network.packet_loss()
+                ),
+                false => format!("Connecting to {}...", addr)
+            };
+            core.draw_text(font, self.text_color, 0.0, 0.0, FontAlign::Left, &network_state[..]);
+        }
+
+    }
+
+
+    // Internal ---------------------------------------------------------------
+    fn entity_from_kind(&self, kind: u8) -> EntityItem {
+        match kind {
+            0 => entities::ship::Ship(1.0),
+            _ => unreachable!()
+        }
+    }
+
+    fn add_entity(&mut self, entity: EntityItem) {
+        self.entities.push(entity);
+    }
+
+    fn reset(&mut self) {
+        self.remote_states.clear();
+        self.entities.clear();
+    }
+
+    fn config(&mut self, core: &Core, disp: &mut Display, data: &[u8]) {
+        println!("Received Config");
+        self.init(core, disp, Arena::from_serialized(&data[0..5]), true);
+        self.state = GameState::Connected;
+    }
+
+    fn state(&mut self, data: &[u8]) {
 
         // Mark all entities as dead
         for &mut(_, _, mut alive) in self.entities.iter_mut() {
@@ -165,55 +268,6 @@ impl Game {
         // ...then remove them from the list
         self.entities.retain(|&(_, _, active)| active);
 
-    }
-
-
-    // Rendering --------------------------------------------------------------
-    pub fn draw(
-        &mut self, core: &Core, prim: &PrimitivesAddon, font: &Font,
-        network: &mut Network,
-        dt: f32, u: f32
-    ) {
-
-        core.clear_to_color(self.back_color);
-
-        // Draw all entities
-        for &mut(ref mut e, ref mut d, _) in self.entities.iter_mut() {
-            d.draw(
-                &core, &prim, &mut self.rng, &mut self.particle_system,
-                &self.arena, &**e, dt, u
-            );
-        }
-
-        self.particle_system.draw(&core, &prim, dt);
-
-        // UI
-        if let Ok(addr) = network.server_addr() {
-            let network_state = match network.connected() {
-                true => format!("Connected to server at {}", addr),
-                false => format!("Connecting to server at {}...", addr)
-            };
-            core.draw_text(font, self.text_color, 0.0, 0.0, FontAlign::Left, &network_state[..]);
-        }
-
-    }
-
-
-    // Internal ---------------------------------------------------------------
-    fn entity_from_kind(&self, kind: u8) -> EntityItem {
-        match kind {
-            0 => entities::ship::Ship(1.0),
-            _ => unreachable!()
-        }
-    }
-
-    fn add_entity(&mut self, mut entity: EntityItem) {
-        self.entities.push(entity);
-    }
-
-    fn reset(&mut self) {
-        self.remote_states.clear();
-        self.entities.clear();
     }
 
 }

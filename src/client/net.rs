@@ -1,6 +1,6 @@
 use std::thread;
 use std::net::SocketAddr;
-use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
+use std::sync::mpsc::{TryRecvError};
 use cobalt::{
     Config, Client, Connection, ConnectionID, Handler, SyncToken, UdpSocket
 };
@@ -14,8 +14,8 @@ pub struct Network {
     sync_token: SyncToken<UdpSocket>,
     connected: bool,
     connection_time: f64,
-    packet_loss: f32,
-    rtt: u32
+    connection_rtt: u32,
+    connection_packet_loss: f32
 }
 
 impl Network {
@@ -37,12 +37,13 @@ impl Network {
             sync_token: sync_token,
             connected: false,
             connection_time: 0.0,
-            packet_loss: 0.0,
-            rtt: 0
+            connection_rtt: 0,
+            connection_packet_loss: 0.0
         }
 
     }
 
+    // Getters ----------------------------------------------------------------
     pub fn connected(&mut self) -> bool {
         self.connected
     }
@@ -51,6 +52,16 @@ impl Network {
         self.client.peer_addr().or(Err(()))
     }
 
+    pub fn rtt(&mut self) -> u32 {
+        self.connection_rtt
+    }
+
+    pub fn packet_loss(&mut self) -> f32 {
+        self.connection_packet_loss
+    }
+
+
+    // Methods ----------------------------------------------------------------
     pub fn receive(&mut self) {
         self.client.receive_sync(&mut self.handler, &mut self.sync_token);
         self.client.tick_sync(&mut self.handler, &mut self.sync_token);
@@ -60,15 +71,7 @@ impl Network {
         self.client.send_sync(&mut self.handler, &mut self.sync_token);
     }
 
-    pub fn send_message(&mut self, kind: MessageKind, data: Vec<u8>) {
-        self.handler.send(kind, data);
-    }
-
-    pub fn close(&mut self) {
-        self.client.close_sync(&mut self.handler, &mut self.sync_token).unwrap();
-    }
-
-    pub fn try_recv(&mut self, time: f64) -> Result<EventType, TryRecvError> {
+    pub fn message(&mut self, time: f64) -> Result<EventType, TryRecvError> {
 
         // Try to reconnect after 3 seconds
         if self.connection_time != 0.0 && time - self.connection_time > 3.0 {
@@ -96,8 +99,8 @@ impl Network {
                         self.connected = false;
                     },
                     EventType::Tick(rtt, packet_loss) => {
-                        self.rtt = rtt;
-                        self.packet_loss = packet_loss;
+                        self.connection_rtt = rtt;
+                        self.connection_packet_loss = packet_loss;
                     },
                     _ => ()
                 }
@@ -112,10 +115,16 @@ impl Network {
 
     }
 
+    pub fn send_message(&mut self, kind: MessageKind, data: Vec<u8>) {
+        self.handler.send(kind, data);
+    }
+
+    pub fn close(&mut self) {
+        self.client.close_sync(&mut self.handler, &mut self.sync_token).unwrap();
+    }
+
 }
 
-
-// To be moved into Cobalt ----------------------------------------------------
 
 #[derive(Debug)]
 pub enum EventType {

@@ -17,6 +17,8 @@ use allegro::*;
 use allegro_font::{FontAddon, Font};
 use allegro_primitives::PrimitivesAddon;
 
+use shared::arena::Arena;
+
 mod game;
 mod net;
 
@@ -47,8 +49,8 @@ allegro_main! {
     core.set_new_display_option(DisplayOption::Samples, 8, DisplayOptionImportance::Require);
 
     // Create display
-    // TODO receive arena size from server
-    let disp = Display::new(&core, 384, 384).ok().expect("Failed to create OPENGL context.");
+    let (width, height, border) = (384, 384, 16);
+    let mut disp = Display::new(&core, width as i32, height as i32).ok().expect("Failed to create OPENGL context.");
     disp.set_window_title("Rustgame: Shooter");
 
     // Input
@@ -83,7 +85,7 @@ allegro_main! {
 
     // Game instance
     let mut game = game::Game::new(&core);
-    game.init(&core);
+    game.init(&core, &mut disp, Arena::new(width, height, border), false);
 
     // Network
     let mut network = net::Network::new(ticks_per_second, server_addr);
@@ -99,11 +101,17 @@ allegro_main! {
 
                 network.receive();
 
-                while let Ok(event) = network.try_recv(frame_time) {
+                while let Ok(event) = network.message(frame_time) {
                     match event {
 
                         net::EventType::Connection(_) => {
                             game.connect(&core);
+                        },
+
+                        net::EventType::Message(_, data) =>  {
+                            if data.len() > 0 {
+                                game.message(&core, &mut disp, data[0], &data[1..]);
+                            }
                         },
 
                         net::EventType::Tick(_, _) => {
@@ -113,21 +121,11 @@ allegro_main! {
                             tick = (tick + 1) % 256;
                         },
 
-                        // Message Events come before the tick event
-                        net::EventType::Message(_, data) =>  {
-                            // Message Types
-                            // 0 = Config
-                            // 1 = State
-                            // 2 = Events
-                            //
-                            // TODO set last_state_time for interpolation of remote
-                            // entities. This means we need another U value.
-                            // TODO
-                            game.state(&data);
-                        },
-
                         net::EventType::ConnectionLost(_) => {
-                            game.disconnect(&core);
+                            game.disconnect(
+                                &core, &mut disp,
+                                Arena::new(width, height, border)
+                            );
                         },
 
                         _ => {}

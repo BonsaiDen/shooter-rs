@@ -3,11 +3,10 @@ extern crate clap;
 extern crate cobalt;
 extern crate shared;
 
-use std::collections::HashMap;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
-use cobalt::{Client, Config, Connection, ConnectionID, MessageKind, Handler, Server};
+use cobalt::{Config, Handler, Server};
 
-//use shared::ship::Ship;
+mod game;
 
 fn main() {
 
@@ -29,81 +28,12 @@ fn main() {
         SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 31476)
     ));
 
-    let ticks_per_second = 30;
-    let config = Config {
+    let mut game = game::Game::new(512, 512, 16);
+    let mut server = Server::new(Config {
         send_rate: 30,
         .. Config::default()
-    };
-    let mut handler = GameServer;
-    let mut server = Server::new(config);
-    server.bind(&mut handler, server_addr).unwrap();
-
-}
-
-struct GameServer {
-    entities: Vec<Box<Entity>>,
-    arena: shared::arena::Arena
-}
-
-impl Handler<Server> for GameServer {
-
-    fn bind(&mut self, _: &mut Server) {
-        println!("Server::bind");
-    }
-
-    fn tick_connections(
-        &mut self, _: &mut Server,
-        connections: &mut HashMap<ConnectionID, Connection>
-    ) {
-
-        // Receive inputs
-        for (_, conn) in connections.iter_mut() {
-            // Apply all new inputs and set confirmed client tick
-        }
-
-        // TODO Ticks all entities
-            // TODO store last N states of all entities
-            // TODO send delta based off of last confirmed client tick
-            // TODO perform collision detection based against last confirmed client tick
-
-        // TODO Send state to all clients
-        for (_, conn) in connections.iter_mut() {
-
-        }
-
-        // TODO bullets are handled by pre-creating a local object and then
-        // syncing it with the remote one, we submit a local ID and the server
-        // return this ID along with the remote object ID when updating
-
-        // TODO server side collision is checked on each server tick
-        // positions are warped to the last known local tick of the player
-        // BUT there is a maximum tick difference to prevent cheating
-
-    }
-
-    fn shutdown(&mut self, _: &mut Server) {
-        println!("Server::shutdown");
-    }
-
-    fn connection(&mut self, _: &mut Server, _: &mut Connection) {
-        println!("Server::connection");
-        // TODO create ship entity
-    }
-
-    fn connection_packet_lost(
-        &mut self, _: &mut Server, _: &mut Connection, p: &[u8]
-    ) {
-        println!("Server::connection_packet_loss {}", p.len());
-    }
-
-    fn connection_congestion_state(&mut self, _: &mut Server, _: &mut Connection, state: bool) {
-        println!("Server::connection_congestion_state {}", state);
-    }
-
-    fn connection_lost(&mut self, _: &mut Server, _: &mut Connection) {
-        // TODO destroy ship entity
-        println!("Server::connection_lost");
-    }
+    });
+    server.bind(&mut game, server_addr).unwrap();
 
 }
 
