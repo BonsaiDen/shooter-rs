@@ -3,20 +3,25 @@ use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use cobalt::{Client, Connection, ConnectionID, MessageKind, Handler, Server};
 
 use shared::arena;
-use shared::entity::{Entity, EntityInput, EntityState, EntityItem};
+use shared::entities;
+use shared::entity::{Entity, EntityInput, EntityState};
+use shared::color::Color;
 
 
 // Server Side Game Logic -----------------------------------------------------
 pub struct Game {
-    entities: Vec<Box<Entity>>,
-    arena: arena::Arena
+    entities: Vec<Entity>,
+    arena: arena::Arena,
+    available_colors: Vec<Color>
+
 }
 
 impl Game {
     pub fn new(width: u32, height: u32, border: u32) -> Game {
         Game {
             entities: Vec::new(),
-            arena: arena::Arena::new(width, height, border)
+            arena: arena::Arena::new(width, height, border),
+            available_colors: Color::all_colored()
         }
     }
 }
@@ -70,7 +75,32 @@ impl Handler<Server> for Game {
         config.extend(self.arena.serialize());
         conn.send(MessageKind::Reliable, config);
 
-        // TODO create ship entity from one of the available colors
+        // Create a ship entity from one of the available colors
+        if let Some(color) = self.available_colors.pop() {
+
+            let mut player_ship = entities::ship::Ship(1.0);
+            let (x, y) = self.arena.center();
+
+            let flags = color.to_flags();
+            println!("{} flags", flags);
+            player_ship.typ.set_state(EntityState {
+                x: x as f32,
+                y: y as f32,
+                flags: flags,
+                .. EntityState::default()
+            });
+
+            player_ship.set_alive(true);
+            player_ship.set_owner(conn.id());
+
+            self.entities.push(player_ship);
+
+            println!("[Client {}] Created entity (color {:?})", conn.peer_addr(), color);
+
+            // TODO send event? or do this via state updates only?
+            // probably send player joined event but add entity via update
+
+        }
 
     }
 
@@ -85,8 +115,30 @@ impl Handler<Server> for Game {
     }
 
     fn connection_lost(&mut self, _: &mut Server, conn: &mut Connection) {
-        // TODO destroy ship entity and make color available again
+
         println!("[Client {}] Disconnected", conn.peer_addr());
+
+        // Find any associated entity for the connection and destroy it
+        for entity in self.entities.iter_mut() {
+            if entity.owned_by(&conn.id()) {
+
+                let color = Color::from_flags(entity.typ.get_state().flags);
+                entity.set_alive(false);
+                entity.typ.destroy();
+
+                // Make color available again
+                self.available_colors.push(color);
+
+                println!("[Client {}] Destroyed entity (color {:?})", conn.peer_addr(), color);
+
+            }
+        }
+
+        // Remove and dead entities from the list
+        self.entities.retain(|ref entity| entity.alive());
+
+        // TODO have actual disconnect command?
+
     }
 
 }
