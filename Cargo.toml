@@ -10,7 +10,7 @@ allegro-sys = "0.0.18"
 allegro_primitives = "0.0.18"
 allegro_font = "0.0.18"
 clap = "1.4.0"
-cobalt = "0.4.0"
+cobalt = "0.5.0"
 clock_ticks = "0.0.6"
 
 [[bin]]
