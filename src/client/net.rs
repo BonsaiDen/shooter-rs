@@ -2,7 +2,7 @@ use std::thread;
 use std::net::SocketAddr;
 use std::sync::mpsc::{TryRecvError};
 use cobalt::{
-    Config, Client, Connection, ConnectionID, Handler, SyncToken, UdpSocket
+    Config, Client, Connection, ConnectionID, Handler, ClientState, UdpSocket
 };
 use std::collections::VecDeque;
 
@@ -11,7 +11,7 @@ pub use cobalt::MessageKind as MessageKind;
 pub struct Network {
     handler: EventHandler,
     client: Client,
-    sync_token: SyncToken<UdpSocket>,
+    sync_token: ClientState<UdpSocket>,
     connected: bool,
     connection_time: f64,
     connection_rtt: u32,

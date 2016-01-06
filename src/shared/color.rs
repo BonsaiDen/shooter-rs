@@ -1,62 +1,94 @@
 extern crate allegro;
 
-#[derive(Copy, Clone)]
-pub struct Color((u8, u8, u8));
+#[derive(Debug, Copy, Clone)]
+pub enum Color {
+    Grey,
+    Red,
+    Orange,
+    Yellow,
+    Green,
+    Teal,
+    Blue,
+    Purple,
+    Pink
+}
 
 impl Color {
 
-    pub fn black() -> Color {
-        Color((0x00, 0x00, 0x00))
+    pub fn all_colored() -> Vec<Color> {
+        vec![
+            Color::Red,
+            Color::Orange,
+            Color::Yellow,
+            Color::Green,
+            Color::Teal,
+            Color::Blue,
+            Color::Purple,
+            Color::Pink
+        ]
     }
 
-    pub fn grey() -> Color {
-        Color((0x80, 0x80, 0x80))
-    }
-
-    pub fn red() -> Color {
-        Color((0xf2, 0x00, 0x26))
-    }
-
-    pub fn orange() -> Color {
-        Color((0xfd, 0x83, 0x1c))
-    }
-
-    pub fn yellow() -> Color {
-        Color((0xfd, 0xda, 0x31))
-    }
-
-    pub fn green() -> Color {
-        Color((0x3c, 0xdc, 0x00))
-    }
-
-    pub fn teal() -> Color {
-        Color((0x33, 0xd0, 0xd1))
-    }
-
-    pub fn blue() -> Color {
-        Color((0x0f, 0x5c, 0xf9))
-    }
-
-    pub fn purple() -> Color {
-        Color((0x82, 0x0c, 0xe6))
-    }
-
-    pub fn pink() -> Color {
-        Color((0xec, 0x34, 0xa7))
-    }
-
-    pub fn from_id(id: u8) -> Color{
-        match id {
-            0 => Color::red(),
-            1 => Color::orange(),
-            2 => Color::yellow(),
-            3 => Color::green(),
-            4 => Color::teal(),
-            5 => Color::blue(),
-            6 => Color::purple(),
-            7 => Color::pink(),
-            _ => Color::grey()
+    pub fn to_u8(&self) -> u8 {
+        match *self {
+            Color::Grey => 0,
+            Color::Red => 1,
+            Color::Orange => 2,
+            Color::Yellow => 3,
+            Color::Green => 4,
+            Color::Teal => 5,
+            Color::Blue => 6,
+            Color::Purple => 7,
+            Color::Pink => 8
         }
+    }
+
+    pub fn from_u8(value: u8) -> Color {
+        match value {
+            0 => Color::Grey,
+            1 => Color::Red,
+            2 => Color::Orange,
+            3 => Color::Yellow,
+            4 => Color::Green,
+            5 => Color::Teal,
+            6 => Color::Blue,
+            7 => Color::Purple,
+            8 => Color::Pink,
+            _ => Color::Grey
+        }
+    }
+
+    pub fn to_flags(&self) -> u8 {
+        (self.to_u8() << 4) & 0xff
+    }
+
+    pub fn from_flags(flags: u8) -> Color {
+        Color::from_u8((flags & 0b1111_0000) >> 4)
+    }
+
+    pub fn to_rgb(&self) -> RgbColor {
+        match *self {
+            Color::Grey => RgbColor((0x80, 0x80, 0x80)),
+            Color::Red => RgbColor((0xf2, 0x00, 0x26)),
+            Color::Orange => RgbColor((0xfd, 0x83, 0x1c)),
+            Color::Yellow => RgbColor((0xfd, 0xda, 0x31)),
+            Color::Green => RgbColor((0x3c, 0xdc, 0x00)),
+            Color::Teal => RgbColor((0x33, 0xd0, 0xd1)),
+            Color::Blue => RgbColor((0x0f, 0x5c, 0xf9)),
+            Color::Purple => RgbColor((0x82, 0x0c, 0xe6)),
+            Color::Pink => RgbColor((0xec, 0x34, 0xa7))
+        }
+
+    }
+
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct RgbColor((u8, u8, u8));
+
+impl RgbColor {
+
+    pub fn black() -> RgbColor {
+        RgbColor((0x00, 0x00, 0x00))
     }
 
     pub fn map_rgb(&self, core: &allegro::Core) -> allegro::Color {
@@ -74,9 +106,9 @@ impl Color {
         )
     }
 
-    pub fn darken(&self, by: f32) -> Color {
+    pub fn darken(&self, by: f32) -> RgbColor {
         let (h, s, l) = rgb_to_hsl(self.0);
-        Color(hsl_to_rgb((h, s, l * (1.0 - by))))
+        RgbColor(hsl_to_rgb((h, s, l * (1.0 - by))))
     }
 
 }

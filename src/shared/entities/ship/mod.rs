@@ -6,16 +6,22 @@ use allegro;
 use allegro_primitives::PrimitivesAddon;
 
 use arena::Arena;
-use color::Color;
-use entity::{Entity, EntityInput, EntityState, EntityItem};
-use drawable::Drawable;
+use color::{Color, RgbColor};
+use entity::{EntityType, EntityInput, EntityState, Entity};
+use drawable::{Drawable, ZeroDrawable};
 use particle::ParticleSystem;
 
-pub fn Ship(scale: f32) -> EntityItem {
-    (
+pub fn Ship(scale: f32) -> Entity {
+    Entity::new(
         Box::new(ShipEntity::new(scale)),
-        Box::new(ShipDrawable::new(scale)),
-        false
+        Box::new(ZeroDrawable)
+    )
+}
+
+pub fn DrawableShip(scale: f32) -> Entity {
+    Entity::new(
+        Box::new(ShipEntity::new(scale)),
+        Box::new(ShipDrawable::new(scale))
     )
 }
 
@@ -30,7 +36,7 @@ pub struct ShipEntity {
     input_states: Vec<EntityInput>
 }
 
-impl Entity for ShipEntity {
+impl EntityType for ShipEntity {
 
     fn is_local(&self) -> bool {
         self.state.flags & 0x01 == 0x01
@@ -55,7 +61,7 @@ impl Entity for ShipEntity {
     fn set_state(&mut self, state: EntityState) {
         let old_flags = self.state.flags;
         self.state = state;
-        self.flags(old_flags, state.flags);
+        self.set_flags(old_flags, state.flags);
         self.last_state = state;
         self.base_state = state;
     }
@@ -214,16 +220,16 @@ fn tick_is_more_recent(a: u8, b: u8) -> bool {
 
 
 pub struct ShipDrawable {
-    color_light: Color,
-    color_mid: Color,
+    color_light: RgbColor,
+    color_mid: RgbColor,
     scale: f32,
     particle_count: u32
 }
 
 impl Drawable for ShipDrawable {
 
-    fn flags(&mut self, old: u8, new: u8) {
-        self.color_light = Color::from_id((new & 0b1110_0000) >> 5);
+    fn set_flags(&mut self, old: u8, new: u8) {
+        self.color_light = Color::from_flags(new).to_rgb();
         self.color_mid = self.color_light.darken(0.5);
     }
 
@@ -231,7 +237,7 @@ impl Drawable for ShipDrawable {
         &mut self,
         core: &allegro::Core, prim: &PrimitivesAddon,
         rng: &mut XorShiftRng, particle_system: &mut ParticleSystem,
-        arena: &Arena, entity: &Entity, dt: f32, u: f32
+        arena: &Arena, entity: &EntityType, dt: f32, u: f32
     ) {
 
         let light = self.color_light;
@@ -316,8 +322,8 @@ impl ShipDrawable {
 
     pub fn new(scale: f32) -> ShipDrawable {
         ShipDrawable {
-            color_light: Color::grey(),
-            color_mid: Color::grey().darken(0.5),
+            color_light: Color::Grey.to_rgb(),
+            color_mid: Color::Grey.to_rgb().darken(0.5),
             scale: scale,
             particle_count: 5
         }
@@ -325,7 +331,7 @@ impl ShipDrawable {
 
     fn draw_triangle(
         &self, core: &allegro::Core, prim: &PrimitivesAddon,
-        state: &EntityState, color: Color,
+        state: &EntityState, color: RgbColor,
         base_scale: f32, body_scale: f32, dr: f32, da: f32, db: f32
     ) {
         let beta = f32::consts::PI / dr;

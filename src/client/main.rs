@@ -46,7 +46,7 @@ allegro_main! {
     let mut core = Core::init().unwrap();
     core.set_new_display_flags(OPENGL);
     core.set_new_display_option(DisplayOption::SampleBuffers, 1, DisplayOptionImportance::Require);
-    core.set_new_display_option(DisplayOption::Samples, 8, DisplayOptionImportance::Require);
+    core.set_new_display_option(DisplayOption::Samples, 16, DisplayOptionImportance::Require);
 
     // Create display
     let (width, height, border) = (384, 384, 16);

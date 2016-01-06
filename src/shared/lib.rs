@@ -1,4 +1,5 @@
 extern crate rand;
+extern crate cobalt;
 extern crate allegro;
 extern crate allegro_primitives;
 

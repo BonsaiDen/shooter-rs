@@ -3,13 +3,13 @@ extern crate allegro_primitives;
 
 use std::cmp;
 use self::allegro_primitives::PrimitivesAddon;
-use color::Color;
+use color::RgbColor;
 
 pub struct Particle {
 
     active: bool,
 
-    pub color: Color,
+    pub color: RgbColor,
 
     // Position
     pub x: f32,
@@ -98,7 +98,7 @@ impl ParticleSystem {
         for i in 0..max_particles {
             particles.push(Particle {
                 active: false,
-                color: Color::black(),
+                color: RgbColor::black(),
                 x: 0.0,
                 y: 0.0,
                 s: 1.0,

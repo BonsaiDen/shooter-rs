@@ -1,13 +1,14 @@
 use rand::{SeedableRng, XorShiftRng};
 
-use allegro::{Core, Color, Display};
+use allegro::{Core, Color as AllegroColor, Display};
 use allegro_primitives::PrimitivesAddon;
 use allegro_font::{Font, FontAlign, FontDrawing};
 
 use net::{Network, MessageKind};
 
+use shared::color::Color;
 use shared::arena::Arena;
-use shared::entity::{Entity, EntityInput, EntityState, EntityItem};
+use shared::entity::{EntityType, EntityInput, EntityState, Entity};
 use shared::entities;
 use shared::drawable::Drawable;
 use shared::particle::ParticleSystem;
@@ -19,10 +20,10 @@ enum GameState {
 }
 
 pub struct Game {
-    back_color: Color,
-    text_color: Color,
+    back_color: AllegroColor,
+    text_color: AllegroColor,
     rng: XorShiftRng,
-    entities: Vec<EntityItem>,
+    entities: Vec<Entity>,
     remote_states: Vec<(u8, EntityState)>,
     arena: Arena,
     particle_system: ParticleSystem,
@@ -52,9 +53,9 @@ impl Game {
             let mut player_ship = self.entity_from_kind(0);
 
             let (x, y) = arena.center();
-            let flags = 0b0000_0001;
-            player_ship.1.flags(0, flags);
-            player_ship.0.set_state(EntityState {
+            let flags = 0b0000_0001 | Color::Red.to_flags();
+            player_ship.drawable.set_flags(0, flags);
+            player_ship.typ.set_state(EntityState {
                 x: x as f32,
                 y: y as f32,
                 flags: flags,
@@ -83,9 +84,9 @@ impl Game {
         key_state: &[bool; 255], tick: u8, dt: f32
     ) {
 
-        for &mut(ref mut e, _, _) in self.entities.iter_mut() {
+        for entity in self.entities.iter_mut() {
 
-            if e.is_local() {
+            if entity.typ.is_local() {
 
                 let input = EntityInput {
                     tick: tick as u8,
@@ -95,26 +96,26 @@ impl Game {
                     fire: false
                 };
 
-                e.input(input);
+                entity.typ.input(input);
 
                 // Emulate remote server state stuff with a 20 frames delay
                 if self.remote_states.len() > 20 {
                     let first = self.remote_states.remove(0);
-                    e.remote_tick(&self.arena, dt, first.0, first.1);
+                    entity.typ.remote_tick(&self.arena, dt, first.0, first.1);
 
                 } else {
-                    e.tick(&self.arena, dt);
+                    entity.typ.tick(&self.arena, dt);
                 }
 
-                self.remote_states.push((tick, e.get_state()));
+                self.remote_states.push((tick, entity.typ.get_state()));
 
                 // Send all unconfirmed inputs to server
                 let mut input_buffer = Vec::<u8>::new();
-                e.serialize_inputs(&mut input_buffer);
+                entity.typ.serialize_inputs(&mut input_buffer);
                 network.send_message(MessageKind::Instant, input_buffer);
 
             } else {
-                e.tick(&self.arena, dt);
+                entity.typ.tick(&self.arena, dt);
             }
 
         }
@@ -167,10 +168,10 @@ impl Game {
         core.clear_to_color(self.back_color);
 
         // Draw all entities
-        for &mut(ref mut e, ref mut d, _) in self.entities.iter_mut() {
-            d.draw(
+        for entity in self.entities.iter_mut() {
+            entity.drawable.draw(
                 &core, &prim, &mut self.rng, &mut self.particle_system,
-                &self.arena, &**e, dt, u
+                &self.arena, &*entity.typ, dt, u
             );
         }
 
@@ -194,14 +195,14 @@ impl Game {
 
 
     // Internal ---------------------------------------------------------------
-    fn entity_from_kind(&self, kind: u8) -> EntityItem {
+    fn entity_from_kind(&self, kind: u8) -> Entity {
         match kind {
-            0 => entities::ship::Ship(1.0),
+            0 => entities::ship::DrawableShip(1.0),
             _ => unreachable!()
         }
     }
 
-    fn add_entity(&mut self, entity: EntityItem) {
+    fn add_entity(&mut self, entity: Entity) {
         self.entities.push(entity);
     }
 
@@ -218,9 +219,11 @@ impl Game {
 
     fn state(&mut self, data: &[u8]) {
 
+        println!("Received state");
+
         // Mark all entities as dead
-        for &mut(_, _, mut alive) in self.entities.iter_mut() {
-            alive = false;
+        for entity in self.entities.iter_mut() {
+            entity.set_alive(false);
         }
 
         let mut i = 0;
@@ -258,15 +261,15 @@ impl Game {
         }
 
         // Destroy dead entities...
-        for &mut (ref mut e, ref mut d, alive) in self.entities.iter_mut() {
-            if alive == false {
-                e.destroy();
-                d.destroy();
+        for entity in self.entities.iter_mut() {
+            if entity.alive() == false {
+                entity.typ.destroy();
+                entity.drawable.destroy();
             }
         }
 
         // ...then remove them from the list
-        self.entities.retain(|&(_, _, active)| active);
+        self.entities.retain(|ref entity| entity.alive());
 
     }
 
