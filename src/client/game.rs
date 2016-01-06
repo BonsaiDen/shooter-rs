@@ -32,10 +32,10 @@ pub struct Game {
 
 impl Game {
 
-    pub fn new(core: &Core) -> Game {
+    pub fn new(_: &Core) -> Game {
         Game {
-            back_color: core.map_rgb(0, 0, 0),
-            text_color: core.map_rgb(255, 255, 255),
+            back_color: AllegroColor::from_rgb(0, 0, 0),
+            text_color: AllegroColor::from_rgb(255, 255, 255),
             rng: XorShiftRng::new_unseeded(),
             entities: Vec::new(),
             remote_states: Vec::new(),
@@ -45,7 +45,7 @@ impl Game {
         }
     }
 
-    pub fn init(&mut self, core: &Core, disp: &mut Display, arena: Arena, remote: bool) {
+    pub fn init(&mut self, _: &Core, disp: &mut Display, arena: Arena, remote: bool) {
 
         // Local Test Play
         if remote == false {
@@ -67,14 +67,15 @@ impl Game {
         }
 
         self.arena = arena;
-        disp.resize(self.arena.width() as i32, self.arena.height() as i32);
+        // TODO handle errors or ignore?
+        disp.resize(self.arena.width() as i32, self.arena.height() as i32).ok();
 
     }
 
 
     // Networking -------------------------------------------------------------
 
-    pub fn connect(&mut self, core: &Core) {
+    pub fn connect(&mut self, _: &Core) {
         self.state = GameState::Pending;
         self.reset();
     }

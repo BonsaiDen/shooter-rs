@@ -91,15 +91,15 @@ impl RgbColor {
         RgbColor((0x00, 0x00, 0x00))
     }
 
-    pub fn map_rgb(&self, core: &allegro::Core) -> allegro::Color {
+    pub fn to_rgb(&self) -> allegro::Color {
         let r: u8 = (self.0).0;
         let g: u8 = (self.0).1;
         let b: u8 = (self.0).2;
-        core.map_rgb(r, g, b)
+        allegro::Color::from_rgb(r, g, b)
     }
 
-    pub fn map_rgba(&self, core: &allegro::Core, alpha: f32) -> allegro::Color {
-        core.map_rgb(
+    pub fn to_rgba(&self, alpha: f32) -> allegro::Color {
+        allegro::Color::from_rgb(
             ((self.0).0 as f32 * alpha) as u8,
             ((self.0).1 as f32 * alpha) as u8,
             ((self.0).2 as f32 * alpha) as u8

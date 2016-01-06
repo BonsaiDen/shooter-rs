@@ -77,7 +77,7 @@ impl Particle {
         let hs = self.s / 2.0;
         prim.draw_filled_rectangle(
             self.x - hs + 0.5, self.y - hs + 0.5, self.x + hs + 0.5, self.y + hs + 0.5,
-            self.color.map_rgba(core, alpha)
+            self.color.to_rgba(alpha)
         );
 
     }

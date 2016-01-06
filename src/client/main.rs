@@ -143,7 +143,7 @@ allegro_main! {
 
             //println!("- {}, {}", frame_time - last_tick_time, u);;
             game.draw(&core, &prim, &font, &mut network, dt as f32, u as f32);
-            disp.flip();
+            core.flip_display();
 
             last_frame_time = frame_time;
             frames_to_render -= 1;

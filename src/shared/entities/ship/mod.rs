@@ -343,7 +343,7 @@ impl ShipDrawable {
         let by = oy + state.y + (state.r + beta).sin() * db * body_scale;
         let cx = ox + state.x + (state.r - beta).cos() * db * body_scale;
         let cy = oy + state.y + (state.r - beta).sin() * db * body_scale;
-        prim.draw_triangle(ax, ay, bx, by, cx, cy, color.map_rgb(core), 0.5 * body_scale);
+        prim.draw_triangle(ax, ay, bx, by, cx, cy, color.to_rgb(), 0.5 * body_scale);
     }
 
 }
