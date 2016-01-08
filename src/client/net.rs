@@ -7,6 +7,8 @@ use std::collections::VecDeque;
 
 pub use cobalt::MessageKind as MessageKind;
 
+
+// Event Based Networking Abstraction -----------------------------------------
 pub struct Network {
     handler: EventHandler,
     client: Client,
@@ -238,7 +240,7 @@ impl Handler<Client> for EventHandler {
         self.events.push_back(EventType::Connection(conn.id()));
     }
 
-    fn connection_failed(&mut self, client: &mut Client, conn: &mut Connection) {
+    fn connection_failed(&mut self, _: &mut Client, conn: &mut Connection) {
         self.events.push_back(EventType::ConnectionFailed(conn.id()));
     }
 

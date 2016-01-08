@@ -50,9 +50,8 @@ impl EntityType for ShipEntity {
     }
 
     fn set_state(&mut self, state: EntityState) {
-        let old_flags = self.state.flags;
         self.state = state;
-        self.set_flags(old_flags, state.flags);
+        self.set_flags(state.flags);
         self.last_state = state;
         self.base_state = state;
     }
@@ -218,8 +217,8 @@ pub struct ShipDrawable {
 
 impl Drawable for ShipDrawable {
 
-    fn set_flags(&mut self, old: u8, new: u8) {
-        self.color_light = Color::from_flags(new).to_rgb();
+    fn set_flags(&mut self, flags: u8) {
+        self.color_light = Color::from_flags(flags).to_rgb();
         self.color_mid = self.color_light.darken(0.5);
     }
 

@@ -54,7 +54,7 @@ impl Game {
 
             let (x, y) = arena.center();
             let flags = 0b0000_0001 | Color::Red.to_flags();
-            player_ship.drawable.set_flags(0, flags);
+            player_ship.drawable.set_flags(flags);
             player_ship.typ.set_state(EntityState {
                 x: x as f32,
                 y: y as f32,

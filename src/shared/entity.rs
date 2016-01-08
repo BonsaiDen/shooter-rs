@@ -8,7 +8,7 @@ pub struct Entity {
     pub drawable: Box<Drawable>,
     owner: ConnectionID,
     is_alive: bool,
-    entity_id: u16
+    local_id: u16
 }
 
 impl Entity {
@@ -19,16 +19,16 @@ impl Entity {
             drawable: drawable,
             owner: ConnectionID(0),
             is_alive: false,
-            entity_id: 0
+            local_id: 0
         }
     }
 
     pub fn id(&self) -> u16 {
-        self.entity_id
+        self.local_id
     }
 
     pub fn set_id(&mut self, id: u16) {
-        self.entity_id = id;
+        self.local_id = id;
     }
 
     pub fn alive(&self) -> bool {
@@ -36,7 +36,7 @@ impl Entity {
     }
 
     pub fn set_alive(&mut self, alive: bool) {
-        self.is_alive = true;
+        self.is_alive = alive;
     }
 
     pub fn set_owner(&mut self, owner: ConnectionID) {
@@ -105,7 +105,7 @@ pub trait EntityType {
     fn create(&mut self) {
     }
 
-    fn set_flags(&mut self, old: u8, new: u8) {
+    fn set_flags(&mut self, _: u8) {
     }
 
     fn destroy(&mut self) {

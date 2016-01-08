@@ -11,7 +11,7 @@ pub trait Drawable {
     fn create(&mut self) {
     }
 
-    fn set_flags(&mut self, old: u8, new: u8) {
+    fn set_flags(&mut self, _: u8) {
     }
 
     fn destroy(&mut self) {
