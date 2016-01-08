@@ -1,19 +1,19 @@
 use std::collections::HashMap;
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use cobalt::{Client, Connection, ConnectionID, MessageKind, Handler, Server};
 
 use shared::arena;
 use shared::entities;
 use shared::entity::{Entity, EntityInput, EntityState};
 use shared::color::Color;
+use shared::util::IdPool;
 
 
 // Server Side Game Logic -----------------------------------------------------
 pub struct Game {
     entities: Vec<Entity>,
     arena: arena::Arena,
-    available_colors: Vec<Color>
-
+    available_colors: Vec<Color>,
+    id_pool: IdPool<u16>
 }
 
 impl Game {
@@ -21,7 +21,8 @@ impl Game {
         Game {
             entities: Vec::new(),
             arena: arena::Arena::new(width, height, border),
-            available_colors: Color::all_colored()
+            available_colors: Color::all_colored(),
+            id_pool: IdPool::new()
         }
     }
 }
@@ -49,7 +50,7 @@ impl Handler<Server> for Game {
 
         // TODO Send state to all clients
         for (_, conn) in connections.iter_mut() {
-
+            // calculate_owner_state(&conn.id());
         }
 
         // TODO bullets are handled by pre-creating a local object and then
@@ -76,30 +77,37 @@ impl Handler<Server> for Game {
         conn.send(MessageKind::Reliable, config);
 
         // Create a ship entity from one of the available colors
-        if let Some(color) = self.available_colors.pop() {
+        if let Some(id) = self.id_pool.get_id() {
 
-            let mut player_ship = entities::ship::Ship(1.0);
-            let (x, y) = self.arena.center();
+            if let Some(color) = self.available_colors.pop() {
 
-            let flags = color.to_flags();
-            println!("{} flags", flags);
-            player_ship.typ.set_state(EntityState {
-                x: x as f32,
-                y: y as f32,
-                flags: flags,
-                .. EntityState::default()
-            });
+                let mut player_ship = entities::ship::Ship(1.0);
+                let (x, y) = self.arena.center();
 
-            player_ship.set_alive(true);
-            player_ship.set_owner(conn.id());
+                let flags = color.to_flags();
+                player_ship.typ.set_state(EntityState {
+                    x: x as f32,
+                    y: y as f32,
+                    flags: flags,
+                    .. EntityState::default()
+                });
 
-            self.entities.push(player_ship);
+                player_ship.set_id(id);
+                player_ship.set_alive(true);
+                player_ship.set_owner(conn.id());
 
-            println!("[Client {}] Created entity (color {:?})", conn.peer_addr(), color);
+                self.entities.push(player_ship);
 
-            // TODO send event? or do this via state updates only?
-            // probably send player joined event but add entity via update
+                println!("[Client {}] Created entity (color {:?})", conn.peer_addr(), color);
 
+                // TODO send event? or do this via state updates only?
+                // probably send player joined event but add entity via
+                // state change detection on client
+
+            }
+
+        } else {
+            unreachable!();
         }
 
     }
@@ -125,6 +133,7 @@ impl Handler<Server> for Game {
                 let color = Color::from_flags(entity.typ.get_state().flags);
                 entity.set_alive(false);
                 entity.typ.destroy();
+                self.id_pool.release_id(entity.id());
 
                 // Make color available again
                 self.available_colors.push(color);

@@ -1,3 +1,4 @@
+extern crate num;
 extern crate rand;
 extern crate cobalt;
 extern crate allegro;
@@ -11,4 +12,4 @@ pub mod entities {
     pub mod ship;
 }
 pub mod particle;
-
+pub mod util;

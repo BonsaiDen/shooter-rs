@@ -233,10 +233,12 @@ impl Game {
             // TODO check number of bytes left
 
             // Entity ID
-            let id = data[i] as u32; // TODO 255 entity limit?
+            let id = data[i] as u32; // TODO use 16 bit
 
             // Entity Kind
             let kind = data[i + 1];
+
+            // TODO index based on id AND kind to improve hashing
 
             // TODO create entites which are not yet in the map
             //let entity = if entity_map.contains_key(&id) == false {

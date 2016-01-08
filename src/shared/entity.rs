@@ -6,8 +6,9 @@ use drawable::Drawable;
 pub struct Entity {
     pub typ: Box<EntityType>,
     pub drawable: Box<Drawable>,
-    pub owner: ConnectionID,
-    is_alive: bool
+    owner: ConnectionID,
+    is_alive: bool,
+    entity_id: u16
 }
 
 impl Entity {
@@ -17,8 +18,17 @@ impl Entity {
             typ: typ,
             drawable: drawable,
             owner: ConnectionID(0),
-            is_alive: false
+            is_alive: false,
+            entity_id: 0
         }
+    }
+
+    pub fn id(&self) -> u16 {
+        self.entity_id
+    }
+
+    pub fn set_id(&mut self, id: u16) {
+        self.entity_id = id;
     }
 
     pub fn alive(&self) -> bool {
@@ -75,16 +85,12 @@ impl Default for EntityState {
 }
 
 
-// nderlying Entity Type Trait -----------------------------------------------
+// Underlying Entity Type Trait -----------------------------------------------
 pub trait EntityType {
 
     fn is_local(&self) -> bool;
 
     fn kind_id(&self) -> u8;
-
-    fn get_id(&self) -> u32;
-
-    fn set_id(&mut self, id: u32);
 
     fn get_state(&mut self) -> EntityState;
 

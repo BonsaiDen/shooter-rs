@@ -12,6 +12,7 @@ allegro_font = "0.0.22"
 clap = "1.4.0"
 cobalt = "0.5.0"
 clock_ticks = "0.0.6"
+num = "*"
 
 [[bin]]
 name = "server"

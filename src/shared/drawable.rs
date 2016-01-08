@@ -19,9 +19,9 @@ pub trait Drawable {
 
     fn draw(
         &mut self,
-        core: &allegro::Core, prim: &PrimitivesAddon,
-        rng: &mut XorShiftRng, particle_system: &mut ParticleSystem,
-        arena: &Arena, entity: &EntityType, dt: f32, u: f32
+        _: &allegro::Core, _: &PrimitivesAddon,
+        _: &mut XorShiftRng, _: &mut ParticleSystem,
+        _: &Arena, _: &EntityType, _: f32, _: f32
     ) {
     }
 

@@ -26,7 +26,6 @@ pub fn DrawableShip(scale: f32) -> Entity {
 }
 
 pub struct ShipEntity {
-    id: u32,
     state: EntityState,
     base_state: EntityState,
     last_state: EntityState,
@@ -46,14 +45,6 @@ impl EntityType for ShipEntity {
         0
     }
 
-    fn get_id(&self) -> u32 {
-        self.id
-    }
-
-    fn set_id(&mut self, id: u32) {
-        self.id = id;
-    }
-
     fn get_state(&mut self) -> EntityState  {
         self.state
     }
@@ -70,11 +61,11 @@ impl EntityType for ShipEntity {
         arena.interpolate_state(&self.state, &self.last_state, u)
     }
 
-    fn serialize_state(&self, buffer: &mut Vec<u8>) {
+    fn serialize_state(&self, _: &mut Vec<u8>) {
 
     }
 
-    fn serialize_inputs(&self, buffer: &mut Vec<u8>) {
+    fn serialize_inputs(&self, _: &mut Vec<u8>) {
 
     }
 
@@ -116,7 +107,6 @@ impl ShipEntity {
             flags: 0
         };
         ShipEntity {
-            id: 0,
             state: state,
             base_state: state,
             last_state: state,
@@ -330,7 +320,7 @@ impl ShipDrawable {
     }
 
     fn draw_triangle(
-        &self, core: &allegro::Core, prim: &PrimitivesAddon,
+        &self, _: &allegro::Core, prim: &PrimitivesAddon,
         state: &EntityState, color: RgbColor,
         base_scale: f32, body_scale: f32, dr: f32, da: f32, db: f32
     ) {
