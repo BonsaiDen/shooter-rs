@@ -27,7 +27,7 @@ allegro_main! {
     let args = clap::App::new("client")
         .version(&crate_version!())
         .author("Ivo Wetzel <ivo.wetzel@googlemail.com>")
-        .about("Server")
+        .about("Client")
         .arg(clap::Arg::with_name("address:port")
             .help("Remote server address to connect to.")
             .index(1)
