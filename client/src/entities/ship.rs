@@ -40,15 +40,15 @@ impl Drawable for Ship {
 
         // Rendering
         self.draw_triangle(
-            core, prim, &state,
+            prim, &state,
             mid, scale, scale, 1.15, -9.0, 6.0
         );
         self.draw_triangle(
-            core, prim, &state,
+            prim, &state,
             light, scale, scale, (2 as f32).sqrt(), 12.0, 9.0
         );
         self.draw_triangle(
-            core, prim, &state,
+            prim, &state,
             mid, scale, scale * 0.66, (2 as f32).sqrt(), 12.0, 9.0
         );
 
@@ -129,7 +129,7 @@ impl Ship {
     }
 
     fn draw_triangle(
-        &self, _: &allegro::Core, prim: &PrimitivesAddon,
+        &self, prim: &PrimitivesAddon,
         state: &EntityState, color: RgbColor,
         base_scale: f32, body_scale: f32, dr: f32, da: f32, db: f32
     ) {

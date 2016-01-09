@@ -69,7 +69,7 @@ allegro_main! {
     let mut frame_time = 0.0;
 
     let mut key_state: [bool; 255] = [false; 255];
-    let mut tick: i32 = 0;
+    let mut tick: u16 = 0;
     let mut redraw = false;
 
     // Addons
@@ -111,7 +111,11 @@ allegro_main! {
 
                         net::EventType::Message(_, data) =>  {
                             if data.len() > 0 {
-                                game.message(&core, &mut disp, data[0], &data[1..]);
+                                tick = game.message(
+                                    &core, &mut disp, data[0], &data[1..],
+                                    tick as u8,
+                                    tick_dt as f32
+                                ) as u16;
                             }
                         },
 
@@ -142,7 +146,6 @@ allegro_main! {
             let u = 1.0 / (tick_dt as f32) * (frame_time - last_tick_time) as f32;
             let dt = frame_time - last_frame_time;
 
-            //println!("- {}, {}", frame_time - last_tick_time, u);;
             game.draw(&core, &prim, &font, &mut network, dt as f32, u as f32);
             core.flip_display();
 

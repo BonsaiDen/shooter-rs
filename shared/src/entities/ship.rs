@@ -1,7 +1,13 @@
-use std::f32;
 use arena::Arena;
-use entity::{EntityType, EntityInput, EntityState, Entity};
 use drawable::ZeroDrawable;
+use entity::{
+    EntityType,
+    EntityInput,
+    EntityState,
+    Entity,
+    tick_is_more_recent,
+    apply_input_to_state
+};
 
 pub struct Ship {
     state: EntityState,
@@ -10,66 +16,8 @@ pub struct Ship {
     max_speed: f32,
     acceleration: f32,
     rotation: f32,
-    input_states: Vec<EntityInput>
-}
-
-impl EntityType for Ship {
-
-    fn is_local(&self) -> bool {
-        self.state.flags & 0x01 == 0x01
-    }
-
-    fn kind_id(&self) -> u8 {
-        0
-    }
-
-    fn get_state(&mut self) -> EntityState  {
-        self.state
-    }
-
-    fn set_state(&mut self, state: EntityState) {
-        self.state = state;
-        self.set_flags(state.flags);
-        self.last_state = state;
-        self.base_state = state;
-    }
-
-    fn interpolate_state(&self, arena: &Arena, u: f32) -> EntityState {
-        arena.interpolate_state(&self.state, &self.last_state, u)
-    }
-
-    fn serialize_state(&self, _: &mut Vec<u8>) {
-
-    }
-
-    fn serialize_inputs(&self, _: &mut Vec<u8>) {
-
-    }
-
-    fn input(&mut self, input: EntityInput) {
-
-        self.input_states.push(input);
-
-        if self.input_states.len() > 30 {
-            self.input_states.remove(0);
-        }
-
-    }
-
-    fn remote_tick(
-        &mut self,
-        arena: &Arena,
-        dt: f32, remote_tick: u8, state: EntityState
-    ) {
-        self.apply_remote_state(remote_tick, state);
-        self.apply_inputs(arena, dt);
-    }
-
-    fn tick(&mut self, arena: &Arena, dt: f32) {
-        self.apply_local_state();
-        self.apply_inputs(arena, dt);
-    }
-
+    input_states: Vec<EntityInput>,
+    last_input_tick: u8
 }
 
 impl Ship {
@@ -94,10 +42,11 @@ impl Ship {
             state: state,
             base_state: state,
             last_state: state,
-            input_states: Vec::new(),
             max_speed: 90.0 * scale,
             acceleration: 2.0 * scale,
             rotation: 120.0,
+            input_states: Vec::new(),
+            last_input_tick: 0
         }
     }
 
@@ -142,53 +91,65 @@ impl Ship {
 
 }
 
-fn apply_input_to_state(
-    input: &EntityInput, state: &mut EntityState, dt: f32,
-    rotation: f32,
-    acceleration: f32,
-    max_speed: f32
-) {
+impl EntityType for Ship {
 
-    let mut steer = 0.0;
-    if input.left {
-        steer -= 1.0;
+    fn is_local(&self) -> bool {
+        self.state.flags & 0x01 == 0x01
     }
 
-    if input.right {
-        steer += 1.0;
+    fn kind_id(&self) -> u8 {
+        0
     }
 
-    state.r += f32::consts::PI / 180.0 * rotation * dt * steer;
-
-    if input.thrust {
-        // Constant time acceleration
-        let m = 60.0 / (1.0 / dt);
-        state.mx += state.r.cos() * acceleration * dt * 60.0 / (1.0 / dt);
-        state.my += state.r.sin() * acceleration * dt * m;
-        state.flags |= 0x02;
-
-    } else {
-        state.flags &= !0x02;
+    fn get_state(&self) -> EntityState  {
+        self.state
     }
 
-    // Limit diagonal speed
-    let mr = state.my.atan2(state.mx);
-    let mut s = ((state.mx * state.mx) + (state.my * state.my)).sqrt();
-
-    // Allow for easier full stop
-    if s < 0.15 {
-        s *= 0.95;
+    fn set_state(&mut self, state: EntityState) {
+        self.state = state;
+        self.set_flags(state.flags);
+        self.last_state = state;
+        self.base_state = state;
     }
 
-    // Limit max speed
-    state.mx = mr.cos() * s.min(max_speed * dt);
-    state.my = mr.sin() * s.min(max_speed * dt);
-    state.x += state.mx;
-    state.y += state.my;
+    fn get_inputs(&self) -> &Vec<EntityInput> {
+        &self.input_states
+    }
 
-}
+    fn interpolate_state(&self, arena: &Arena, u: f32) -> EntityState {
+        arena.interpolate_state(&self.state, &self.last_state, u)
+    }
 
-fn tick_is_more_recent(a: u8, b: u8) -> bool {
-    (a > b) && (a - b <= 255 / 2) || (b > a) && (b - a > 255 / 2)
+    fn input(&mut self, input: EntityInput) {
+
+        if self.input_states.len() == 0 || tick_is_more_recent(input.tick, self.last_input_tick) {
+            self.input_states.push(input);
+            self.last_input_tick = input.tick;
+
+        } else {
+            println!("drop input");
+        }
+
+        // Drop outdated inputs
+        if self.input_states.len() > 30 {
+            self.input_states.remove(0);
+        }
+
+    }
+
+    fn remote_tick(
+        &mut self,
+        arena: &Arena,
+        dt: f32, remote_tick: u8, state: EntityState
+    ) {
+        self.apply_remote_state(remote_tick, state);
+        self.apply_inputs(arena, dt);
+    }
+
+    fn tick(&mut self, arena: &Arena, dt: f32) {
+        self.apply_local_state();
+        self.apply_inputs(arena, dt);
+    }
+
 }
 

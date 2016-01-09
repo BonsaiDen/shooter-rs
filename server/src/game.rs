@@ -13,7 +13,8 @@ pub struct Game {
     entities: Vec<Entity>,
     arena: arena::Arena,
     available_colors: Vec<Color>,
-    id_pool: IdPool<u16>
+    id_pool: IdPool<u16>,
+    tick: u16
 }
 
 impl Game {
@@ -21,8 +22,9 @@ impl Game {
         Game {
             entities: Vec::new(),
             arena: arena::Arena::new(width, height, border),
-            available_colors: Color::all_colored(),
-            id_pool: IdPool::new()
+            available_colors: Color::all_colored().into_iter().rev().collect(),
+            id_pool: IdPool::new(),
+            tick: 0
         }
     }
 }
@@ -38,20 +40,49 @@ impl Handler<Server> for Game {
         connections: &mut HashMap<ConnectionID, Connection>
     ) {
 
-        // Receive inputs
-        for (_, conn) in connections.iter_mut() {
-            // Apply all new inputs and set confirmed client tick
-        }
+        // TODO configure on server and send with config to client?
+        let ticks_per_second = 30;
+        let tick_dt = 1.0 / ticks_per_second as f32;
 
-        // TODO Ticks all entities
+        // Tick all entities
+        for entity in self.entities.iter_mut() {
+
+            // Receive inputs for the entity
+            if let Some(conn) = connections.get_mut(entity.owner()) {
+
+                // Apply all new inputs and set confirmed client tick
+                for m in conn.received() {
+                    entity.typ.input(EntityInput::from_serialized(&m[..]));
+                }
+
+            }
+
+            // Tick entity
+            entity.typ.tick(&self.arena, tick_dt);
+
+            // And mark the state as confirmed (TODO clean this up)
+            let state = entity.typ.get_state();
+            entity.typ.remote_tick(&self.arena, tick_dt, self.tick as u8, state);
+
             // TODO store last N states of all entities
-            // TODO send delta based off of last confirmed client tick
-            // TODO perform collision detection based against last confirmed client tick
-
-        // TODO Send state to all clients
-        for (_, conn) in connections.iter_mut() {
-            // calculate_owner_state(&conn.id());
+            // TODO perform collision detection based against last confirmed client tick (aka
+            // last_input_tick)?
         }
+
+
+        // Send entity states to all clients
+        for (_, conn) in connections.iter_mut() {
+
+            // Calculate entity states for all connections
+            let mut state = [1, self.tick as u8].to_vec();
+            for entity in self.entities.iter() {
+                state.extend(entity.serialize(&conn.id()));
+            }
+            conn.send(MessageKind::Instant, state);
+
+        }
+
+        self.tick = (self.tick + 1) % 256;
 
         // TODO bullets are handled by pre-creating a local object and then
         // syncing it with the remote one, we submit a local ID and the server
@@ -85,7 +116,7 @@ impl Handler<Server> for Game {
                 let (x, y) = self.arena.center();
 
                 let flags = color.to_flags();
-                player_ship.typ.set_state(EntityState {
+                player_ship.set_state(EntityState {
                     x: x as f32,
                     y: y as f32,
                     flags: flags,
@@ -95,6 +126,8 @@ impl Handler<Server> for Game {
                 player_ship.set_id(id);
                 player_ship.set_alive(true);
                 player_ship.set_owner(conn.id());
+
+                println!("set owner {:?}", conn.id() == *player_ship.owner());
 
                 self.entities.push(player_ship);
 
@@ -130,9 +163,9 @@ impl Handler<Server> for Game {
         for entity in self.entities.iter_mut() {
             if entity.owned_by(&conn.id()) {
 
-                let color = Color::from_flags(entity.typ.get_state().flags);
+                let color = Color::from_flags(entity.get_state().flags);
                 entity.set_alive(false);
-                entity.typ.destroy();
+                entity.destroy();
                 self.id_pool.release_id(entity.id());
 
                 // Make color available again

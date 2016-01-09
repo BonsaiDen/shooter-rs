@@ -1,4 +1,5 @@
 use rand::{SeedableRng, XorShiftRng};
+use std::collections::HashMap;
 
 use allegro::{Core, Color as AllegroColor, Display};
 use allegro_primitives::PrimitivesAddon;
@@ -23,7 +24,7 @@ pub struct Game {
     back_color: AllegroColor,
     text_color: AllegroColor,
     rng: XorShiftRng,
-    entities: Vec<Entity>,
+    entities: HashMap<u16, Entity>,
     remote_states: Vec<(u8, EntityState)>,
     arena: Arena,
     particle_system: ParticleSystem,
@@ -37,7 +38,7 @@ impl Game {
             back_color: AllegroColor::from_rgb(0, 0, 0),
             text_color: AllegroColor::from_rgb(255, 255, 255),
             rng: XorShiftRng::new_unseeded(),
-            entities: Vec::new(),
+            entities: HashMap::new(),
             remote_states: Vec::new(),
             arena: Arena::new(768, 768, 16),
             state: GameState::Disconnected,
@@ -50,12 +51,11 @@ impl Game {
         // Local Test Play
         if remote == false {
 
-            let mut player_ship = self.entity_from_kind(0);
+            let mut player_ship = entity_from_kind(0);
 
             let (x, y) = arena.center();
             let flags = 0b0000_0001 | Color::Red.to_flags();
-            player_ship.drawable.set_flags(flags);
-            player_ship.typ.set_state(EntityState {
+            player_ship.set_state(EntityState {
                 x: x as f32,
                 y: y as f32,
                 flags: flags,
@@ -67,6 +67,7 @@ impl Game {
         }
 
         self.arena = arena;
+
         // TODO handle errors or ignore?
         disp.resize(self.arena.width() as i32, self.arena.height() as i32).ok();
 
@@ -85,7 +86,7 @@ impl Game {
         key_state: &[bool; 255], tick: u8, dt: f32
     ) {
 
-        for entity in self.entities.iter_mut() {
+        for (_, entity) in self.entities.iter_mut() {
 
             if entity.typ.is_local() {
 
@@ -100,20 +101,32 @@ impl Game {
                 entity.typ.input(input);
 
                 // Emulate remote server state stuff with a 20 frames delay
-                if self.remote_states.len() > 20 {
-                    let first = self.remote_states.remove(0);
-                    entity.typ.remote_tick(&self.arena, dt, first.0, first.1);
+                match self.state {
+                    GameState::Disconnected => {
+                        if self.remote_states.len() > 20 {
+                            let first = self.remote_states.remove(0);
+                            entity.typ.remote_tick(&self.arena, dt, first.0, first.1);
 
-                } else {
-                    entity.typ.tick(&self.arena, dt);
+                        } else {
+                            entity.typ.tick(&self.arena, dt);
+                        }
+
+                        self.remote_states.push((tick, entity.typ.get_state()));
+
+                    },
+
+                    GameState::Connected => {
+
+                        entity.typ.tick(&self.arena, dt);
+
+                        // Send all unconfirmed inputs to server
+                        network.send_message(MessageKind::Instant, entity.inputs());
+
+                    },
+
+                    _ => {}
                 }
 
-                self.remote_states.push((tick, entity.typ.get_state()));
-
-                // Send all unconfirmed inputs to server
-                let mut input_buffer = Vec::<u8>::new();
-                entity.typ.serialize_inputs(&mut input_buffer);
-                network.send_message(MessageKind::Instant, input_buffer);
 
             } else {
                 entity.typ.tick(&self.arena, dt);
@@ -130,7 +143,13 @@ impl Game {
 
     }
 
-    pub fn message(&mut self, core: &Core, disp: &mut Display, kind: u8, data: &[u8]) {
+    pub fn message(
+        &mut self,
+        core: &Core, disp: &mut Display, kind: u8, data: &[u8],
+        tick: u8,
+        dt: f32
+
+    ) -> u8 {
         match self.state {
             GameState::Pending => {
 
@@ -140,15 +159,22 @@ impl Game {
                     self.config(core, disp, data);
                 }
 
+                tick
+
             },
             GameState::Connected => {
                 // Game State
                 if kind == 1 {
                     // TODO validate message length?
-                    self.state(data);
+                    let remote_tick = data[0];
+                    self.state(&data[1..], tick, remote_tick, dt);
+                    remote_tick
+
+                } else {
+                    tick
                 }
             },
-            _ => ()
+            _ => tick
         }
     }
 
@@ -169,7 +195,7 @@ impl Game {
         core.clear_to_color(self.back_color);
 
         // Draw all entities
-        for entity in self.entities.iter_mut() {
+        for (_, entity) in self.entities.iter_mut() {
             entity.drawable.draw(
                 &core, &prim, &mut self.rng, &mut self.particle_system,
                 &self.arena, &*entity.typ, dt, u
@@ -196,15 +222,8 @@ impl Game {
 
 
     // Internal ---------------------------------------------------------------
-    fn entity_from_kind(&self, kind: u8) -> Entity {
-        match kind {
-            0 => entities::Ship::create_entity(1.0),
-            _ => unreachable!()
-        }
-    }
-
     fn add_entity(&mut self, entity: Entity) {
-        self.entities.push(entity);
+        self.entities.insert(entity.id(), entity);
     }
 
     fn reset(&mut self) {
@@ -213,68 +232,82 @@ impl Game {
     }
 
     fn config(&mut self, core: &Core, disp: &mut Display, data: &[u8]) {
-        println!("Received Config");
+        println!("Received Config"); // TODO update tick rate?
         self.init(core, disp, Arena::from_serialized(&data[0..5]), true);
         self.state = GameState::Connected;
     }
 
-    fn state(&mut self, data: &[u8]) {
-
-        println!("Received state");
+    fn state(&mut self, data: &[u8], tick: u8, remote_tick: u8, dt: f32) {
 
         // Mark all entities as dead
-        for entity in self.entities.iter_mut() {
+        for (_, entity) in self.entities.iter_mut() {
             entity.set_alive(false);
         }
 
         let mut i = 0;
-        while i < data.len() {
+        while i + 3 <= data.len() {
 
-            // TODO check number of bytes left
+            // Entity ID / Kind
+            let id = (data[i] as u16) << 8 | (data[i + 1] as u16);
+            let kind = data[i + 2];
+            i += 3;
 
-            // Entity ID
-            let id = data[i] as u32; // TODO use 16 bit
+            // Check serialized data
+            if i + EntityState::encoded_size() <= data.len() {
 
-            // Entity Kind
-            let kind = data[i + 1];
+                // Read serialized entity state
+                let state = EntityState::from_serialized(&data[i..]);
+                i += EntityState::encoded_size();
 
-            // TODO index based on id AND kind to improve hashing
+                // Create entities which do not yet exist
+                let mut entity = self.entities.entry(id).or_insert_with(|| {
+                    let mut entity = entity_from_kind(kind);
+                    entity.set_id(id);
+                    entity.set_state(state);
+                    entity.create();
+                    entity
+                });
 
-            // TODO create entites which are not yet in the map
-            //let entity = if entity_map.contains_key(&id) == false {
-            //    //self.add_entity(self.entity_from_kind(kind));
-            //    // TODO call create method on entity
+                // Mark entity as alive
+                entity.set_alive(true);
 
-            //} else {
-            //    self.entity_map.get_mut(&id);
-            //};
+                // Update Entity State
+                if entity.typ.is_local() {
+                    entity.typ.remote_tick(&self.arena, dt, remote_tick, state);
 
-            // TODO Mark entity as alive
+                } else {
+                    entity.set_state(state);
+                }
 
-            // Update Entity State
+            }
 
-            // TODO if entity is local apply remote tick to entity
-            // TODO otherwise simply apply state directly
-
-            // TODO trigger create() method on entity
             // TODO trigger flag() method on entity if any flag changed
-
-            i += 1;
 
         }
 
         // Destroy dead entities...
-        for entity in self.entities.iter_mut() {
+        let mut destroyed_ids = Vec::new();
+        for (_, entity) in self.entities.iter_mut() {
             if entity.alive() == false {
                 entity.typ.destroy();
                 entity.drawable.destroy();
+                destroyed_ids.push(entity.id());
             }
         }
 
-        // ...then remove them from the list
-        self.entities.retain(|ref entity| entity.alive());
+        // ...then remove them from the map
+        for id in &destroyed_ids {
+            self.entities.remove(&id);
+        }
 
     }
 
+}
+
+fn entity_from_kind(kind: u8) -> Entity {
+    match kind {
+        0 => entities::Ship::create_entity(1.0),
+        _ => unreachable!()
+    }
 }
 
