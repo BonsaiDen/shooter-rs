@@ -6,10 +6,10 @@ use allegro_font::{Font, FontAlign, FontDrawing};
 
 use net::{Network, MessageKind};
 
+use entities;
 use shared::color::Color;
 use shared::arena::Arena;
 use shared::entity::{EntityType, EntityInput, EntityState, Entity};
-use shared::entities;
 use shared::drawable::Drawable;
 use shared::particle::ParticleSystem;
 
@@ -176,7 +176,7 @@ impl Game {
             );
         }
 
-        self.particle_system.draw(&core, &prim, dt);
+        self.particle_system.draw(&prim, dt);
 
         // UI
         if let Ok(addr) = network.server_addr() {
@@ -198,7 +198,7 @@ impl Game {
     // Internal ---------------------------------------------------------------
     fn entity_from_kind(&self, kind: u8) -> Entity {
         match kind {
-            0 => entities::ship::DrawableShip(1.0),
+            0 => entities::Ship::create_entity(1.0),
             _ => unreachable!()
         }
     }

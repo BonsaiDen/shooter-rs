@@ -64,7 +64,7 @@ impl Particle {
         }
     }
 
-    fn draw(&mut self, core: &allegro::Core, prim: &PrimitivesAddon) {
+    fn draw(&mut self, prim: &PrimitivesAddon) {
 
         let lp = 1.0 / self.lifetime * self.remaining;
         let alpha = if lp <= self.fadeout {
@@ -148,7 +148,7 @@ impl ParticleSystem {
 
     }
 
-    pub fn draw(&mut self, core: &allegro::Core, prim: &PrimitivesAddon, dt: f32) {
+    pub fn draw(&mut self, prim: &PrimitivesAddon, dt: f32) {
 
         let mut max_used_particle = 0;
 
@@ -162,7 +162,7 @@ impl ParticleSystem {
 
                 } else {
                     max_used_particle = cmp::max(p.id + 1, max_used_particle);
-                    p.draw(core, prim);
+                    p.draw(prim);
                 }
             }
         }

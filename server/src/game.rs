@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use cobalt::{Client, Connection, ConnectionID, MessageKind, Handler, Server};
+use cobalt::{Connection, ConnectionID, MessageKind, Handler, Server};
 
 use shared::arena;
 use shared::entities;
@@ -81,7 +81,7 @@ impl Handler<Server> for Game {
 
             if let Some(color) = self.available_colors.pop() {
 
-                let mut player_ship = entities::ship::Ship(1.0);
+                let mut player_ship = entities::Ship::create_entity(1.0);
                 let (x, y) = self.arena.center();
 
                 let flags = color.to_flags();

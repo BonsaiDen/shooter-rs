@@ -19,6 +19,7 @@ use allegro_primitives::PrimitivesAddon;
 
 use shared::arena::Arena;
 
+mod entities;
 mod game;
 mod net;
 
