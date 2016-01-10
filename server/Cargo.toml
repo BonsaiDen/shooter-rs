@@ -7,5 +7,4 @@ authors = ["Ivo Wetzel <ivo.wetzel@googlemail.com>"]
 clap = "1.4.0"
 cobalt = "0.5.2"
 shared = { version = "0.1.0", path = "../shared" }
-clock_ticks = "0.0.6"
 

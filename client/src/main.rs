@@ -50,7 +50,7 @@ allegro_main! {
     core.set_new_display_option(DisplayOption::Samples, 16, DisplayOptionImportance::Require);
 
     // Create display
-    let (width, height, border) = (384, 384, 16);
+    let (width, height, border) = (640, 640, 16);
     let mut disp = Display::new(&core, width as i32, height as i32).ok().expect("Failed to create OPENGL context.");
     disp.set_window_title("Rustgame: Shooter");
 
@@ -126,6 +126,10 @@ allegro_main! {
                             tick = (tick + 1) % 256;
                         },
 
+                        net::EventType::Close => {
+                            println!("Connection closed");
+                        },
+
                         net::EventType::ConnectionLost(_) => {
                             game.disconnect(
                                 &core, &mut disp,
@@ -189,7 +193,7 @@ allegro_main! {
 
     }
 
-    network.close();
+    network.destroy();
 
 }
 

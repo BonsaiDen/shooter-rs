@@ -120,7 +120,7 @@ impl Network {
         self.handler.send(kind, data);
     }
 
-    pub fn close(&mut self) {
+    pub fn destroy(&mut self) {
         self.client.close_sync(&mut self.handler, &mut self.sync_token).unwrap();
     }
 
@@ -129,8 +129,6 @@ impl Network {
 
 #[derive(Debug)]
 pub enum EventType {
-    Bind,
-    Shutdown,
     Connect,
     Close,
     Tick(u32, f32),
@@ -143,11 +141,8 @@ pub enum EventType {
 }
 
 pub enum Command {
-    Close,
     Reset,
-    Shutdown,
     Send(MessageKind, Vec<u8>),
-    SendTo(ConnectionID, MessageKind, Vec<u8>)
 }
 
 pub struct EventHandler {
@@ -176,18 +171,6 @@ impl EventHandler {
         self.commands.push_back(Command::Reset);
     }
 
-    pub fn close(&mut self) {
-        self.commands.push_back(Command::Close);
-    }
-
-    pub fn send_to(&mut self, id: ConnectionID, kind: MessageKind, data: Vec<u8>) {
-        self.commands.push_back(Command::SendTo(id, kind, data));
-    }
-
-    pub fn shutdown(&mut self) {
-        self.commands.push_back(Command::Shutdown);
-    }
-
 }
 
 impl Handler<Client> for EventHandler {
@@ -198,7 +181,7 @@ impl Handler<Client> for EventHandler {
 
     fn tick_connection(
         &mut self,
-        client: &mut Client,
+        _: &mut Client,
         conn: &mut Connection
     ) {
 
@@ -222,11 +205,7 @@ impl Handler<Client> for EventHandler {
                 },
                 Command::Reset => {
                     conn.reset();
-                },
-                Command::Close => {
-                    client.close().unwrap();
-                },
-                _ => ()
+                }
             }
         }
 

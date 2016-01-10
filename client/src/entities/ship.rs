@@ -1,21 +1,64 @@
+// External Dependencies ------------------------------------------------------
+use std::{cmp, f32};
+use rand::{Rng, XorShiftRng};
 use allegro;
 use allegro_primitives::PrimitivesAddon;
 
-use std::{cmp, f32};
-use rand::{Rng, XorShiftRng};
 
+// Internal Dependencies ------------------------------------------------------
 use shared::entities;
 use shared::arena::Arena;
-use shared::entity::{Entity, EntityType, EntityState};
+use shared::entity;
 use shared::drawable::Drawable;
 use shared::color::{Color, RgbColor};
 use shared::particle::ParticleSystem;
 
+
+// Ship Drawable Implementation Dependencies ----------------------------------
 pub struct Ship {
     color_light: RgbColor,
     color_mid: RgbColor,
     scale: f32,
-    particle_count: u32
+    particle_count: u32,
+    last_draw_state: entity::State
+}
+
+impl Ship {
+
+    pub fn create_entity(scale: f32) -> entity::Entity {
+        entity::Entity::new(
+            Box::new(entities::Ship::new(scale)),
+            Box::new(Ship::new(scale))
+        )
+    }
+
+    pub fn new(scale: f32) -> Ship {
+        Ship {
+            color_light: Color::Grey.to_rgb(),
+            color_mid: Color::Grey.to_rgb().darken(0.5),
+            scale: scale,
+            particle_count: 5,
+            last_draw_state: entity::State::default()
+        }
+    }
+
+    fn draw_triangle(
+        &self, prim: &PrimitivesAddon,
+        state: &entity::State, color: RgbColor,
+        base_scale: f32, body_scale: f32, dr: f32, da: f32, db: f32
+    ) {
+        let beta = f32::consts::PI / dr;
+        let ox = state.r.cos() * -2.0 * base_scale + 0.5;
+        let oy = state.r.sin() * -2.0 * base_scale + 0.5;
+        let ax = ox + state.x + state.r.cos() * da * body_scale;
+        let ay = oy + state.y + state.r.sin() * da * body_scale;
+        let bx = ox + state.x + (state.r + beta).cos() * db * body_scale;
+        let by = oy + state.y + (state.r + beta).sin() * db * body_scale;
+        let cx = ox + state.x + (state.r - beta).cos() * db * body_scale;
+        let cy = oy + state.y + (state.r - beta).sin() * db * body_scale;
+        prim.draw_triangle(ax, ay, bx, by, cx, cy, color.to_rgb(), 0.5 * body_scale);
+    }
+
 }
 
 impl Drawable for Ship {
@@ -27,9 +70,9 @@ impl Drawable for Ship {
 
     fn draw(
         &mut self,
-        core: &allegro::Core, prim: &PrimitivesAddon,
+        _: &allegro::Core, prim: &PrimitivesAddon,
         rng: &mut XorShiftRng, particle_system: &mut ParticleSystem,
-        arena: &Arena, entity: &EntityType, dt: f32, u: f32
+        arena: &Arena, entity: &entity::Kind, _: f32, u: f32
     ) {
 
         let light = self.color_light;
@@ -37,6 +80,9 @@ impl Drawable for Ship {
         let scale = self.scale;
 
         let state = entity.interpolate_state(arena, u);
+
+        //println!("r: {}, x: {}, y: {} ({})", state.r - self.last_draw_state.r, state.x - self.last_draw_state.x, state.y - self.last_draw_state.y, state.r);
+        self.last_draw_state = state;
 
         // Rendering
         self.draw_triangle(
@@ -106,43 +152,6 @@ impl Drawable for Ship {
             self.particle_count = cmp::min(self.particle_count + 1, 5);
         }
 
-    }
-
-}
-
-impl Ship {
-
-    pub fn create_entity(scale: f32) -> Entity {
-        Entity::new(
-            Box::new(entities::Ship::new(scale)),
-            Box::new(Ship::new(scale))
-        )
-    }
-
-    pub fn new(scale: f32) -> Ship {
-        Ship {
-            color_light: Color::Grey.to_rgb(),
-            color_mid: Color::Grey.to_rgb().darken(0.5),
-            scale: scale,
-            particle_count: 5
-        }
-    }
-
-    fn draw_triangle(
-        &self, prim: &PrimitivesAddon,
-        state: &EntityState, color: RgbColor,
-        base_scale: f32, body_scale: f32, dr: f32, da: f32, db: f32
-    ) {
-        let beta = f32::consts::PI / dr;
-        let ox = state.r.cos() * -2.0 * base_scale + 0.5;
-        let oy = state.r.sin() * -2.0 * base_scale + 0.5;
-        let ax = ox + state.x + state.r.cos() * da * body_scale;
-        let ay = oy + state.y + state.r.sin() * da * body_scale;
-        let bx = ox + state.x + (state.r + beta).cos() * db * body_scale;
-        let by = oy + state.y + (state.r + beta).sin() * db * body_scale;
-        let cx = ox + state.x + (state.r - beta).cos() * db * body_scale;
-        let cy = oy + state.y + (state.r - beta).sin() * db * body_scale;
-        prim.draw_triangle(ax, ay, bx, by, cx, cy, color.to_rgb(), 0.5 * body_scale);
     }
 
 }

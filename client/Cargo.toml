@@ -8,7 +8,7 @@ rand = "0.3.13"
 clap = "1.4.0"
 cobalt = "0.5.2"
 shared = { version = "0.1.0", path = "../shared" }
-clock_ticks = "0.0.6"
+clock_ticks = "0.1.0"
 allegro = "0.0.22"
 allegro-sys = "0.0.22"
 allegro_primitives = "0.0.22"

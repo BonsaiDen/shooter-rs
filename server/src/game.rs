@@ -6,7 +6,7 @@ use cobalt::{Connection, ConnectionID, MessageKind, Handler, Server};
 // Internal Dependencies ------------------------------------------------------
 use shared::arena;
 use shared::entities;
-use shared::entity::{Entity, EntityInput, EntityState};
+use shared::entity;
 use shared::color::Color;
 use shared::util::IdPool;
 
@@ -14,7 +14,7 @@ use shared::util::IdPool;
 // Server Side Game Logic -----------------------------------------------------
 pub struct Game {
     id_pool: IdPool<u16>,
-    entities: Vec<Entity>,
+    entities: Vec<entity::Entity>,
     arena: arena::Arena,
     available_colors: Vec<Color>,
     tick_rate: u32,
@@ -58,11 +58,11 @@ impl Handler<Server> for Game {
                 let (x, y) = self.arena.center();
                 let flags = color.to_flags();
 
-                player_ship.set_state(EntityState {
+                player_ship.set_state(entity::State {
                     x: x as f32,
                     y: y as f32,
                     flags: flags,
-                    .. EntityState::default()
+                    .. entity::State::default()
                 });
 
                 player_ship.set_id(id);
@@ -96,7 +96,7 @@ impl Handler<Server> for Game {
             if let Some(conn) = connections.get_mut(entity.owner()) {
                 for m in conn.received() {
                     entity.input(
-                        EntityInput::from_serialized(&m[..]),
+                        entity::Input::from_serialized(&m[..]),
                         self.tick_rate as usize
                     );
                 }

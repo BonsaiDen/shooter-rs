@@ -6,7 +6,7 @@ use rand::XorShiftRng;
 
 // Internal Dependencies ------------------------------------------------------
 use arena::Arena;
-use entity::EntityType;
+use entity;
 use particle::ParticleSystem;
 
 
@@ -20,7 +20,7 @@ pub trait Drawable {
         &mut self,
         _: &allegro::Core, _: &PrimitivesAddon,
         _: &mut XorShiftRng, _: &mut ParticleSystem,
-        _: &Arena, _: &EntityType, _: f32, _: f32
+        _: &Arena, _: &entity::Kind, _: f32, _: f32
     ) {
     }
 

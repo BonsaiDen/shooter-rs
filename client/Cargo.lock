@@ -7,7 +7,7 @@ dependencies = [
  "allegro_font 0.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "allegro_primitives 0.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 1.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "clock_ticks 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clock_ticks 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cobalt 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "shared 0.1.0",
@@ -126,14 +126,6 @@ dependencies = [
  "bitflags 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "strsim 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "vec_map 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "clock_ticks"
-version = "0.0.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "libc 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

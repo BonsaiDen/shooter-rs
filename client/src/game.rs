@@ -10,7 +10,7 @@ use net::{Network, MessageKind};
 use entities;
 use shared::color::Color;
 use shared::arena::Arena;
-use shared::entity::{EntityType, EntityInput, EntityState, Entity};
+use shared::entity;
 use shared::drawable::Drawable;
 use shared::particle::ParticleSystem;
 
@@ -24,8 +24,8 @@ pub struct Game {
     back_color: AllegroColor,
     text_color: AllegroColor,
     rng: XorShiftRng,
-    entities: HashMap<u16, Entity>,
-    remote_states: Vec<(u8, EntityState)>,
+    entities: HashMap<u16, entity::Entity>,
+    remote_states: Vec<(u8, entity::State)>,
     arena: Arena,
     particle_system: ParticleSystem,
     state: GameState
@@ -55,11 +55,11 @@ impl Game {
 
             let (x, y) = arena.center();
             let flags = 0b0000_0001 | Color::Red.to_flags();
-            player_ship.set_state(EntityState {
+            player_ship.set_state(entity::State {
                 x: x as f32,
                 y: y as f32,
                 flags: flags,
-                .. EntityState::default()
+                .. entity::State::default()
             });
 
             self.add_entity(player_ship);
@@ -90,7 +90,7 @@ impl Game {
 
             if entity.local() {
 
-                let input = EntityInput {
+                let input = entity::Input {
                     tick: tick as u8,
                     left: key_state[1] || key_state[82],
                     right: key_state[4] || key_state[83],
@@ -222,7 +222,7 @@ impl Game {
 
 
     // Internal ---------------------------------------------------------------
-    fn add_entity(&mut self, entity: Entity) {
+    fn add_entity(&mut self, entity: entity::Entity) {
         self.entities.insert(entity.id(), entity);
     }
 
@@ -232,7 +232,7 @@ impl Game {
     }
 
     fn config(&mut self, core: &Core, disp: &mut Display, data: &[u8]) {
-        println!("Received Config"); // TODO update tick rate?
+        println!("Received Config"); // TODO update tick rate from config?
         self.init(core, disp, Arena::from_serialized(&data[0..5]), true);
         self.state = GameState::Connected;
     }
@@ -253,11 +253,11 @@ impl Game {
             i += 3;
 
             // Check serialized data
-            if i + EntityState::encoded_size() <= data.len() {
+            if i + entity::State::encoded_size() <= data.len() {
 
                 // Read serialized entity state
-                let state = EntityState::from_serialized(&data[i..]);
-                i += EntityState::encoded_size();
+                let state = entity::State::from_serialized(&data[i..]);
+                i += entity::State::encoded_size();
 
                 // Create entities which do not yet exist
                 let mut entity = self.entities.entry(id).or_insert_with(|| {
@@ -303,7 +303,7 @@ impl Game {
 
 }
 
-fn entity_from_kind(kind: u8) -> Entity {
+fn entity_from_kind(kind: u8) -> entity::Entity {
     match kind {
         0 => entities::Ship::create_entity(1.0),
         _ => unreachable!()

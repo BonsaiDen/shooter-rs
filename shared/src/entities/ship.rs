@@ -1,36 +1,29 @@
 use arena::Arena;
 use drawable::ZeroDrawable;
-use entity::{
-    EntityType,
-    EntityInput,
-    EntityState,
-    Entity,
-    tick_is_more_recent,
-    apply_input_to_state
-};
+use entity;
 
 pub struct Ship {
-    state: EntityState,
-    base_state: EntityState,
-    last_state: EntityState,
+    state: entity::State,
+    base_state: entity::State,
+    last_state: entity::State,
     max_speed: f32,
     acceleration: f32,
     rotation: f32,
-    input_states: Vec<EntityInput>,
+    input_states: Vec<entity::Input>,
     last_input_tick: u8
 }
 
 impl Ship {
 
-    pub fn create_entity(scale: f32) -> Entity {
-        Entity::new(
+    pub fn create_entity(scale: f32) -> entity::Entity {
+        entity::Entity::new(
             Box::new(Ship::new(scale)),
             Box::new(ZeroDrawable)
         )
     }
 
     pub fn new(scale: f32) -> Ship {
-        let state = EntityState {
+        let state = entity::State {
             x: 0.0,
             y: 0.0,
             r: 0.0,
@@ -51,7 +44,7 @@ impl Ship {
     }
 
     pub fn apply_remote_state(
-        &mut self, remote_tick: u8, state: EntityState
+        &mut self, remote_tick: u8, state: entity::State
     ) {
 
         self.last_state = self.state;
@@ -60,7 +53,7 @@ impl Ship {
 
         // Drop all confirmed inputs
         self.input_states.retain(|input| {
-            tick_is_more_recent(input.tick, remote_tick)
+            entity::tick_is_more_recent(input.tick, remote_tick)
         });
 
     }
@@ -75,7 +68,7 @@ impl Ship {
         // Apply unconfirmed inputs on top of last state confirmed by the server
         let mut state = self.base_state;
         for input in self.input_states.iter() {
-            apply_input_to_state(
+            entity::apply_input_to_state(
                 &input, &mut state, dt,
                 self.rotation, self.acceleration, self.max_speed
             );
@@ -91,7 +84,7 @@ impl Ship {
 
 }
 
-impl EntityType for Ship {
+impl entity::Kind for Ship {
 
     fn is_local(&self) -> bool {
         self.state.flags & 0x01 == 0x01
@@ -101,29 +94,29 @@ impl EntityType for Ship {
         0
     }
 
-    fn get_state(&self) -> EntityState  {
+    fn get_state(&self) -> entity::State  {
         self.state
     }
 
-    fn set_state(&mut self, state: EntityState) {
+    fn set_state(&mut self, state: entity::State) {
         self.state = state;
         self.set_flags(state.flags);
         self.last_state = state;
         self.base_state = state;
     }
 
-    fn get_inputs(&self) -> &Vec<EntityInput> {
+    fn get_inputs(&self) -> &Vec<entity::Input> {
         &self.input_states
     }
 
-    fn interpolate_state(&self, arena: &Arena, u: f32) -> EntityState {
+    fn interpolate_state(&self, arena: &Arena, u: f32) -> entity::State {
         arena.interpolate_state(&self.state, &self.last_state, u)
     }
 
-    fn input(&mut self, input: EntityInput, max_inputs: usize) {
+    fn input(&mut self, input: entity::Input, max_inputs: usize) {
 
         // Ignore inputs for past ticks
-        if self.input_states.len() == 0 || tick_is_more_recent(
+        if self.input_states.len() == 0 || entity::tick_is_more_recent(
             input.tick,
             self.last_input_tick
         ) {
@@ -141,7 +134,7 @@ impl EntityType for Ship {
     fn remote_tick(
         &mut self,
         arena: &Arena,
-        dt: f32, remote_tick: u8, state: EntityState
+        dt: f32, remote_tick: u8, state: entity::State
     ) {
         self.apply_remote_state(remote_tick, state);
         self.apply_inputs(arena, dt);

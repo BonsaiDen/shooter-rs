@@ -1,5 +1,6 @@
 // Internal Dependencies ------------------------------------------------------
-use entity::EntityState;
+use entity;
+use std::f64;
 
 
 // Arena Abstractions ---------------------------------------------------------
@@ -30,7 +31,7 @@ impl Arena {
 
 
     // Static Methods ---------------------------------------------------------
-    pub fn wrap_state(&self, state: &mut EntityState) {
+    pub fn wrap_state(&self, state: &mut entity::State) {
 
         let width = (self.height + self.border * 2) as f32;
         if state.x < 0.0 {
@@ -51,9 +52,9 @@ impl Arena {
     }
 
     pub fn interpolate_state(
-        &self, current: &EntityState, last: &EntityState, u: f32
+        &self, current: &entity::State, last: &entity::State, u: f32
 
-    ) -> EntityState {
+    ) -> entity::State {
 
         // Skip interpolation if distance is too large too avoid glitching
         // when wrapping at the arena boundaries occurs
@@ -72,8 +73,8 @@ impl Arena {
         };
 
         let mr = current.r - last.r;
-        EntityState {
-            r: last.r + mr.sin().atan2(mr.cos()) * u,
+        entity::State {
+            r: (last.r + mr.sin().atan2(mr.cos()) * u) % (f64::consts::PI * 2.0) as f32,
             x: x - self.border as f32,
             y: y - self.border as f32,
             mx: last.mx,
