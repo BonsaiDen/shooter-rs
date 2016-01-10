@@ -164,7 +164,14 @@ allegro_main! {
             },
 
             KeyDown{keycode: k, ..} if (k as u32) < 255 => {
+
                 key_state[k as usize] = true;
+
+                // Exit via Ctrl-C
+                if k == KeyCode::C && key_state[KeyCode::LCtrl as usize] {
+                    break 'exit;
+                }
+
             },
 
             KeyUp{keycode: k, ..} if (k as u32) < 255 => {

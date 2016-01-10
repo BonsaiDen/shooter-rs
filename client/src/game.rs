@@ -88,7 +88,7 @@ impl Game {
 
         for (_, entity) in self.entities.iter_mut() {
 
-            if entity.typ.is_local() {
+            if entity.local() {
 
                 let input = EntityInput {
                     tick: tick as u8,
@@ -98,29 +98,29 @@ impl Game {
                     fire: false
                 };
 
-                entity.typ.input(input);
+                entity.input(input, 30); // TODO set tick rate externally
 
                 // Emulate remote server state stuff with a 20 frames delay
                 match self.state {
                     GameState::Disconnected => {
                         if self.remote_states.len() > 20 {
                             let first = self.remote_states.remove(0);
-                            entity.typ.remote_tick(&self.arena, dt, first.0, first.1);
+                            entity.tick_remote(&self.arena, dt, first.0, first.1);
 
                         } else {
-                            entity.typ.tick(&self.arena, dt);
+                            entity.tick_local(&self.arena, dt, true);
                         }
 
-                        self.remote_states.push((tick, entity.typ.get_state()));
+                        self.remote_states.push((tick, entity.get_state()));
 
                     },
 
                     GameState::Connected => {
 
-                        entity.typ.tick(&self.arena, dt);
+                        entity.tick_local(&self.arena, dt, true);
 
                         // Send all unconfirmed inputs to server
-                        network.send_message(MessageKind::Instant, entity.inputs());
+                        network.send_message(MessageKind::Instant, entity.serialize_inputs());
 
                     },
 
@@ -129,7 +129,7 @@ impl Game {
 
 
             } else {
-                entity.typ.tick(&self.arena, dt);
+                entity.tick_local(&self.arena, dt, true);
             }
 
         }
@@ -196,9 +196,9 @@ impl Game {
 
         // Draw all entities
         for (_, entity) in self.entities.iter_mut() {
-            entity.drawable.draw(
+            entity.draw(
                 &core, &prim, &mut self.rng, &mut self.particle_system,
-                &self.arena, &*entity.typ, dt, u
+                &self.arena, dt, u
             );
         }
 
@@ -272,8 +272,8 @@ impl Game {
                 entity.set_alive(true);
 
                 // Update Entity State
-                if entity.typ.is_local() {
-                    entity.typ.remote_tick(&self.arena, dt, remote_tick, state);
+                if entity.local() {
+                    entity.tick_remote(&self.arena, dt, remote_tick, state);
 
                 } else {
                     entity.set_state(state);
@@ -289,8 +289,7 @@ impl Game {
         let mut destroyed_ids = Vec::new();
         for (_, entity) in self.entities.iter_mut() {
             if entity.alive() == false {
-                entity.typ.destroy();
-                entity.drawable.destroy();
+                entity.destroy();
                 destroyed_ids.push(entity.id());
             }
         }

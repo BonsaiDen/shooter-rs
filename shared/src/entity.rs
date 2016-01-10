@@ -1,16 +1,23 @@
+// External Dependencies ------------------------------------------------------
 use std::f32;
-
-use arena::Arena;
-use drawable::Drawable;
+use allegro;
+use allegro_primitives::PrimitivesAddon;
+use rand::XorShiftRng;
 use cobalt::ConnectionID;
 use bincode::SizeLimit;
 use bincode::rustc_serialize::{encode, decode};
 
 
+// Internal Dependencies ------------------------------------------------------
+use arena::Arena;
+use drawable::Drawable;
+use particle::ParticleSystem;
+
+
 // Top Level Entity Structure -------------------------------------------------
 pub struct Entity {
-    pub typ: Box<EntityType>,
-    pub drawable: Box<Drawable>,
+    typ: Box<EntityType>,
+    drawable: Box<Drawable>,
     owner: ConnectionID,
     is_alive: bool,
     local_id: u16
@@ -28,8 +35,26 @@ impl Entity {
         }
     }
 
+
+    // Getter / Setter --------------------------------------------------------
+    pub fn id(&self) -> u16 {
+        self.local_id
+    }
+
+    pub fn set_id(&mut self, id: u16) {
+        self.local_id = id;
+    }
+
     pub fn owner(&self) -> &ConnectionID {
         &self.owner
+    }
+
+    pub fn set_owner(&mut self, owner: ConnectionID) {
+        self.owner = owner;
+    }
+
+    pub fn owned_by(&mut self, owner: &ConnectionID) -> bool {
+        self.owner == *owner
     }
 
     pub fn get_state(&self) -> EntityState {
@@ -41,12 +66,8 @@ impl Entity {
         self.typ.set_state(state);
     }
 
-    pub fn id(&self) -> u16 {
-        self.local_id
-    }
-
-    pub fn set_id(&mut self, id: u16) {
-        self.local_id = id;
+    pub fn local(&self) -> bool {
+        self.typ.is_local()
     }
 
     pub fn alive(&self) -> bool {
@@ -57,19 +78,52 @@ impl Entity {
         self.is_alive = alive;
     }
 
-    pub fn set_owner(&mut self, owner: ConnectionID) {
-        self.owner = owner;
-    }
-
-    pub fn owned_by(&mut self, owner: &ConnectionID) -> bool {
-        self.owner == *owner
-    }
-
     pub fn visible_to(&self, owner: &ConnectionID) -> bool {
         self.typ.visible_to(owner)
     }
 
-    pub fn serialize(&self, owner: &ConnectionID) -> Vec<u8> {
+
+    // Updates ----------------------------------------------------------------
+    pub fn input(&mut self, input: EntityInput, max_inputs: usize) {
+        self.typ.input(input, max_inputs);
+    }
+
+    pub fn tick_local(&mut self, arena: &Arena, dt: f32, temporary: bool) {
+        self.typ.tick(arena, dt, temporary);
+    }
+
+    pub fn tick_remote(
+        &mut self, arena: &Arena, dt: f32, remote_tick: u8, state: EntityState
+    ) {
+        self.typ.remote_tick(arena, dt, remote_tick, state);
+    }
+
+    pub fn draw(
+        &mut self,
+        core: &allegro::Core, prim: &PrimitivesAddon,
+        rng: &mut XorShiftRng, particle_system: &mut ParticleSystem,
+        arena: &Arena, dt: f32, u: f32
+    ) {
+        self.drawable.draw(
+            core, prim, rng,
+            particle_system,
+            arena,
+            &*self.typ,
+            dt, u
+        );
+    }
+
+
+    // Serialization ----------------------------------------------------------
+    pub fn serialize_inputs(&self) -> Vec<u8> {
+        let mut data = Vec::new();
+        for input in self.typ.get_inputs().iter() {
+            data.extend(input.serialize());
+        }
+        data
+    }
+
+    pub fn serialize_state(&self, owner: &ConnectionID) -> Vec<u8> {
 
         let mut data = [
             (self.local_id >> 8) as u8,
@@ -78,7 +132,7 @@ impl Entity {
 
         ].to_vec();
 
-        // TODO check if owner is owner of entity and set local flag
+        // Set local flag if we're serializing for the owner
         let mut state = self.typ.get_state();
         if &self.owner == owner {
             state.flags |= 0x01;
@@ -88,26 +142,21 @@ impl Entity {
 
     }
 
-    pub fn inputs(&self) -> Vec<u8> {
-        let mut data = Vec::new();
-        for input in self.typ.get_inputs().iter() {
-            data.extend(input.serialize());
-        }
-        data
-    }
 
+    // Events -----------------------------------------------------------------
     pub fn create(&mut self) {
         self.typ.create();
     }
 
     pub fn destroy(&mut self) {
         self.typ.destroy();
+        self.drawable.destroy();
     }
 
 }
 
 
-// Entity Input Data ----------------------------------------------------------
+// Entity Input ---------------------------------------------------------------
 #[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable)]
 pub struct EntityInput {
     pub tick: u8,
@@ -135,7 +184,7 @@ impl EntityInput {
 }
 
 
-// Entity State Data ----------------------------------------------------------
+// Entity State ---------------------------------------------------------------
 #[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable)]
 pub struct EntityState {
     pub x: f32,
@@ -180,6 +229,7 @@ impl Default for EntityState {
 // Underlying Entity Type Trait -----------------------------------------------
 pub trait EntityType {
 
+    // TODO cleanup API
     fn is_local(&self) -> bool;
 
     fn kind_id(&self) -> u8;
@@ -190,30 +240,30 @@ pub trait EntityType {
 
     fn get_inputs(&self) -> &Vec<EntityInput>;
 
-    fn interpolate_state(&self, arena: &Arena, u: f32) -> EntityState;
-
-    fn visible_to(&self, owner: &ConnectionID) -> bool {
-        true
-    }
-
-    fn create(&mut self) {
-    }
-
     fn set_flags(&mut self, _: u8) {
     }
 
-    fn destroy(&mut self) {
+    fn interpolate_state(&self, arena: &Arena, u: f32) -> EntityState;
+
+    fn visible_to(&self, _: &ConnectionID) -> bool {
+        true
     }
 
-    fn input(&mut self, input: EntityInput);
+    fn input(&mut self, input: EntityInput, max_inputs: usize);
 
-    fn tick(&mut self, arena: &Arena, dt: f32);
+    fn tick(&mut self, arena: &Arena, dt: f32, temporary: bool);
 
     fn remote_tick(
         &mut self,
         arena: &Arena,
         dt: f32, remote_tick: u8, state: EntityState
     );
+
+    fn create(&mut self) {
+    }
+
+    fn destroy(&mut self) {
+    }
 
 }
 
@@ -268,6 +318,4 @@ pub fn apply_input_to_state(
     state.y += state.my;
 
 }
-
-
 

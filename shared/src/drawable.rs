@@ -1,20 +1,19 @@
+// External Dependencies ------------------------------------------------------
 use allegro;
 use allegro_primitives::PrimitivesAddon;
 use rand::XorShiftRng;
 
+
+// Internal Dependencies ------------------------------------------------------
 use arena::Arena;
 use entity::EntityType;
 use particle::ParticleSystem;
 
+
+// Drawable Trait -------------------------------------------------------------
 pub trait Drawable {
 
-    fn create(&mut self) {
-    }
-
     fn set_flags(&mut self, _: u8) {
-    }
-
-    fn destroy(&mut self) {
     }
 
     fn draw(
@@ -25,10 +24,16 @@ pub trait Drawable {
     ) {
     }
 
+    fn create(&mut self) {
+    }
+
+    fn destroy(&mut self) {
+    }
+
 }
 
+
+// Abstract Zero Drawable for Server Side Logic -------------------------------
 pub struct ZeroDrawable;
-impl Drawable for ZeroDrawable {
-
-}
+impl Drawable for ZeroDrawable {}
 

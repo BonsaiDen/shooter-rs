@@ -1,3 +1,4 @@
+// External Dependencies ------------------------------------------------------
 extern crate allegro;
 
 #[derive(Debug, Copy, Clone)]
@@ -15,6 +16,7 @@ pub enum Color {
 
 impl Color {
 
+    // Statics ----------------------------------------------------------------
     pub fn all_colored() -> Vec<Color> {
         vec![
             Color::Red,
@@ -26,20 +28,6 @@ impl Color {
             Color::Purple,
             Color::Pink
         ]
-    }
-
-    pub fn to_u8(&self) -> u8 {
-        match *self {
-            Color::Grey => 0,
-            Color::Red => 1,
-            Color::Orange => 2,
-            Color::Yellow => 3,
-            Color::Green => 4,
-            Color::Teal => 5,
-            Color::Blue => 6,
-            Color::Purple => 7,
-            Color::Pink => 8
-        }
     }
 
     pub fn from_u8(value: u8) -> Color {
@@ -57,12 +45,28 @@ impl Color {
         }
     }
 
-    pub fn to_flags(&self) -> u8 {
-        (self.to_u8() << 4) & 0xff
-    }
-
     pub fn from_flags(flags: u8) -> Color {
         Color::from_u8((flags & 0b1111_0000) >> 4)
+    }
+
+
+    // Methods ----------------------------------------------------------------
+    pub fn to_u8(&self) -> u8 {
+        match *self {
+            Color::Grey => 0,
+            Color::Red => 1,
+            Color::Orange => 2,
+            Color::Yellow => 3,
+            Color::Green => 4,
+            Color::Teal => 5,
+            Color::Blue => 6,
+            Color::Purple => 7,
+            Color::Pink => 8
+        }
+    }
+
+    pub fn to_flags(&self) -> u8 {
+        (self.to_u8() << 4) & 0xff
     }
 
     pub fn to_rgb(&self) -> RgbColor {
@@ -87,10 +91,13 @@ pub struct RgbColor((u8, u8, u8));
 
 impl RgbColor {
 
+    // Statics ----------------------------------------------------------------
     pub fn black() -> RgbColor {
         RgbColor((0x00, 0x00, 0x00))
     }
 
+
+    // Methods ----------------------------------------------------------------
     pub fn to_rgb(&self) -> allegro::Color {
         let r: u8 = (self.0).0;
         let g: u8 = (self.0).1;

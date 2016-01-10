@@ -1,5 +1,8 @@
+// Internal Dependencies ------------------------------------------------------
 use entity::EntityState;
 
+
+// Arena Abstractions ---------------------------------------------------------
 pub struct Arena {
     width: u32,
     height: u32,

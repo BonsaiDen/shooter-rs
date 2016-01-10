@@ -3,11 +3,17 @@ extern crate clap;
 extern crate cobalt;
 extern crate shared;
 
+
+// External Dependencies ------------------------------------------------------
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use cobalt::{Config, Handler, Server};
 
+
+// Internal Dependencies ------------------------------------------------------
 mod game;
 
+
+// Main Loop ------------------------------------------------------------------
 fn main() {
 
     let args = clap::App::new("server")
@@ -28,9 +34,11 @@ fn main() {
         SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 31476)
     ));
 
-    let mut game = game::Game::new(512, 512, 16);
+    // Server Setup
+    let tick_rate = 30;
+    let mut game = game::Game::new(512, 512, 16, tick_rate);
     let mut server = Server::new(Config {
-        send_rate: 30,
+        send_rate: tick_rate,
         .. Config::default()
     });
     server.bind(&mut game, server_addr).unwrap();

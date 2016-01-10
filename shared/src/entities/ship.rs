@@ -120,18 +120,19 @@ impl EntityType for Ship {
         arena.interpolate_state(&self.state, &self.last_state, u)
     }
 
-    fn input(&mut self, input: EntityInput) {
+    fn input(&mut self, input: EntityInput, max_inputs: usize) {
 
-        if self.input_states.len() == 0 || tick_is_more_recent(input.tick, self.last_input_tick) {
+        // Ignore inputs for past ticks
+        if self.input_states.len() == 0 || tick_is_more_recent(
+            input.tick,
+            self.last_input_tick
+        ) {
             self.input_states.push(input);
             self.last_input_tick = input.tick;
-
-        } else {
-            println!("drop input");
         }
 
         // Drop outdated inputs
-        if self.input_states.len() > 30 {
+        if self.input_states.len() > max_inputs {
             self.input_states.remove(0);
         }
 
@@ -146,9 +147,17 @@ impl EntityType for Ship {
         self.apply_inputs(arena, dt);
     }
 
-    fn tick(&mut self, arena: &Arena, dt: f32) {
+    fn tick(&mut self, arena: &Arena, dt: f32, temporary: bool) {
+
         self.apply_local_state();
         self.apply_inputs(arena, dt);
+
+        // Set the tick state as the new base state and clear pending inputs
+        if temporary == false {
+            self.base_state = self.state;
+            self.input_states.clear();
+        }
+
     }
 
 }
