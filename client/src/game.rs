@@ -8,10 +8,9 @@ use allegro_font::{Font, FontAlign, FontDrawing};
 use net::{Network, MessageKind};
 
 use entities;
+use shared::entity;
 use shared::color::Color;
 use shared::arena::Arena;
-use shared::entity;
-use shared::drawable::Drawable;
 use shared::particle::ParticleSystem;
 
 enum GameState {
@@ -262,9 +261,10 @@ impl Game {
                 // Create entities which do not yet exist
                 let mut entity = self.entities.entry(id).or_insert_with(|| {
                     let mut entity = entity_from_kind(kind);
+                    // TODO abstract away
                     entity.set_id(id);
                     entity.set_state(state);
-                    entity.create();
+                    entity.created();
                     entity
                 });
 
@@ -281,7 +281,7 @@ impl Game {
 
             }
 
-            // TODO trigger flag() method on entity if any flag changed
+            // TODO trigger flag() method on entity if any flag changed?
 
         }
 
@@ -289,7 +289,7 @@ impl Game {
         let mut destroyed_ids = Vec::new();
         for (_, entity) in self.entities.iter_mut() {
             if entity.alive() == false {
-                entity.destroy();
+                entity.destroyed();
                 destroyed_ids.push(entity.id());
             }
         }

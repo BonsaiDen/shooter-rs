@@ -1,7 +1,10 @@
-use arena::Arena;
-use drawable::ZeroDrawable;
+// Internal Dependencies ------------------------------------------------------
 use entity;
+use entity::traits::Eventful;
+use arena::Arena;
 
+
+// Ship Logic Implementation --------------------------------------------------
 pub struct Ship {
     state: entity::State,
     base_state: entity::State,
@@ -84,33 +87,53 @@ impl Ship {
 
 }
 
-impl entity::Kind for Ship {
 
-    fn is_local(&self) -> bool {
-        self.state.flags & 0x01 == 0x01
-    }
+// Trait Implementations ------------------------------------------------------
+impl entity::traits::Base for Ship {
 
-    fn kind_id(&self) -> u8 {
+    fn typ(&self) -> u8 {
         0
     }
 
-    fn get_state(&self) -> entity::State  {
-        self.state
+}
+
+impl entity::traits::Owned for Ship {}
+impl entity::traits::Eventful for Ship {}
+
+impl entity::traits::Ticked for Ship {
+
+    fn tick_local(&mut self, arena: &Arena, dt: f32, temporary: bool) {
+
+        self.apply_local_state();
+        self.apply_inputs(arena, dt);
+
+        // Set the tick state as the new base state and clear pending inputs
+        if temporary == false {
+            self.base_state = self.state;
+            self.input_states.clear();
+        }
+
     }
 
-    fn set_state(&mut self, state: entity::State) {
-        self.state = state;
-        self.set_flags(state.flags);
-        self.last_state = state;
-        self.base_state = state;
+    fn tick_remote(
+        &mut self,
+        arena: &Arena,
+        dt: f32, remote_tick: u8, state: entity::State
+    ) {
+        self.apply_remote_state(remote_tick, state);
+        self.apply_inputs(arena, dt);
     }
 
-    fn get_inputs(&self) -> &Vec<entity::Input> {
+}
+
+impl entity::traits::Controlled for Ship {
+
+    fn local(&self) -> bool {
+        self.state.flags & 0x01 == 0x01
+    }
+
+    fn pending_inputs(&self) -> &Vec<entity::Input> {
         &self.input_states
-    }
-
-    fn interpolate_state(&self, arena: &Arena, u: f32) -> entity::State {
-        arena.interpolate_state(&self.state, &self.last_state, u)
     }
 
     fn input(&mut self, input: entity::Input, max_inputs: usize) {
@@ -131,27 +154,30 @@ impl entity::Kind for Ship {
 
     }
 
-    fn remote_tick(
-        &mut self,
-        arena: &Arena,
-        dt: f32, remote_tick: u8, state: entity::State
-    ) {
-        self.apply_remote_state(remote_tick, state);
-        self.apply_inputs(arena, dt);
+}
+
+impl entity::traits::Stateful for Ship {
+
+    fn get_state(&self) -> entity::State  {
+        self.state
     }
 
-    fn tick(&mut self, arena: &Arena, dt: f32, temporary: bool) {
+    fn set_state(&mut self, state: entity::State) {
+        self.state = state;
+        self.flagged(state.flags);
+        self.last_state = state;
+        self.base_state = state;
+    }
 
-        self.apply_local_state();
-        self.apply_inputs(arena, dt);
-
-        // Set the tick state as the new base state and clear pending inputs
-        if temporary == false {
-            self.base_state = self.state;
-            self.input_states.clear();
-        }
-
+    fn interpolate_state(&self, arena: &Arena, u: f32) -> entity::State {
+        arena.interpolate_state(&self.state, &self.last_state, u)
     }
 
 }
+
+
+// Noop Drawable --------------------------------------------------------------
+struct ZeroDrawable;
+impl entity::traits::Drawable for ZeroDrawable {}
+impl entity::traits::Eventful for ZeroDrawable {}
 

@@ -68,6 +68,7 @@ impl Handler<Server> for Game {
                 player_ship.set_id(id);
                 player_ship.set_alive(true);
                 player_ship.set_owner(conn.id());
+                player_ship.created();
 
                 self.entities.push(player_ship);
 
@@ -100,6 +101,14 @@ impl Handler<Server> for Game {
                         self.tick_rate as usize
                     );
                 }
+
+            // For dis-connected entities apply zero inputs
+            // TODO does this work with non-player entities?
+            } else {
+                entity.input(
+                    entity::Input::default(),
+                    self.tick_rate as usize
+                );
             }
 
             // Permanently advance entity state
@@ -147,7 +156,7 @@ impl Handler<Server> for Game {
             if entity.owned_by(&conn.id()) {
 
                 entity.set_alive(false);
-                entity.destroy();
+                entity.destroyed();
 
                 // Release id and color
                 let color = Color::from_flags(entity.get_state().flags);

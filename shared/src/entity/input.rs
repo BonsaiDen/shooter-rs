@@ -20,13 +20,24 @@ impl EntityInput {
     }
 
     pub fn from_serialized(data: &[u8]) -> EntityInput {
-        let state: EntityInput = decode(data).unwrap();
-        state
+        decode::<EntityInput>(data).unwrap()
     }
 
     pub fn serialize(&self) -> Vec<u8> {
         encode(&self, SizeLimit::Infinite).unwrap()
     }
 
+}
+
+impl Default for EntityInput {
+    fn default() -> EntityInput {
+        EntityInput {
+            tick: 0,
+            left: false,
+            right: false,
+            thrust: false,
+            fire: false
+        }
+    }
 }
 

@@ -21,8 +21,7 @@ impl EntityState {
     }
 
     pub fn from_serialized(data: &[u8]) -> EntityState {
-        let state: EntityState = decode(data).unwrap();
-        state
+        decode::<EntityState>(data).unwrap()
     }
 
     pub fn serialize(&self) -> Vec<u8> {

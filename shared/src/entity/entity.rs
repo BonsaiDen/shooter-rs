@@ -8,13 +8,13 @@ use cobalt::ConnectionID;
 // Internal Dependencies ------------------------------------------------------
 use entity;
 use arena::Arena;
-use drawable::Drawable;
 use particle::ParticleSystem;
+use entity::traits::{Base, Drawable};
 
 
 // Top Level Entity Structure -------------------------------------------------
 pub struct Entity {
-    typ: Box<entity::Kind>,
+    entity: Box<Base>,
     drawable: Box<Drawable>,
     owner: ConnectionID,
     is_alive: bool,
@@ -23,9 +23,9 @@ pub struct Entity {
 
 impl Entity {
 
-    pub fn new(typ: Box<entity::Kind>, drawable: Box<Drawable>) -> Entity {
+    pub fn new(entity: Box<Base>, drawable: Box<Drawable>) -> Entity {
         Entity {
-            typ: typ,
+            entity: entity,
             drawable: drawable,
             owner: ConnectionID(0),
             is_alive: false,
@@ -56,16 +56,16 @@ impl Entity {
     }
 
     pub fn get_state(&self) -> entity::State {
-        self.typ.get_state()
+        self.entity.get_state()
     }
 
     pub fn set_state(&mut self, state: entity::State) {
-        self.drawable.set_flags(state.flags);
-        self.typ.set_state(state);
+        self.drawable.flagged(state.flags);
+        self.entity.set_state(state);
     }
 
     pub fn local(&self) -> bool {
-        self.typ.is_local()
+        self.entity.local()
     }
 
     pub fn alive(&self) -> bool {
@@ -77,23 +77,23 @@ impl Entity {
     }
 
     pub fn visible_to(&self, owner: &ConnectionID) -> bool {
-        self.typ.visible_to(owner)
+        self.entity.visible_to(owner)
     }
 
 
     // Logic ------------------------------------------------------------------
     pub fn input(&mut self, input: entity::Input, max_inputs: usize) {
-        self.typ.input(input, max_inputs);
+        self.entity.input(input, max_inputs);
     }
 
     pub fn tick_local(&mut self, arena: &Arena, dt: f32, temporary: bool) {
-        self.typ.tick(arena, dt, temporary);
+        self.entity.tick_local(arena, dt, temporary);
     }
 
     pub fn tick_remote(
         &mut self, arena: &Arena, dt: f32, remote_tick: u8, state: entity::State
     ) {
-        self.typ.remote_tick(arena, dt, remote_tick, state);
+        self.entity.tick_remote(arena, dt, remote_tick, state);
     }
 
 
@@ -108,7 +108,7 @@ impl Entity {
             core, prim, rng,
             particle_system,
             arena,
-            &*self.typ,
+            &*self.entity,
             dt, u
         );
     }
@@ -117,7 +117,7 @@ impl Entity {
     // Serialization ----------------------------------------------------------
     pub fn serialize_inputs(&self) -> Vec<u8> {
         let mut data = Vec::new();
-        for input in self.typ.get_inputs().iter() {
+        for input in self.entity.pending_inputs().iter() {
             data.extend(input.serialize());
         }
         data
@@ -128,12 +128,12 @@ impl Entity {
         let mut data = [
             (self.local_id >> 8) as u8,
             self.local_id as u8,
-            self.typ.kind_id()
+            self.entity.typ()
 
         ].to_vec();
 
         // Set local flag if we're serializing for the owner
-        let mut state = self.typ.get_state();
+        let mut state = self.entity.get_state();
         if &self.owner == owner {
             state.flags |= 0x01;
         }
@@ -144,13 +144,13 @@ impl Entity {
 
 
     // Events -----------------------------------------------------------------
-    pub fn create(&mut self) {
-        self.typ.create();
+    pub fn created(&mut self) {
+        self.entity.created();
     }
 
-    pub fn destroy(&mut self) {
-        self.typ.destroy();
-        self.drawable.destroy();
+    pub fn destroyed(&mut self) {
+        self.entity.destroyed();
+        self.drawable.destroyed();
     }
 
 }

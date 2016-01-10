@@ -9,7 +9,6 @@ use allegro_primitives::PrimitivesAddon;
 use shared::entities;
 use shared::arena::Arena;
 use shared::entity;
-use shared::drawable::Drawable;
 use shared::color::{Color, RgbColor};
 use shared::particle::ParticleSystem;
 
@@ -61,18 +60,22 @@ impl Ship {
 
 }
 
-impl Drawable for Ship {
+impl entity::traits::Eventful for Ship {
 
-    fn set_flags(&mut self, flags: u8) {
+    fn flagged(&mut self, flags: u8) {
         self.color_light = Color::from_flags(flags).to_rgb();
         self.color_mid = self.color_light.darken(0.5);
     }
+
+}
+
+impl entity::traits::Drawable for Ship {
 
     fn draw(
         &mut self,
         _: &allegro::Core, prim: &PrimitivesAddon,
         rng: &mut XorShiftRng, particle_system: &mut ParticleSystem,
-        arena: &Arena, entity: &entity::Kind, _: f32, u: f32
+        arena: &Arena, entity: &entity::traits::Base, _: f32, u: f32
     ) {
 
         let light = self.color_light;
