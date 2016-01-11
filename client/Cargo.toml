@@ -6,7 +6,7 @@ authors = ["Ivo Wetzel <ivo.wetzel@googlemail.com>"]
 [dependencies]
 rand = "0.3.13"
 clap = "1.4.0"
-cobalt = "0.5.2"
+cobalt = { version = "0.5.3", path = "../../cobalt-rs" }
 shared = { version = "0.1.0", path = "../shared" }
 clock_ticks = "0.1.0"
 allegro = "0.0.22"

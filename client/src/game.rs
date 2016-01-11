@@ -207,10 +207,12 @@ impl Game {
         if let Ok(addr) = network.server_addr() {
             let network_state = match network.connected() {
                 true => format!(
-                    "Connected to {} (Ping: {}ms, Packet Loss: {}%)",
+                    "{} (Ping: {}ms, Lost: {}%, Bytes: {}/{})",
                     addr,
                     network.rtt() / 2,
-                    network.packet_loss()
+                    network.packet_loss(),
+                    network.bytes_sent(),
+                    network.bytes_received()
                 ),
                 false => format!("Connecting to {}...", addr)
             };
@@ -236,7 +238,7 @@ impl Game {
         self.state = GameState::Connected;
     }
 
-    fn state(&mut self, data: &[u8], tick: u8, remote_tick: u8, dt: f32) {
+    fn state(&mut self, data: &[u8], _: u8, remote_tick: u8, dt: f32) {
 
         // Mark all entities as dead
         for (_, entity) in self.entities.iter_mut() {

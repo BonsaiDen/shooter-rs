@@ -59,7 +59,7 @@ allegro_main! {
     core.install_mouse().unwrap();
 
     // Tick / Rendering Logic
-    let ticks_per_second = 30;
+    let ticks_per_second = 60;
     let tick_dt = 1.0 / ticks_per_second as f32;
     let mut last_tick_time = 0.0;
 
@@ -119,7 +119,7 @@ allegro_main! {
                             }
                         },
 
-                        net::EventType::Tick(_, _) => {
+                        net::EventType::Tick(_, _, _) => {
                             frames_to_render = frames_per_second / ticks_per_second;
                             last_tick_time = frame_time;
                             game.tick(&mut network, &key_state, tick as u8, tick_dt as f32);

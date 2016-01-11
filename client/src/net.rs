@@ -1,7 +1,8 @@
 use std::net::SocketAddr;
 use std::sync::mpsc::{TryRecvError};
 use cobalt::{
-    Config, Client, Connection, ConnectionID, Handler, ClientState, UdpSocket
+    Config, Client, Connection, ConnectionID, Handler, ClientState, UdpSocket,
+    Stats
 };
 use std::collections::VecDeque;
 
@@ -16,7 +17,9 @@ pub struct Network {
     connected: bool,
     connection_time: f64,
     connection_rtt: u32,
-    connection_packet_loss: f32
+    connection_packet_loss: f32,
+    bytes_sent: u32,
+    bytes_received: u32
 }
 
 impl Network {
@@ -39,13 +42,15 @@ impl Network {
             connected: false,
             connection_time: 0.0,
             connection_rtt: 0,
-            connection_packet_loss: 0.0
+            connection_packet_loss: 0.0,
+            bytes_sent: 0,
+            bytes_received: 0
         }
 
     }
 
     // Getters ----------------------------------------------------------------
-    pub fn connected(&mut self) -> bool {
+    pub fn connected(&self) -> bool {
         self.connected
     }
 
@@ -53,14 +58,21 @@ impl Network {
         self.client.peer_addr().or(Err(()))
     }
 
-    pub fn rtt(&mut self) -> u32 {
+    pub fn rtt(&self) -> u32 {
         self.connection_rtt
     }
 
-    pub fn packet_loss(&mut self) -> f32 {
+    pub fn packet_loss(&self) -> f32 {
         self.connection_packet_loss
     }
 
+    pub fn bytes_sent(&self) -> u32 {
+        self.bytes_sent
+    }
+
+    pub fn bytes_received(&self) -> u32 {
+        self.bytes_received
+    }
 
     // Methods ----------------------------------------------------------------
     pub fn receive(&mut self) {
@@ -99,9 +111,11 @@ impl Network {
                         self.connection_time = time;
                         self.connected = false;
                     },
-                    EventType::Tick(rtt, packet_loss) => {
+                    EventType::Tick(rtt, packet_loss, stats) => {
                         self.connection_rtt = rtt;
                         self.connection_packet_loss = packet_loss;
+                        self.bytes_sent = stats.bytes_sent;
+                        self.bytes_received = stats.bytes_received;
                     },
                     _ => ()
                 }
@@ -131,7 +145,7 @@ impl Network {
 pub enum EventType {
     Connect,
     Close,
-    Tick(u32, f32),
+    Tick(u32, f32, Stats),
     Message(ConnectionID, Vec<u8>),
     Connection(ConnectionID),
     ConnectionFailed(ConnectionID),
@@ -181,7 +195,7 @@ impl Handler<Client> for EventHandler {
 
     fn tick_connection(
         &mut self,
-        _: &mut Client,
+        client: &mut Client,
         conn: &mut Connection
     ) {
 
@@ -193,7 +207,9 @@ impl Handler<Client> for EventHandler {
         }
 
         // Create a tick event
-        self.events.push_back(EventType::Tick(conn.rtt(), conn.packet_loss()));
+        self.events.push_back(
+            EventType::Tick(conn.rtt(), conn.packet_loss(), client.stats())
+        );
 
         // TODO we somehow need to be able to send a outgoing packet without delay
 

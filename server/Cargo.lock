@@ -3,7 +3,7 @@ name = "shooter-server"
 version = "0.1.0"
 dependencies = [
  "clap 1.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "cobalt 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cobalt 0.5.3",
  "shared 0.1.0",
 ]
 
@@ -110,8 +110,7 @@ dependencies = [
 
 [[package]]
 name = "cobalt"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+version = "0.5.3"
 dependencies = [
  "clock_ticks 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -166,7 +165,7 @@ dependencies = [
  "allegro 0.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "allegro_primitives 0.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "bincode 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "cobalt 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cobalt 0.5.3",
  "num 0.1.30 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",

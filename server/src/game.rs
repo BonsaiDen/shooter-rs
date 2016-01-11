@@ -89,12 +89,30 @@ impl Handler<Server> for Game {
         connections: &mut HashMap<ConnectionID, Connection>
     ) {
 
-        // Tick entities
         let tick_dt = 1.0 / self.tick_rate as f32;
+
+        // Send entity states to all clients
+        for (_, conn) in connections.iter_mut() {
+
+            // Calculate all entity states for the connection
+            let mut states = [1, self.tick as u8].to_vec();
+            for entity in self.entities.iter() {
+                states.extend(entity.serialize_state(&conn.id()));
+            }
+
+            // TODO send old states for extra delay / interpolation?
+
+            // We don't care about dropped packets
+            conn.send(MessageKind::Instant, states);
+
+        }
+
+        // Tick entities
         for entity in self.entities.iter_mut() {
 
             // Receive inputs for entities which are controlled by clients
             if let Some(conn) = connections.get_mut(entity.owner()) {
+
                 for m in conn.received() {
                     entity.input(
                         entity::Input::from_serialized(&m[..]),
@@ -105,6 +123,7 @@ impl Handler<Server> for Game {
             // For dis-connected entities apply zero inputs
             // TODO does this work with non-player entities?
             } else {
+                println!("No input!");
                 entity.input(
                     entity::Input::default(),
                     self.tick_rate as usize
@@ -117,20 +136,6 @@ impl Handler<Server> for Game {
             // TODO store last N states of all entities
             // TODO perform collision detection based against
             // last confirmed client tick (aka last_input_tick)
-
-        }
-
-        // Send entity states to all clients
-        for (_, conn) in connections.iter_mut() {
-
-            // Calculate all entity states for the connection
-            let mut states = [1, self.tick as u8].to_vec();
-            for entity in self.entities.iter() {
-                states.extend(entity.serialize_state(&conn.id()));
-            }
-
-            // We don't care about dropped packets
-            conn.send(MessageKind::Instant, states);
 
         }
 

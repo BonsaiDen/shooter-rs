@@ -1,6 +1,6 @@
 // Internal Dependencies ------------------------------------------------------
 use entity;
-use std::f64;
+use std::f32;
 
 
 // Arena Abstractions ---------------------------------------------------------
@@ -74,7 +74,7 @@ impl Arena {
 
         let mr = current.r - last.r;
         entity::State {
-            r: (last.r + mr.sin().atan2(mr.cos()) * u) % (f64::consts::PI * 2.0) as f32,
+            r: (last.r + mr.sin().atan2(mr.cos()) * u) % (f32::consts::PI * 2.0),
             x: x - self.border as f32,
             y: y - self.border as f32,
             mx: last.mx,

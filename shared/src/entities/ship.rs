@@ -1,3 +1,7 @@
+// External Dependencies ------------------------------------------------------
+use std::f32;
+
+
 // Internal Dependencies ------------------------------------------------------
 use entity;
 use entity::traits::Eventful;
@@ -71,7 +75,7 @@ impl Ship {
         // Apply unconfirmed inputs on top of last state confirmed by the server
         let mut state = self.base_state;
         for input in self.input_states.iter() {
-            entity::apply_input_to_state(
+            apply_input_to_state(
                 &input, &mut state, dt,
                 self.rotation, self.acceleration, self.max_speed
             );
@@ -180,4 +184,52 @@ impl entity::traits::Stateful for Ship {
 struct ZeroDrawable;
 impl entity::traits::Drawable for ZeroDrawable {}
 impl entity::traits::Eventful for ZeroDrawable {}
+
+
+// Input / Movement Logic -----------------------------------------------------
+fn apply_input_to_state(
+    input: &entity::Input, state: &mut entity::State, dt: f32,
+    rotation: f32,
+    acceleration: f32,
+    max_speed: f32
+) {
+
+    let mut steer = 0.0;
+    if input.left {
+        steer -= 1.0;
+    }
+
+    if input.right {
+        steer += 1.0;
+    }
+
+    state.r += f32::consts::PI / 180.0 * rotation * dt * steer;
+
+    if input.thrust {
+        // Constant time acceleration
+        let m = 60.0 / (1.0 / dt);
+        state.mx += state.r.cos() * acceleration * dt * m;
+        state.my += state.r.sin() * acceleration * dt * m;
+        state.flags |= 0x02;
+
+    } else {
+        state.flags &= !0x02;
+    }
+
+    // Limit diagonal speed
+    let mr = state.my.atan2(state.mx);
+    let mut s = ((state.mx * state.mx) + (state.my * state.my)).sqrt();
+
+    // Allow for easier full stop
+    if s < 0.15 {
+        s *= 0.95;
+    }
+
+    // Limit max speed
+    state.mx = mr.cos() * s.min(max_speed * dt);
+    state.my = mr.sin() * s.min(max_speed * dt);
+    state.x += state.mx;
+    state.y += state.my;
+
+}
 
