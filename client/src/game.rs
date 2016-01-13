@@ -90,44 +90,28 @@ impl Game {
                     fire: false
                 };
 
-                entity.input(input, 30); // TODO set tick rate externally
+                let pending_input = entity.local_input(input, 30); // TODO set tick rate externally
+
+                entity.tick_client(&self.arena, dt);
 
                 // Emulate remote server state stuff with a 20 frames delay
                 match self.state {
-                    GameState::Disconnected => {
-                        if self.remote_states.len() > 20 {
-                            let first = self.remote_states.remove(0);
-                            entity.tick_remote(&self.arena, dt, first.0, first.1);
 
-                        } else {
-                            entity.tick_local(&self.arena, dt, true);
-                        }
+                    GameState::Disconnected => {
 
                         self.remote_states.push((tick, entity.get_state()));
 
-                    },
-
-                    GameState::Connected => {
-
-                        // If we have remote states:
-                        // - dropped all inputs confirmed by the remote states
-                        // - set the new default local base state
-                        // - emulate all pending inputs
-                        if self.remote_states.len() > 0 {
-                            while self.remote_states.len() > 0 {
-                                let first = self.remote_states.remove(0);
-                                entity.tick_remote(&self.arena, dt, first.0, first.1);
-                            }
-
-                        // Otherwise do not confirm any states and:
-                        // - emulate all pending inputs
-                        } else {
-                            entity.tick_local(&self.arena, dt, true);
+                        if self.remote_states.len() > 20 {
+                            let first = self.remote_states.remove(0);
+                            entity.set_remote_state(first.0, first.1);
                         }
 
-                        // Send all unconfirmed inputs to server
-                        network.send_message(MessageKind::Instant, entity.serialize_inputs());
+                    },
 
+                    // Send all unconfirmed inputs to server
+                    GameState::Connected => {
+                        // TODO create a fake local network proxy!
+                        network.send_message(MessageKind::Instant, pending_input);
                     },
 
                     _ => {}
@@ -135,7 +119,7 @@ impl Game {
 
 
             } else {
-                entity.tick_local(&self.arena, dt, true);
+                entity.tick_client(&self.arena, dt);
             }
 
         }
@@ -241,12 +225,11 @@ impl Game {
     }
 
     fn config(&mut self, renderer: &mut Renderer, data: &[u8]) {
-        println!("Received Config"); // TODO update tick rate from config?
         self.init(renderer, Arena::from_serialized(&data[0..5]), true);
         self.state = GameState::Connected;
     }
 
-    fn state(&mut self, data: &[u8], _: u8, remote_tick: u8, dt: f32) {
+    fn state(&mut self, data: &[u8], tick: u8, remote_tick: u8, dt: f32) {
 
         // Mark all entities as dead
         for (_, entity) in self.entities.iter_mut() {
@@ -281,13 +264,13 @@ impl Game {
                 // Mark entity as alive
                 entity.set_alive(true);
 
-                // Update Entity State
+                // Set Remote state
                 if entity.local() {
-                    //entity.tick_remote(&self.arena, dt, remote_tick, state);
-                    self.remote_states.push((remote_tick, state));
+                    entity.set_remote_state(remote_tick, state);
 
+                // Or overwrite local state (but keep last_state intact for interpolation)
                 } else {
-                    entity.set_state(state);
+                    entity.set_local_state(state);
                 }
 
             }

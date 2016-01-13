@@ -10,7 +10,7 @@ use renderer::Renderer;
 
 
 // Basic Entity Traits --------------------------------------------------------
-pub trait Base : Ticked + Stateful + Owned + Controlled + Eventful {
+pub trait Base : Stateful + Owned + Controlled + Eventful {
 
     fn typ(&self) -> u8;
 
@@ -30,25 +30,17 @@ pub trait Drawable : Eventful {
 
 
 // Behavior Implementation Traits ---------------------------------------------
-pub trait Ticked {
-
-    fn tick_local(&mut self, arena: &Arena, dt: f32, temporary: bool);
-
-    fn tick_remote(
-        &mut self,
-        arena: &Arena,
-        dt: f32, remote_tick: u8, state: entity::State
-    );
-
-}
-
 pub trait Stateful {
+
+    fn tick(&mut self, arena: &Arena, dt: f32, server: bool);
 
     fn get_state(&self) -> entity::State;
 
-    fn set_state(&mut self, state: entity::State);
+    fn set_state(&mut self, state: entity::State, override_last: bool);
 
     fn interpolate_state(&self, arena: &Arena, u: f32) -> entity::State;
+
+    fn set_remote_state(&mut self, tick: u8, state: entity::State);
 
 }
 

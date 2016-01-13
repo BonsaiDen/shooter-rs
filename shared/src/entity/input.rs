@@ -20,7 +20,10 @@ impl EntityInput {
     }
 
     pub fn from_serialized(data: &[u8]) -> EntityInput {
-        decode::<EntityInput>(data).unwrap()
+        match decode::<EntityInput>(data) {
+            Ok(input) => input,
+            Err(e) => EntityInput::default()
+        }
     }
 
     pub fn serialize(&self) -> Vec<u8> {

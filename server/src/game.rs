@@ -91,6 +91,32 @@ impl Handler<Server> for Game {
 
         let tick_dt = 1.0 / self.tick_rate as f32;
 
+        // Tick entities
+        for entity in self.entities.iter_mut() {
+
+            // Receive inputs for entities which are controlled by clients
+            if let Some(conn) = connections.get_mut(entity.owner()) {
+
+                // TODO how to handle accelerated inputs when no remote
+                // input is received
+                for m in conn.received() {
+                    entity.remote_input(
+                        entity::Input::from_serialized(&m[..]),
+                        self.tick_rate as usize
+                    );
+                }
+
+            }
+
+            // Permanently advance entity state
+            entity.tick_server(&self.arena, tick_dt);
+
+            // TODO store last N states of all entities
+            // TODO perform collision detection based against
+            // last confirmed client tick (aka last_input_tick)
+
+        }
+
         // Send entity states to all clients
         for (_, conn) in connections.iter_mut() {
 
@@ -104,38 +130,6 @@ impl Handler<Server> for Game {
 
             // We don't care about dropped packets
             conn.send(MessageKind::Instant, states);
-
-        }
-
-        // Tick entities
-        for entity in self.entities.iter_mut() {
-
-            // Receive inputs for entities which are controlled by clients
-            if let Some(conn) = connections.get_mut(entity.owner()) {
-
-                for m in conn.received() {
-                    entity.input(
-                        entity::Input::from_serialized(&m[..]),
-                        self.tick_rate as usize
-                    );
-                }
-
-            // For dis-connected entities apply zero inputs
-            // TODO does this work with non-player entities?
-            } else {
-                println!("No input!");
-                entity.input(
-                    entity::Input::default(),
-                    self.tick_rate as usize
-                );
-            }
-
-            // Permanently advance entity state
-            entity.tick_local(&self.arena, tick_dt, false);
-
-            // TODO store last N states of all entities
-            // TODO perform collision detection based against
-            // last confirmed client tick (aka last_input_tick)
 
         }
 

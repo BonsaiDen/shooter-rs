@@ -60,7 +60,7 @@ allegro_main! {
     core.install_mouse().unwrap();
 
     // Tick / Rendering Logic
-    let ticks_per_second = 20;
+    let ticks_per_second = 30;
     let tick_dt = 1.0 / ticks_per_second as f32;
     let mut last_tick_time = 0.0;
 
@@ -92,6 +92,7 @@ allegro_main! {
     let mut network = net::Network::new(ticks_per_second, server_addr);
     timer.start();
 
+
     // Main Loop
     'exit: loop {
 
@@ -115,6 +116,7 @@ allegro_main! {
                                     &mut renderer, data[0], &data[1..],
                                     tick as u8,
                                     tick_dt as f32
+
                                 ) as u16;
                             }
                         },

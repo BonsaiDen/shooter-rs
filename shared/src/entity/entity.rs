@@ -59,7 +59,15 @@ impl Entity {
 
     pub fn set_state(&mut self, state: entity::State) {
         self.drawable.flagged(state.flags);
-        self.entity.set_state(state);
+        self.entity.set_state(state, true);
+    }
+
+    pub fn set_local_state(&mut self, state: entity::State) {
+        self.entity.set_state(state, false);
+    }
+
+    pub fn set_remote_state(&mut self, tick: u8, state: entity::State) {
+        self.entity.set_remote_state(tick, state);
     }
 
     pub fn local(&self) -> bool {
@@ -80,18 +88,28 @@ impl Entity {
 
 
     // Logic ------------------------------------------------------------------
-    pub fn input(&mut self, input: entity::Input, max_inputs: usize) {
+    pub fn local_input(&mut self, input: entity::Input, max_inputs: usize) -> Vec<u8> {
+
+        self.entity.input(input, max_inputs);
+
+        let mut inputs = Vec::new();
+        for input in self.entity.pending_inputs().iter() {
+            inputs.extend(input.serialize());
+        }
+        inputs
+
+    }
+
+    pub fn remote_input(&mut self, input: entity::Input, max_inputs: usize) {
         self.entity.input(input, max_inputs);
     }
 
-    pub fn tick_local(&mut self, arena: &Arena, dt: f32, temporary: bool) {
-        self.entity.tick_local(arena, dt, temporary);
+    pub fn tick_client(&mut self, arena: &Arena, dt: f32) {
+        self.entity.tick(arena, dt, false);
     }
 
-    pub fn tick_remote(
-        &mut self, arena: &Arena, dt: f32, remote_tick: u8, state: entity::State
-    ) {
-        self.entity.tick_remote(arena, dt, remote_tick, state);
+    pub fn tick_server(&mut self, arena: &Arena, dt: f32) {
+        self.entity.tick(arena, dt, true);
     }
 
 
@@ -107,14 +125,6 @@ impl Entity {
 
 
     // Serialization ----------------------------------------------------------
-    pub fn serialize_inputs(&self) -> Vec<u8> {
-        let mut data = Vec::new();
-        for input in self.entity.pending_inputs().iter() {
-            data.extend(input.serialize());
-        }
-        data
-    }
-
     pub fn serialize_state(&self, owner: &ConnectionID) -> Vec<u8> {
 
         let mut data = [

@@ -13,6 +13,7 @@ pub struct Ship {
     state: entity::State,
     base_state: entity::State,
     last_state: entity::State,
+    remote_state: Option<(u8, entity::State)>,
     max_speed: f32,
     acceleration: f32,
     rotation: f32,
@@ -42,51 +43,13 @@ impl Ship {
             state: state,
             base_state: state,
             last_state: state,
+            remote_state: None,
             max_speed: 90.0 * scale,
             acceleration: 2.0 * scale,
             rotation: 120.0,
             input_states: Vec::new(),
             last_input_tick: 0
         }
-    }
-
-    pub fn apply_remote_state(
-        &mut self, remote_tick: u8, state: entity::State
-    ) {
-
-        self.last_state = self.state;
-        self.base_state = state;
-        self.state = state;
-
-        // Drop all confirmed inputs
-        self.input_states.retain(|input| {
-            entity::tick_is_more_recent(input.tick, remote_tick)
-        });
-
-    }
-
-    pub fn apply_local_state(&mut self) {
-        self.last_state = self.state;
-        self.state = self.base_state;
-    }
-
-    pub fn apply_inputs(&mut self, arena: &Arena, dt: f32) {
-
-        // Apply unconfirmed inputs on top of last state confirmed by the server
-        let mut state = self.base_state;
-        for input in self.input_states.iter() {
-            apply_input_to_state(
-                &input, &mut state, dt,
-                self.rotation, self.acceleration, self.max_speed
-            );
-        }
-
-        // Set new local state from replayed inputs
-        self.state = state;
-
-        // Handle state wrapping
-        arena.wrap_state(&mut self.state);
-
     }
 
 }
@@ -103,32 +66,6 @@ impl entity::traits::Base for Ship {
 
 impl entity::traits::Owned for Ship {}
 impl entity::traits::Eventful for Ship {}
-
-impl entity::traits::Ticked for Ship {
-
-    fn tick_local(&mut self, arena: &Arena, dt: f32, temporary: bool) {
-
-        self.apply_local_state();
-        self.apply_inputs(arena, dt);
-
-        // Set the tick state as the new base state and clear pending inputs
-        if temporary == false {
-            self.base_state = self.state;
-            self.input_states.clear();
-        }
-
-    }
-
-    fn tick_remote(
-        &mut self,
-        arena: &Arena,
-        dt: f32, remote_tick: u8, state: entity::State
-    ) {
-        self.apply_remote_state(remote_tick, state);
-        self.apply_inputs(arena, dt);
-    }
-
-}
 
 impl entity::traits::Controlled for Ship {
 
@@ -162,19 +99,75 @@ impl entity::traits::Controlled for Ship {
 
 impl entity::traits::Stateful for Ship {
 
+    fn tick(&mut self, arena: &Arena, dt: f32, server: bool) {
+
+        // Check if we have a remote state
+        if let Some((remote_tick, remote_state)) = self.remote_state.take() {
+
+            // Set the current state as the last state
+            self.last_state = self.state;
+
+            // Take over the remote state as the new base
+            self.base_state = remote_state;
+            self.state = remote_state;
+
+            // Drop all inputs confirmed by the remote so the remaining ones
+            // get applied on top of the new base state
+            self.input_states.retain(|input| {
+                entity::tick_is_more_recent(input.tick, remote_tick)
+            });
+
+        // Otherwise reset the local state and re-apply the inputs on top of it
+        } else {
+            self.last_state = self.state;
+            self.state = self.base_state;
+        }
+
+        // Apply unconfirmed inputs on top of last state confirmed by the server
+        let mut state = self.base_state;
+        for input in self.input_states.iter() {
+            apply_input_to_state(
+                &input, &mut state, dt,
+                self.rotation, self.acceleration, self.max_speed
+            );
+        }
+
+        // Set new local state from replayed inputs
+        self.state = state;
+
+        // Handle state wrapping
+        arena.wrap_state(&mut self.state);
+
+        // Use the newly calculated state as the base
+        if server {
+            self.base_state = self.state;
+            self.input_states.clear();
+        }
+
+    }
+
     fn get_state(&self) -> entity::State  {
         self.state
     }
 
-    fn set_state(&mut self, state: entity::State) {
+    fn set_state(&mut self, state: entity::State, override_last: bool) {
+        self.last_state = if override_last {
+            state
+
+        } else {
+            self.state
+        };
+        self.base_state = state;
         self.state = state;
         self.flagged(state.flags);
-        self.last_state = state;
-        self.base_state = state;
     }
 
     fn interpolate_state(&self, arena: &Arena, u: f32) -> entity::State {
         arena.interpolate_state(&self.state, &self.last_state, u)
+    }
+
+    fn set_remote_state(&mut self, tick: u8, state: entity::State) {
+        self.remote_state = Some((tick, state));
     }
 
 }
