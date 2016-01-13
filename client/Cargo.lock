@@ -190,8 +190,6 @@ dependencies = [
 name = "shared"
 version = "0.1.0"
 dependencies = [
- "allegro 0.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
- "allegro_primitives 0.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "bincode 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cobalt 0.5.3",
  "num 0.1.30 (registry+https://github.com/rust-lang/crates.io-index)",

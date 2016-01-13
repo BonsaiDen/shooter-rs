@@ -1,6 +1,4 @@
 // External Dependencies ------------------------------------------------------
-use allegro;
-use allegro_primitives::PrimitivesAddon;
 use rand::XorShiftRng;
 use cobalt::ConnectionID;
 
@@ -8,7 +6,7 @@ use cobalt::ConnectionID;
 // Internal Dependencies ------------------------------------------------------
 use entity;
 use arena::Arena;
-use particle::ParticleSystem;
+use renderer::Renderer;
 
 
 // Basic Entity Traits --------------------------------------------------------
@@ -22,8 +20,8 @@ pub trait Drawable : Eventful {
 
     fn draw(
         &mut self,
-        _: &allegro::Core, _: &PrimitivesAddon,
-        _: &mut XorShiftRng, _: &mut ParticleSystem,
+        _: &mut Renderer,
+        _: &mut XorShiftRng,
         _: &Arena, _: &Base, _: f32, _: f32
     ) {
     }

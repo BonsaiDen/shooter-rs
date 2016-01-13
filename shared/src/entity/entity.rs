@@ -1,6 +1,4 @@
 // External Dependencies ------------------------------------------------------
-use allegro;
-use allegro_primitives::PrimitivesAddon;
 use rand::XorShiftRng;
 use cobalt::ConnectionID;
 
@@ -8,7 +6,7 @@ use cobalt::ConnectionID;
 // Internal Dependencies ------------------------------------------------------
 use entity;
 use arena::Arena;
-use particle::ParticleSystem;
+use renderer::Renderer;
 use entity::traits::{Base, Drawable};
 
 
@@ -100,17 +98,11 @@ impl Entity {
     // Drawing ----------------------------------------------------------------
     pub fn draw(
         &mut self,
-        core: &allegro::Core, prim: &PrimitivesAddon,
-        rng: &mut XorShiftRng, particle_system: &mut ParticleSystem,
+        renderer: &mut Renderer,
+        rng: &mut XorShiftRng,
         arena: &Arena, dt: f32, u: f32
     ) {
-        self.drawable.draw(
-            core, prim, rng,
-            particle_system,
-            arena,
-            &*self.entity,
-            dt, u
-        );
+        self.drawable.draw(renderer, rng, arena, &*self.entity, dt, u);
     }
 
 
@@ -133,6 +125,7 @@ impl Entity {
         ].to_vec();
 
         // Set local flag if we're serializing for the owner
+        // TODO clean up?
         let mut state = self.entity.get_state();
         if &self.owner == owner {
             state.flags |= 0x01;

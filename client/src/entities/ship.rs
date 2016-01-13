@@ -1,22 +1,20 @@
 // External Dependencies ------------------------------------------------------
 use std::{cmp, f32};
 use rand::{Rng, XorShiftRng};
-use allegro;
-use allegro_primitives::PrimitivesAddon;
 
 
 // Internal Dependencies ------------------------------------------------------
+use shared::entity;
 use shared::entities;
 use shared::arena::Arena;
-use shared::entity;
-use shared::color::{Color, RgbColor};
-use shared::particle::ParticleSystem;
+use shared::color::{Color, ColorName};
+use shared::renderer::Renderer;
 
 
 // Ship Drawable Implementation Dependencies ----------------------------------
 pub struct Ship {
-    color_light: RgbColor,
-    color_mid: RgbColor,
+    color_light: Color,
+    color_mid: Color,
     scale: f32,
     particle_count: u32,
     last_draw_state: entity::State
@@ -33,8 +31,8 @@ impl Ship {
 
     pub fn new(scale: f32) -> Ship {
         Ship {
-            color_light: Color::Grey.to_rgb(),
-            color_mid: Color::Grey.to_rgb().darken(0.5),
+            color_light: Color::from_name(ColorName::Grey),
+            color_mid: Color::from_name(ColorName::Grey).darken(0.5),
             scale: scale,
             particle_count: 5,
             last_draw_state: entity::State::default()
@@ -42,8 +40,8 @@ impl Ship {
     }
 
     fn draw_triangle(
-        &self, prim: &PrimitivesAddon,
-        state: &entity::State, color: RgbColor,
+        &self, renderer: &mut Renderer,
+        state: &entity::State, color: &Color,
         base_scale: f32, body_scale: f32, dr: f32, da: f32, db: f32
     ) {
         let beta = f32::consts::PI / dr;
@@ -55,7 +53,7 @@ impl Ship {
         let by = oy + state.y + (state.r + beta).sin() * db * body_scale;
         let cx = ox + state.x + (state.r - beta).cos() * db * body_scale;
         let cy = oy + state.y + (state.r - beta).sin() * db * body_scale;
-        prim.draw_triangle(ax, ay, bx, by, cx, cy, color.to_rgb(), 0.5 * body_scale);
+        renderer.triangle(color, ax, ay, bx, by, cx, cy, 0.5 * body_scale);
     }
 
 }
@@ -63,7 +61,7 @@ impl Ship {
 impl entity::traits::Eventful for Ship {
 
     fn flagged(&mut self, flags: u8) {
-        self.color_light = Color::from_flags(flags).to_rgb();
+        self.color_light = Color::from_flags(flags);
         self.color_mid = self.color_light.darken(0.5);
     }
 
@@ -73,13 +71,15 @@ impl entity::traits::Drawable for Ship {
 
     fn draw(
         &mut self,
-        _: &allegro::Core, prim: &PrimitivesAddon,
-        rng: &mut XorShiftRng, particle_system: &mut ParticleSystem,
-        arena: &Arena, entity: &entity::traits::Base, _: f32, u: f32
+        renderer: &mut Renderer,
+        rng: &mut XorShiftRng,
+        arena: &Arena,
+        entity: &entity::traits::Base,
+        _: f32, u: f32
     ) {
 
-        let light = self.color_light;
-        let mid = self.color_mid;
+        let light = &self.color_light;
+        let mid = &self.color_mid;
         let scale = self.scale;
 
         let state = entity.interpolate_state(arena, u);
@@ -89,15 +89,15 @@ impl entity::traits::Drawable for Ship {
 
         // Rendering
         self.draw_triangle(
-            prim, &state,
+            renderer, &state,
             mid, scale, scale, 1.15, -9.0, 6.0
         );
         self.draw_triangle(
-            prim, &state,
+            renderer, &state,
             light, scale, scale, (2 as f32).sqrt(), 12.0, 9.0
         );
         self.draw_triangle(
-            prim, &state,
+            renderer, &state,
             mid, scale, scale * 0.66, (2 as f32).sqrt(), 12.0, 9.0
         );
 
@@ -109,7 +109,7 @@ impl entity::traits::Drawable for Ship {
                 // Exhause more particles initially
                 for _ in 0..self.particle_count {
 
-                    if let Some(p) = particle_system.get() {
+                    if let Some(p) = renderer.particle() {
 
                         // Exhaust angle
                         let w = 0.95;
@@ -129,7 +129,7 @@ impl entity::traits::Drawable for Ship {
                         let ar = ((rng.gen::<u8>() as f32) / 255.0 - 0.5) * (f32::consts::PI * 0.65);
 
                         // Spawn exhaust particles
-                        p.color = self.color_light;
+                        p.color.set_from_color(&self.color_light);
                         p.x = state.x + mr.cos() * 9.0 * self.scale + 0.5;
                         p.y = state.y + mr.sin() * 9.0 * self.scale + 0.5;
                         p.s = 2.5 * self.scale;

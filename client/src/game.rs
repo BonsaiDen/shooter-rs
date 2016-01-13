@@ -1,17 +1,13 @@
 use rand::{SeedableRng, XorShiftRng};
 use std::collections::HashMap;
 
-use allegro::{Core, Color as AllegroColor, Display};
-use allegro_primitives::PrimitivesAddon;
-use allegro_font::{Font, FontAlign, FontDrawing};
-
 use net::{Network, MessageKind};
 
 use entities;
 use shared::entity;
-use shared::color::Color;
+use shared::color::{Color, ColorName};
 use shared::arena::Arena;
-use shared::particle::ParticleSystem;
+use shared::renderer::Renderer;
 
 enum GameState {
     Disconnected,
@@ -20,32 +16,30 @@ enum GameState {
 }
 
 pub struct Game {
-    back_color: AllegroColor,
-    text_color: AllegroColor,
+    back_color: Color,
+    text_color: Color,
     rng: XorShiftRng,
     entities: HashMap<u16, entity::Entity>,
     remote_states: Vec<(u8, entity::State)>,
     arena: Arena,
-    particle_system: ParticleSystem,
     state: GameState
 }
 
 impl Game {
 
-    pub fn new(_: &Core) -> Game {
+    pub fn new() -> Game {
         Game {
-            back_color: AllegroColor::from_rgb(0, 0, 0),
-            text_color: AllegroColor::from_rgb(255, 255, 255),
+            back_color: Color::from_name(ColorName::Black),
+            text_color: Color::from_name(ColorName::White),
             rng: XorShiftRng::new_unseeded(),
             entities: HashMap::new(),
             remote_states: Vec::new(),
             arena: Arena::new(768, 768, 16),
-            state: GameState::Disconnected,
-            particle_system: ParticleSystem::new(1000),
+            state: GameState::Disconnected
         }
     }
 
-    pub fn init(&mut self, _: &Core, disp: &mut Display, arena: Arena, remote: bool) {
+    pub fn init(&mut self, renderer: &mut Renderer, arena: Arena, remote: bool) {
 
         // Local Test Play
         if remote == false {
@@ -53,7 +47,7 @@ impl Game {
             let mut player_ship = entity_from_kind(0);
 
             let (x, y) = arena.center();
-            let flags = 0b0000_0001 | Color::Red.to_flags();
+            let flags = 0b0000_0001 | Color::from_name(ColorName::Red).to_flags();
             player_ship.set_state(entity::State {
                 x: x as f32,
                 y: y as f32,
@@ -67,15 +61,14 @@ impl Game {
 
         self.arena = arena;
 
-        // TODO handle errors or ignore?
-        disp.resize(self.arena.width() as i32, self.arena.height() as i32).ok();
+        renderer.resize(self.arena.width() as i32, self.arena.height() as i32);
 
     }
 
 
     // Networking -------------------------------------------------------------
 
-    pub fn connect(&mut self, _: &Core) {
+    pub fn connect(&mut self) {
         self.state = GameState::Pending;
         self.reset();
     }
@@ -144,7 +137,7 @@ impl Game {
 
     pub fn message(
         &mut self,
-        core: &Core, disp: &mut Display, kind: u8, data: &[u8],
+        renderer: &mut Renderer, kind: u8, data: &[u8],
         tick: u8,
         dt: f32
 
@@ -155,7 +148,7 @@ impl Game {
                 // Game Configuration
                 if kind == 0 {
                     // TODO validate message length
-                    self.config(core, disp, data);
+                    self.config(renderer, data);
                 }
 
                 tick
@@ -177,31 +170,30 @@ impl Game {
         }
     }
 
-    pub fn disconnect(&mut self, core: &Core, disp: &mut Display, arena: Arena) {
+    pub fn disconnect(&mut self, renderer: &mut Renderer, arena: Arena) {
         self.state = GameState::Disconnected;
         self.reset();
-        self.init(core, disp, arena, false);
+        self.init(renderer, arena, false);
     }
 
 
     // Rendering --------------------------------------------------------------
     pub fn draw(
-        &mut self, core: &Core, prim: &PrimitivesAddon, font: &Font,
+        &mut self,
+        renderer: &mut Renderer,
         network: &mut Network,
         dt: f32, u: f32
     ) {
 
-        core.clear_to_color(self.back_color);
+        renderer.clear(&self.back_color);
 
         // Draw all entities
         for (_, entity) in self.entities.iter_mut() {
             entity.draw(
-                &core, &prim, &mut self.rng, &mut self.particle_system,
+                renderer, &mut self.rng,
                 &self.arena, dt, u
             );
         }
-
-        self.particle_system.draw(&prim, dt);
 
         // UI
         if let Ok(addr) = network.server_addr() {
@@ -216,8 +208,10 @@ impl Game {
                 ),
                 false => format!("Connecting to {}...", addr)
             };
-            core.draw_text(font, self.text_color, 0.0, 0.0, FontAlign::Left, &network_state[..]);
+            renderer.text(&self.text_color, 0.0, 0.0, &network_state[..]);
         }
+
+        renderer.draw(dt, u);
 
     }
 
@@ -232,9 +226,9 @@ impl Game {
         self.entities.clear();
     }
 
-    fn config(&mut self, core: &Core, disp: &mut Display, data: &[u8]) {
+    fn config(&mut self, renderer: &mut Renderer, data: &[u8]) {
         println!("Received Config"); // TODO update tick rate from config?
-        self.init(core, disp, Arena::from_serialized(&data[0..5]), true);
+        self.init(renderer, Arena::from_serialized(&data[0..5]), true);
         self.state = GameState::Connected;
     }
 

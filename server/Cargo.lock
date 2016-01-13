@@ -17,53 +17,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "allegro"
-version = "0.0.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "allegro-sys 0.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
- "allegro_util 0.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "allegro-sys"
-version = "0.0.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "allegro_util 0.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "allegro_primitives"
-version = "0.0.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "allegro 0.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
- "allegro_primitives-sys 0.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "allegro_primitives-sys"
-version = "0.0.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "allegro-sys 0.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
- "allegro_util 0.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "allegro_util"
-version = "0.0.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "libc 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "ansi_term"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -162,8 +115,6 @@ dependencies = [
 name = "shared"
 version = "0.1.0"
 dependencies = [
- "allegro 0.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
- "allegro_primitives 0.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "bincode 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cobalt 0.5.3",
  "num 0.1.30 (registry+https://github.com/rust-lang/crates.io-index)",

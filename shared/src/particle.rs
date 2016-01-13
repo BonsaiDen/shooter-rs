@@ -1,15 +1,18 @@
-extern crate allegro;
-extern crate allegro_primitives;
-
+// External Dependencies ------------------------------------------------------
 use std::cmp;
-use self::allegro_primitives::PrimitivesAddon;
-use color::RgbColor;
 
+
+// Internal Dependencies ------------------------------------------------------
+use color::{Color, ColorName};
+use renderer::Renderer;
+
+
+// Particle -------------------------------------------------------------------
 pub struct Particle {
 
     active: bool,
 
-    pub color: RgbColor,
+    pub color: Color,
 
     // Position
     pub x: f32,
@@ -64,26 +67,25 @@ impl Particle {
         }
     }
 
-    fn draw(&mut self, prim: &PrimitivesAddon) {
+    fn draw<F>(&mut self, f: &F) where F: Fn(&Color, f32, f32, f32) {
 
         let lp = 1.0 / self.lifetime * self.remaining;
         let alpha = if lp <= self.fadeout {
-            1.0 / (self.lifetime * self.fadeout) * self.remaining.max(0.0)
+            255.0 / (self.lifetime * self.fadeout) * self.remaining.max(0.0)
 
         } else {
-            1.0
+            255.0
         };
 
-        let hs = self.s / 2.0;
-        prim.draw_filled_rectangle(
-            self.x - hs + 0.5, self.y - hs + 0.5, self.x + hs + 0.5, self.y + hs + 0.5,
-            self.color.to_rgba(alpha)
-        );
+        self.color.a = alpha as u8;
+        f(&self.color, self.s / 2.0, self.x, self.y);
 
     }
 
 }
 
+
+// ParticleSystem -------------------------------------------------------------
 pub struct ParticleSystem {
     first_available_particle: usize,
     max_used_particle: usize,
@@ -98,7 +100,7 @@ impl ParticleSystem {
         for i in 0..max_particles {
             particles.push(Particle {
                 active: false,
-                color: RgbColor::black(),
+                color: Color::from_name(ColorName::Black),
                 x: 0.0,
                 y: 0.0,
                 s: 1.0,
@@ -148,21 +150,20 @@ impl ParticleSystem {
 
     }
 
-    pub fn draw(&mut self, prim: &PrimitivesAddon, dt: f32) {
+    pub fn draw<F>(&mut self, dt: f32, f: F) where F: Fn(&Color, f32, f32, f32) {
 
         let mut max_used_particle = 0;
 
         for i in 0..self.max_used_particle {
             let p = self.particles.get_mut(i).unwrap();
             if p.is_active() {
-
                 if p.step(dt) == false {
                     p.next_available = self.first_available_particle;
                     self.first_available_particle = p.id;
 
                 } else {
                     max_used_particle = cmp::max(p.id + 1, max_used_particle);
-                    p.draw(prim);
+                    p.draw(&f);
                 }
             }
         }

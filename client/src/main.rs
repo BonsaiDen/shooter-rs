@@ -14,14 +14,15 @@ extern crate allegro_primitives;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
 use allegro::*;
-use allegro_font::{FontAddon, Font};
-use allegro_primitives::PrimitivesAddon;
 
 use shared::arena::Arena;
 
 mod entities;
 mod game;
 mod net;
+mod allegro_renderer;
+
+use allegro_renderer::AllegroRenderer;
 
 allegro_main! {
 
@@ -50,8 +51,8 @@ allegro_main! {
     core.set_new_display_option(DisplayOption::Samples, 16, DisplayOptionImportance::Require);
 
     // Create display
-    let (width, height, border) = (640, 640, 16);
-    let mut disp = Display::new(&core, width as i32, height as i32).ok().expect("Failed to create OPENGL context.");
+    let (width, height, border) = (384, 384, 16);
+    let disp = Display::new(&core, width as i32, height as i32).ok().expect("Failed to create OPENGL context.");
     disp.set_window_title("Rustgame: Shooter");
 
     // Input
@@ -59,7 +60,7 @@ allegro_main! {
     core.install_mouse().unwrap();
 
     // Tick / Rendering Logic
-    let ticks_per_second = 60;
+    let ticks_per_second = 30;
     let tick_dt = 1.0 / ticks_per_second as f32;
     let mut last_tick_time = 0.0;
 
@@ -74,9 +75,6 @@ allegro_main! {
 
     // Addons
     let timer = Timer::new(&core, 1.0 / frames_per_second as f64).unwrap();
-    let prim = PrimitivesAddon::init(&core).unwrap();
-    let font_addon = FontAddon::init(&core).unwrap();
-    let font = Font::new_builtin(&font_addon).unwrap();
 
     let q = EventQueue::new(&core).unwrap();
     q.register_event_source(disp.get_event_source());
@@ -84,9 +82,11 @@ allegro_main! {
     q.register_event_source(core.get_mouse_event_source());
     q.register_event_source(timer.get_event_source());
 
+    let mut renderer = AllegroRenderer::new(core, disp);
+
     // Game instance
-    let mut game = game::Game::new(&core);
-    game.init(&core, &mut disp, Arena::new(width, height, border), false);
+    let mut game = game::Game::new();
+    game.init(&mut renderer, Arena::new(width, height, border), false);
 
     // Network
     let mut network = net::Network::new(ticks_per_second, server_addr);
@@ -106,13 +106,13 @@ allegro_main! {
                     match event {
 
                         net::EventType::Connection(_) => {
-                            game.connect(&core);
+                            game.connect();
                         },
 
                         net::EventType::Message(_, data) =>  {
                             if data.len() > 0 {
                                 tick = game.message(
-                                    &core, &mut disp, data[0], &data[1..],
+                                    &mut renderer, data[0], &data[1..],
                                     tick as u8,
                                     tick_dt as f32
                                 ) as u16;
@@ -132,7 +132,7 @@ allegro_main! {
 
                         net::EventType::ConnectionLost(_) => {
                             game.disconnect(
-                                &core, &mut disp,
+                                &mut renderer,
                                 Arena::new(width, height, border)
                             );
                         },
@@ -150,8 +150,7 @@ allegro_main! {
             let u = 1.0 / (tick_dt as f32) * (frame_time - last_tick_time) as f32;
             let dt = frame_time - last_frame_time;
 
-            game.draw(&core, &prim, &font, &mut network, dt as f32, u as f32);
-            core.flip_display();
+            game.draw(&mut renderer, &mut network, dt as f32, u as f32);
 
             last_frame_time = frame_time;
             frames_to_render -= 1;
@@ -162,8 +161,8 @@ allegro_main! {
         // Inputs and Events --------------------------------------------------
         match q.wait_for_event() {
 
-            DisplayClose{source: src, ..} => {
-                assert!(disp.get_event_source().get_event_source() == src);
+            DisplayClose{ ..} => {
+                //assert!(disp.get_event_source().get_event_source() == src);
                 break 'exit;
             },
 
