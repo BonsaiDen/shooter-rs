@@ -60,7 +60,7 @@ allegro_main! {
     core.install_mouse().unwrap();
 
     // Tick / Rendering Logic
-    let ticks_per_second = 30;
+    let ticks_per_second = 20;
     let tick_dt = 1.0 / ticks_per_second as f32;
     let mut last_tick_time = 0.0;
 

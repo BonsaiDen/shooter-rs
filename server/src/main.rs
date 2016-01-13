@@ -35,8 +35,8 @@ fn main() {
     ));
 
     // Server Setup
-    let tick_rate = 30;
-    let mut game = game::Game::new(512, 512, 16, tick_rate);
+    let tick_rate = 20;
+    let mut game = game::Game::new(384, 384, 16, tick_rate);
     let mut server = Server::new(Config {
         send_rate: tick_rate,
         .. Config::default()

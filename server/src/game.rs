@@ -165,10 +165,10 @@ impl Handler<Server> for Game {
 
                 // Release id and color
                 let color = Color::from_flags(entity.get_state().flags);
+                println!("[Client {}] Destroyed entity (color {:?})", conn.peer_addr(), color);
+
                 self.id_pool.release_id(entity.id());
                 self.available_colors.push(color);
-
-                println!("[Client {}] Destroyed entity (color {:?})", conn.peer_addr(), color);
 
             }
         }

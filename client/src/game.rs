@@ -109,7 +109,21 @@ impl Game {
 
                     GameState::Connected => {
 
-                        entity.tick_local(&self.arena, dt, true);
+                        // If we have remote states:
+                        // - dropped all inputs confirmed by the remote states
+                        // - set the new default local base state
+                        // - emulate all pending inputs
+                        if self.remote_states.len() > 0 {
+                            while self.remote_states.len() > 0 {
+                                let first = self.remote_states.remove(0);
+                                entity.tick_remote(&self.arena, dt, first.0, first.1);
+                            }
+
+                        // Otherwise do not confirm any states and:
+                        // - emulate all pending inputs
+                        } else {
+                            entity.tick_local(&self.arena, dt, true);
+                        }
 
                         // Send all unconfirmed inputs to server
                         network.send_message(MessageKind::Instant, entity.serialize_inputs());
@@ -269,7 +283,8 @@ impl Game {
 
                 // Update Entity State
                 if entity.local() {
-                    entity.tick_remote(&self.arena, dt, remote_tick, state);
+                    //entity.tick_remote(&self.arena, dt, remote_tick, state);
+                    self.remote_states.push((remote_tick, state));
 
                 } else {
                     entity.set_state(state);
