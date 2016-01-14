@@ -39,23 +39,6 @@ impl Ship {
         }
     }
 
-    fn draw_triangle(
-        &self, renderer: &mut Renderer,
-        state: &entity::State, color: &Color,
-        base_scale: f32, body_scale: f32, dr: f32, da: f32, db: f32
-    ) {
-        let beta = f32::consts::PI / dr;
-        let ox = state.r.cos() * -2.0 * base_scale + 0.5;
-        let oy = state.r.sin() * -2.0 * base_scale + 0.5;
-        let ax = ox + state.x + state.r.cos() * da * body_scale;
-        let ay = oy + state.y + state.r.sin() * da * body_scale;
-        let bx = ox + state.x + (state.r + beta).cos() * db * body_scale;
-        let by = oy + state.y + (state.r + beta).sin() * db * body_scale;
-        let cx = ox + state.x + (state.r - beta).cos() * db * body_scale;
-        let cy = oy + state.y + (state.r - beta).sin() * db * body_scale;
-        renderer.triangle(color, ax, ay, bx, by, cx, cy, 0.5 * body_scale);
-    }
-
 }
 
 impl entity::traits::Eventful for Ship {
@@ -73,30 +56,27 @@ impl entity::traits::Drawable for Ship {
         &mut self,
         renderer: &mut Renderer,
         rng: &mut XorShiftRng,
-        arena: &Arena,
-        entity: &entity::traits::Base,
-        _: f32, u: f32
+        _: &Arena,
+        state: entity::State,
+        _: f32, _: f32
     ) {
 
         let light = &self.color_light;
         let mid = &self.color_mid;
         let scale = self.scale;
 
-        let state = entity.interpolate_state(arena, u);
-
-        //println!("r: {}, x: {}, y: {} ({})", state.r - self.last_draw_state.r, state.x - self.last_draw_state.x, state.y - self.last_draw_state.y, state.r);
         self.last_draw_state = state;
 
         // Rendering
-        self.draw_triangle(
+        draw_triangle(
             renderer, &state,
             mid, scale, scale, 1.15, -9.0, 6.0
         );
-        self.draw_triangle(
+        draw_triangle(
             renderer, &state,
             light, scale, scale, (2 as f32).sqrt(), 12.0, 9.0
         );
-        self.draw_triangle(
+        draw_triangle(
             renderer, &state,
             mid, scale, scale * 0.66, (2 as f32).sqrt(), 12.0, 9.0
         );
@@ -157,5 +137,24 @@ impl entity::traits::Drawable for Ship {
 
     }
 
+}
+
+
+// Helpers --------------------------------------------------------------------
+fn draw_triangle(
+    renderer: &mut Renderer,
+    state: &entity::State, color: &Color,
+    base_scale: f32, body_scale: f32, dr: f32, da: f32, db: f32
+) {
+    let beta = f32::consts::PI / dr;
+    let ox = state.r.cos() * -2.0 * base_scale + 0.5;
+    let oy = state.r.sin() * -2.0 * base_scale + 0.5;
+    let ax = ox + state.x + state.r.cos() * da * body_scale;
+    let ay = oy + state.y + state.r.sin() * da * body_scale;
+    let bx = ox + state.x + (state.r + beta).cos() * db * body_scale;
+    let by = oy + state.y + (state.r + beta).sin() * db * body_scale;
+    let cx = ox + state.x + (state.r - beta).cos() * db * body_scale;
+    let cy = oy + state.y + (state.r - beta).sin() * db * body_scale;
+    renderer.triangle(color, ax, ay, bx, by, cx, cy, 0.5 * body_scale);
 }
 

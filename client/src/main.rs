@@ -114,8 +114,7 @@ allegro_main! {
                             if data.len() > 0 {
                                 tick = game.message(
                                     &mut renderer, data[0], &data[1..],
-                                    tick as u8,
-                                    tick_dt as f32
+                                    tick as u8
 
                                 ) as u16;
                             }

@@ -22,7 +22,7 @@ impl EntityInput {
     pub fn from_serialized(data: &[u8]) -> EntityInput {
         match decode::<EntityInput>(data) {
             Ok(input) => input,
-            Err(e) => EntityInput::default()
+            Err(_) => EntityInput::default()
         }
     }
 

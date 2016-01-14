@@ -136,8 +136,7 @@ impl Game {
     pub fn message(
         &mut self,
         renderer: &mut Renderer, kind: u8, data: &[u8],
-        tick: u8,
-        dt: f32
+        tick: u8
 
     ) -> u8 {
         match self.state {
@@ -157,7 +156,7 @@ impl Game {
                 if kind == 1 {
                     // TODO validate message length?
                     let remote_tick = data[0];
-                    self.state(&data[1..], tick, remote_tick, dt);
+                    self.state(&data[1..], remote_tick);
                     remote_tick
 
                 } else {
@@ -229,7 +228,7 @@ impl Game {
         self.state = GameState::Connected;
     }
 
-    fn state(&mut self, data: &[u8], tick: u8, remote_tick: u8, dt: f32) {
+    fn state(&mut self, data: &[u8], remote_tick: u8) {
 
         // Mark all entities as dead
         for (_, entity) in self.entities.iter_mut() {

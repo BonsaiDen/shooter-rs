@@ -10,9 +10,18 @@ use renderer::Renderer;
 
 
 // Basic Entity Traits --------------------------------------------------------
-pub trait Base : Stateful + Owned + Controlled + Eventful {
+pub trait Base : Eventful {
 
     fn typ(&self) -> u8;
+
+    fn apply_inputs(
+        &mut self, mut state: entity::State, &Vec<entity::Input> , arena: &Arena, dt: f32
+
+    ) -> entity::State;
+
+    fn visible_to(&self, _: &ConnectionID) -> bool {
+        true
+    }
 
 }
 
@@ -22,43 +31,9 @@ pub trait Drawable : Eventful {
         &mut self,
         _: &mut Renderer,
         _: &mut XorShiftRng,
-        _: &Arena, _: &Base, _: f32, _: f32
+        _: &Arena, _: entity::State, _: f32, _: f32
     ) {
     }
-
-}
-
-
-// Behavior Implementation Traits ---------------------------------------------
-pub trait Stateful {
-
-    fn tick(&mut self, arena: &Arena, dt: f32, server: bool);
-
-    fn get_state(&self) -> entity::State;
-
-    fn set_state(&mut self, state: entity::State, override_last: bool);
-
-    fn interpolate_state(&self, arena: &Arena, u: f32) -> entity::State;
-
-    fn set_remote_state(&mut self, tick: u8, state: entity::State);
-
-}
-
-pub trait Owned {
-
-    fn visible_to(&self, _: &ConnectionID) -> bool {
-        true
-    }
-
-}
-
-pub trait Controlled {
-
-    fn local(&self) -> bool;
-
-    fn pending_inputs(&self) -> &Vec<entity::Input>;
-
-    fn input(&mut self, input: entity::Input, max_inputs: usize);
 
 }
 

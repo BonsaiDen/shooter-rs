@@ -16,18 +16,53 @@ pub struct Entity {
     drawable: Box<Drawable>,
     owner: ConnectionID,
     is_alive: bool,
-    local_id: u16
+    local_id: u16,
+    state: entity::State,
+    base_state: entity::State,
+    last_state: entity::State,
+    remote_state: Option<(u8, entity::State)>,
+    input_states: Vec<entity::Input>,
+    last_input_tick: u8,
 }
 
 impl Entity {
 
     pub fn new(entity: Box<Base>, drawable: Box<Drawable>) -> Entity {
         Entity {
+
+            // Entity Behavior
             entity: entity,
+
+            // Entity Rendering
             drawable: drawable,
-            owner: ConnectionID(0),
+
+            // Owner of the Entity
+            owner: ConnectionID(0), // TODO make this an option?
+
+            // Whether the entity is still alive or should be destroyed
             is_alive: false,
-            local_id: 0
+
+            // Local Entity ID
+            local_id: 0,
+
+            // Current - calculated - entity state
+            state: entity::State::default(),
+
+            // Current base state (before apply pending inputs)
+            base_state: entity::State::default(),
+
+            // Previously caluclated state for interpolation purposes
+            last_state: entity::State::default(),
+
+            // Last confirmed remote state (client only)
+            remote_state: None,
+
+            // Pending inputs (client only)
+            input_states: Vec::new(),
+
+            // Last tick for which input was received (server only)
+            last_input_tick: 0
+
         }
     }
 
@@ -41,6 +76,20 @@ impl Entity {
         self.local_id = id;
     }
 
+    pub fn local(&self) -> bool {
+        self.state.flags & 0x01 == 0x01
+    }
+
+    pub fn alive(&self) -> bool {
+        self.is_alive
+    }
+
+    pub fn set_alive(&mut self, alive: bool) {
+        self.is_alive = alive;
+    }
+
+
+    // Ownership --------------------------------------------------------------
     pub fn owner(&self) -> &ConnectionID {
         &self.owner
     }
@@ -53,47 +102,54 @@ impl Entity {
         self.owner == *owner
     }
 
-    pub fn get_state(&self) -> entity::State {
-        self.entity.get_state()
-    }
-
-    pub fn set_state(&mut self, state: entity::State) {
-        self.drawable.flagged(state.flags);
-        self.entity.set_state(state, true);
-    }
-
-    pub fn set_local_state(&mut self, state: entity::State) {
-        self.entity.set_state(state, false);
-    }
-
-    pub fn set_remote_state(&mut self, tick: u8, state: entity::State) {
-        self.entity.set_remote_state(tick, state);
-    }
-
-    pub fn local(&self) -> bool {
-        self.entity.local()
-    }
-
-    pub fn alive(&self) -> bool {
-        self.is_alive
-    }
-
-    pub fn set_alive(&mut self, alive: bool) {
-        self.is_alive = alive;
-    }
 
     pub fn visible_to(&self, owner: &ConnectionID) -> bool {
         self.entity.visible_to(owner)
     }
 
 
-    // Logic ------------------------------------------------------------------
+    // State ------------------------------------------------------------------
+    pub fn get_state(&self) -> entity::State {
+        self.state
+    }
+
+    pub fn set_state(&mut self, state: entity::State) {
+        self.drawable.flagged(state.flags);
+        self.set_entity_state(state, true);
+    }
+
+    pub fn set_local_state(&mut self, state: entity::State) {
+        self.set_entity_state(state, false);
+    }
+
+    pub fn set_remote_state(&mut self, tick: u8, state: entity::State) {
+        self.remote_state = Some((tick, state));
+    }
+
+    fn set_entity_state(&mut self, state: entity::State, override_last: bool) {
+
+        self.last_state = if override_last {
+            state
+
+        } else {
+            self.state
+        };
+
+        self.base_state = state;
+        self.state = state;
+
+        self.entity.flagged(state.flags);
+
+    }
+
+
+    // Input ------------------------------------------------------------------
     pub fn local_input(&mut self, input: entity::Input, max_inputs: usize) -> Vec<u8> {
 
-        self.entity.input(input, max_inputs);
+        self.input(input, max_inputs);
 
         let mut inputs = Vec::new();
-        for input in self.entity.pending_inputs().iter() {
+        for input in self.input_states.iter() {
             inputs.extend(input.serialize());
         }
         inputs
@@ -101,15 +157,72 @@ impl Entity {
     }
 
     pub fn remote_input(&mut self, input: entity::Input, max_inputs: usize) {
-        self.entity.input(input, max_inputs);
+        self.input(input, max_inputs);
     }
 
+    fn input(&mut self, input: entity::Input, max_inputs: usize) {
+
+        // Ignore inputs for past ticks
+        if self.input_states.len() == 0 || tick_is_more_recent(
+            input.tick,
+            self.last_input_tick
+        ) {
+            self.input_states.push(input);
+            self.last_input_tick = input.tick;
+        }
+
+        // Drop outdated inputs
+        if self.input_states.len() > max_inputs {
+            self.input_states.remove(0);
+        }
+
+    }
+
+
+    // Ticking ----------------------------------------------------------------
     pub fn tick_client(&mut self, arena: &Arena, dt: f32) {
-        self.entity.tick(arena, dt, false);
+        self.tick(arena, dt, false);
     }
 
     pub fn tick_server(&mut self, arena: &Arena, dt: f32) {
-        self.entity.tick(arena, dt, true);
+        self.tick(arena, dt, true);
+    }
+
+    fn tick(&mut self, arena: &Arena, dt: f32, server: bool) {
+
+        // Check if we have a remote state
+        if let Some((remote_tick, remote_state)) = self.remote_state.take() {
+
+            // Set the current state as the last state
+            self.last_state = self.state;
+
+            // Take over the remote state as the new base
+            self.base_state = remote_state;
+            self.state = remote_state;
+
+            // Drop all inputs confirmed by the remote so the remaining ones
+            // get applied on top of the new base state
+            self.input_states.retain(|input| {
+                entity::tick_is_more_recent(input.tick, remote_tick)
+            });
+
+        // Otherwise reset the local state and re-apply the inputs on top of it
+        } else {
+            self.last_state = self.state;
+            self.state = self.base_state;
+        }
+
+        // Apply unconfirmed inputs on top of last state confirmed by the server
+        self.state = self.entity.apply_inputs(
+            self.base_state, &self.input_states, arena, dt
+        );
+
+        // Use the newly calculated state as the base
+        if server {
+            self.base_state = self.state;
+            self.input_states.clear();
+        }
+
     }
 
 
@@ -120,7 +233,8 @@ impl Entity {
         rng: &mut XorShiftRng,
         arena: &Arena, dt: f32, u: f32
     ) {
-        self.drawable.draw(renderer, rng, arena, &*self.entity, dt, u);
+        let state = arena.interpolate_state(&self.state, &self.last_state, u);
+        self.drawable.draw(renderer, rng, arena, state, dt, u);
     }
 
 
@@ -136,7 +250,7 @@ impl Entity {
 
         // Set local flag if we're serializing for the owner
         // TODO clean up?
-        let mut state = self.entity.get_state();
+        let mut state = self.state;
         if &self.owner == owner {
             state.flags |= 0x01;
         }
@@ -156,5 +270,11 @@ impl Entity {
         self.drawable.destroyed();
     }
 
+}
+
+
+// Helpers --------------------------------------------------------------------
+pub fn tick_is_more_recent(a: u8, b: u8) -> bool {
+    (a > b) && (a - b <= 255 / 2) || (b > a) && (b - a > 255 / 2)
 }
 

@@ -44,7 +44,7 @@ impl Renderer for AllegroRenderer {
         self.core.clear_to_color(get_color(color));
     }
 
-    fn draw(&mut self, dt: f32, u: f32) {
+    fn draw(&mut self, dt: f32, _: f32) {
         let prim = &self.prim;
         self.particle_system.draw(dt, |ref color, s, x, y| {
             prim.draw_filled_rectangle(
