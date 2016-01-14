@@ -3,26 +3,26 @@ use entity;
 use std::f32;
 
 
-// Arena Abstractions ---------------------------------------------------------
-pub struct Arena {
+// Level Abstractions ---------------------------------------------------------
+pub struct Level {
     width: u32,
     height: u32,
     border: u32
 }
 
-impl Arena {
+impl Level {
 
     // Constructors -----------------------------------------------------------
-    pub fn new(width: u32, height: u32, border: u32) -> Arena {
-        Arena {
+    pub fn new(width: u32, height: u32, border: u32) -> Level {
+        Level {
             width: width,
             height: height,
             border: border
         }
     }
 
-    pub fn from_serialized(data: &[u8]) -> Arena {
-        Arena {
+    pub fn from_serialized(data: &[u8]) -> Level {
+        Level {
             width: ((data[0] as u32) << 8) | data[1] as u32,
             height: ((data[2] as u32) << 8) | data[3] as u32,
             border: data[4] as u32
@@ -57,7 +57,7 @@ impl Arena {
     ) -> entity::State {
 
         // Skip interpolation if distance is too large too avoid glitching
-        // when wrapping at the arena boundaries occurs
+        // when wrapping at the level boundaries occurs
         let x = if (last.x - current.x).abs() < self.width as f32 * 0.5 {
             last.x * (1.0 - u) + current.x * u
 

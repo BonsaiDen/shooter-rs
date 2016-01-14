@@ -6,7 +6,7 @@ use net::{Network, MessageKind};
 use entities;
 use shared::entity;
 use shared::color::{Color, ColorName};
-use shared::arena::Arena;
+use shared::level::Level;
 use shared::renderer::Renderer;
 
 enum GameState {
@@ -21,7 +21,7 @@ pub struct Game {
     rng: XorShiftRng,
     entities: HashMap<u16, entity::Entity>,
     remote_states: Vec<(u8, entity::State)>,
-    arena: Arena,
+    level: Level,
     state: GameState
 }
 
@@ -34,19 +34,19 @@ impl Game {
             rng: XorShiftRng::new_unseeded(),
             entities: HashMap::new(),
             remote_states: Vec::new(),
-            arena: Arena::new(768, 768, 16),
+            level: Level::new(768, 768, 16),
             state: GameState::Disconnected
         }
     }
 
-    pub fn init(&mut self, renderer: &mut Renderer, arena: Arena, remote: bool) {
+    pub fn init(&mut self, renderer: &mut Renderer, level: Level, remote: bool) {
 
         // Local Test Play
         if remote == false {
 
             let mut player_ship = entity_from_kind(0);
 
-            let (x, y) = arena.center();
+            let (x, y) = level.center();
             let flags = 0b0000_0001 | Color::from_name(ColorName::Red).to_flags();
             player_ship.set_state(entity::State {
                 x: x as f32,
@@ -59,9 +59,9 @@ impl Game {
 
         }
 
-        self.arena = arena;
+        self.level = level;
 
-        renderer.resize(self.arena.width() as i32, self.arena.height() as i32);
+        renderer.resize(self.level.width() as i32, self.level.height() as i32);
 
     }
 
@@ -92,7 +92,7 @@ impl Game {
 
                 // TODO set tick rate externally
                 let pending_input = entity.local_input(input, 30);
-                entity.client_tick(&self.arena, tick, dt);
+                entity.client_tick(&self.level, tick, dt);
 
                 // Emulate remote server state stuff with a 20 frames delay
                 match self.state {
@@ -119,7 +119,7 @@ impl Game {
 
 
             } else {
-                entity.client_tick(&self.arena, tick, dt);
+                entity.client_tick(&self.level, tick, dt);
             }
 
         }
@@ -167,10 +167,10 @@ impl Game {
         }
     }
 
-    pub fn disconnect(&mut self, renderer: &mut Renderer, arena: Arena) {
+    pub fn disconnect(&mut self, renderer: &mut Renderer, level: Level) {
         self.state = GameState::Disconnected;
         self.reset();
-        self.init(renderer, arena, false);
+        self.init(renderer, level, false);
     }
 
 
@@ -188,7 +188,7 @@ impl Game {
         for (_, entity) in self.entities.iter_mut() {
             entity.draw(
                 renderer, &mut self.rng,
-                &self.arena, dt, u
+                &self.level, dt, u
             );
         }
 
@@ -224,7 +224,7 @@ impl Game {
     }
 
     fn config(&mut self, renderer: &mut Renderer, data: &[u8]) {
-        self.init(renderer, Arena::from_serialized(&data[0..5]), true);
+        self.init(renderer, Level::from_serialized(&data[0..5]), true);
         self.state = GameState::Connected;
     }
 

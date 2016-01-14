@@ -15,7 +15,7 @@ use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
 use allegro::*;
 
-use shared::arena::Arena;
+use shared::level::Level;
 
 mod entities;
 mod game;
@@ -86,7 +86,7 @@ allegro_main! {
 
     // Game instance
     let mut game = game::Game::new();
-    game.init(&mut renderer, Arena::new(width, height, border), false);
+    game.init(&mut renderer, Level::new(width, height, border), false);
 
     // Network
     let mut network = net::Network::new(ticks_per_second, server_addr);
@@ -134,7 +134,7 @@ allegro_main! {
                         net::EventType::ConnectionLost(_) => {
                             game.disconnect(
                                 &mut renderer,
-                                Arena::new(width, height, border)
+                                Level::new(width, height, border)
                             );
                         },
 

@@ -4,7 +4,7 @@ use cobalt::{Connection, ConnectionID, MessageKind, Handler, Server};
 
 
 // Internal Dependencies ------------------------------------------------------
-use shared::arena;
+use shared::level;
 use shared::entities;
 use shared::entity;
 use shared::color::Color;
@@ -15,7 +15,7 @@ use shared::util::IdPool;
 pub struct Game {
     id_pool: IdPool<u16>,
     entities: Vec<entity::Entity>,
-    arena: arena::Arena,
+    level: level::Level,
     available_colors: Vec<Color>,
     tick_rate: u32,
     tick: u16
@@ -26,7 +26,7 @@ impl Game {
         Game {
             id_pool: IdPool::new(),
             entities: Vec::new(),
-            arena: arena::Arena::new(width, height, border),
+            level: level::Level::new(width, height, border),
             available_colors: Color::all_colored().into_iter().rev().collect(),
             tick_rate: tps,
             tick: 0
@@ -44,9 +44,9 @@ impl Handler<Server> for Game {
 
         println!("[Client {}] Connected", conn.peer_addr());
 
-        // Send Arena Configuration
+        // Send Level Configuration
         let mut config = [0].to_vec();
-        config.extend(self.arena.serialize());
+        config.extend(self.level.serialize());
         conn.send(MessageKind::Reliable, config);
 
         // Create a ship entity from one of the available ids / colors
@@ -54,15 +54,13 @@ impl Handler<Server> for Game {
 
             if let Some(color) = self.available_colors.pop() {
 
-                // TODO abstract this into some nicer shape with a factory or something
-                let mut player_ship = entities::Ship::create_entity(1.0);
-                let (x, y) = self.arena.center();
-                let flags = color.to_flags();
+                let (x, y) = self.level.center();
 
+                let mut player_ship = entities::Ship::create_entity(1.0);
                 player_ship.set_state(entity::State {
                     x: x as f32,
                     y: y as f32,
-                    flags: flags,
+                    flags: color.to_flags(),
                     .. entity::State::default()
                 });
 
@@ -73,6 +71,7 @@ impl Handler<Server> for Game {
 
                 self.entities.push(player_ship);
 
+                // TODO support entity events?
                 // TODO send event? or do this via state updates only?
                 // probably send player joined event but add entity via
                 // state change detection on client
@@ -110,7 +109,7 @@ impl Handler<Server> for Game {
             }
 
             // Permanently advance entity state
-            entity.server_tick(&self.arena, self.tick as u8, tick_dt);
+            entity.server_tick(&self.level, self.tick as u8, tick_dt);
 
             // TODO store last N states of all entities
             // TODO perform collision detection based against

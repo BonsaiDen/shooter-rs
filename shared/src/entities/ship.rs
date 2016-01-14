@@ -4,7 +4,7 @@ use std::f32;
 
 // Internal Dependencies ------------------------------------------------------
 use entity;
-use arena::Arena;
+use level::Level;
 
 
 // Ship Logic Implementation --------------------------------------------------
@@ -45,7 +45,7 @@ impl entity::traits::Base for Ship {
         &mut self,
         mut state: entity::State,
         input_states: &Vec<entity::Input>,
-        arena: &Arena,
+        level: &Level,
         dt: f32
 
     ) -> entity::State {
@@ -94,7 +94,7 @@ impl entity::traits::Base for Ship {
         }
 
         // Handle state wrapping
-        arena.wrap_state(&mut state);
+        level.wrap_state(&mut state);
 
         // Return new local state from replayed inputs
         state

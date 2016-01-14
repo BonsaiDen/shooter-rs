@@ -6,7 +6,7 @@ use rand::{Rng, XorShiftRng};
 // Internal Dependencies ------------------------------------------------------
 use shared::entity;
 use shared::entities;
-use shared::arena::Arena;
+use shared::level::Level;
 use shared::color::{Color, ColorName};
 use shared::renderer::Renderer;
 
@@ -52,7 +52,7 @@ impl entity::traits::Drawable for Ship {
         &mut self,
         renderer: &mut Renderer,
         rng: &mut XorShiftRng,
-        _: &Arena,
+        _: &Level,
         state: entity::State,
         _: f32, _: f32
     ) {

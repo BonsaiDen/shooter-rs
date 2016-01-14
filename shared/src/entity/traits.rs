@@ -5,7 +5,7 @@ use cobalt::ConnectionID;
 
 // Internal Dependencies ------------------------------------------------------
 use entity;
-use arena::Arena;
+use level::Level;
 use renderer::Renderer;
 
 
@@ -18,7 +18,7 @@ pub trait Base {
         &mut self,
         mut state: entity::State,
         &Vec<entity::Input>,
-        arena: &Arena,
+        level: &Level,
         dt: f32
 
     ) -> entity::State;
@@ -28,8 +28,8 @@ pub trait Base {
     }
 
     // Server / Client Specific Methods ---------------------------------------
-    fn server_event_tick(&mut self, _: &Arena, _: &entity::State, _: u8, _: f32) {}
-    fn client_event_tick(&mut self, _: &Arena, _: &entity::State, _: u8, _: f32) {}
+    fn server_event_tick(&mut self, _: &Level, _: &entity::State, _: u8, _: f32) {}
+    fn client_event_tick(&mut self, _: &Level, _: &entity::State, _: u8, _: f32) {}
 
     fn server_event_created(&mut self, _: &entity::State, _: u8) {}
     fn client_event_created(&mut self, _: &entity::State, _: u8) {}
@@ -47,7 +47,7 @@ pub trait Drawable {
         &mut self,
         _: &mut Renderer,
         _: &mut XorShiftRng,
-        _: &Arena, _: entity::State, _: f32, _: f32
+        _: &Level, _: entity::State, _: f32, _: f32
     ) {
     }
 

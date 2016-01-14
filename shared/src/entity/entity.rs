@@ -5,7 +5,7 @@ use cobalt::ConnectionID;
 
 // Internal Dependencies ------------------------------------------------------
 use entity;
-use arena::Arena;
+use level::Level;
 use renderer::Renderer;
 use entity::traits::{Base, Drawable};
 
@@ -183,17 +183,17 @@ impl Entity {
 
 
     // Ticking ----------------------------------------------------------------
-    pub fn client_tick(&mut self, arena: &Arena, tick: u8, dt: f32) {
-        self.entity.client_event_tick(arena, &self.state, tick, dt);
-        self.tick(arena, dt, false);
+    pub fn client_tick(&mut self, level: &Level, tick: u8, dt: f32) {
+        self.entity.client_event_tick(level, &self.state, tick, dt);
+        self.tick(level, dt, false);
     }
 
-    pub fn server_tick(&mut self,  arena: &Arena, tick: u8, dt: f32) {
-        self.entity.server_event_tick(arena, &self.state, tick, dt);
-        self.tick(arena, dt, true);
+    pub fn server_tick(&mut self,  level: &Level, tick: u8, dt: f32) {
+        self.entity.server_event_tick(level, &self.state, tick, dt);
+        self.tick(level, dt, true);
     }
 
-    fn tick(&mut self, arena: &Arena, dt: f32, server: bool) {
+    fn tick(&mut self, level: &Level, dt: f32, server: bool) {
 
         // Check if we have a remote state
         if let Some((remote_tick, remote_state)) = self.remote_state.take() {
@@ -219,7 +219,7 @@ impl Entity {
 
         // Apply unconfirmed inputs on top of last state confirmed by the server
         self.state = self.entity.apply_inputs(
-            self.base_state, &self.input_states, arena, dt
+            self.base_state, &self.input_states, level, dt
         );
 
         // Use the newly calculated state as the base
@@ -236,10 +236,10 @@ impl Entity {
         &mut self,
         renderer: &mut Renderer,
         rng: &mut XorShiftRng,
-        arena: &Arena, dt: f32, u: f32
+        level: &Level, dt: f32, u: f32
     ) {
-        let state = arena.interpolate_state(&self.state, &self.last_state, u);
-        self.drawable.draw(renderer, rng, arena, state, dt, u);
+        let state = level.interpolate_state(&self.state, &self.last_state, u);
+        self.drawable.draw(renderer, rng, level, state, dt, u);
     }
 
 
