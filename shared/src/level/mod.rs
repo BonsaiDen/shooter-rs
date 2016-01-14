@@ -31,7 +31,7 @@ impl Level {
 
 
     // Static Methods ---------------------------------------------------------
-    pub fn wrap_state(&self, state: &mut entity::State) {
+    pub fn apply_state(&self, state: &mut entity::State) {
 
         let width = (self.height + self.border * 2) as f32;
         if state.x < 0.0 {

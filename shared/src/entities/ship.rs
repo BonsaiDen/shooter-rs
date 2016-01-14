@@ -41,63 +41,51 @@ impl entity::traits::Base for Ship {
         0
     }
 
-    fn apply_inputs(
+    fn apply_input(
         &mut self,
-        mut state: entity::State,
-        input_states: &Vec<entity::Input>,
-        level: &Level,
-        dt: f32
+        level: &Level, state: &mut entity::State, input: &entity::Input, dt: f32
+    ) {
 
-    ) -> entity::State {
-
-        // Apply unconfirmed inputs on top of last state confirmed by the server
-        for input in input_states.iter() {
-
-            let mut steer = 0.0;
-            if input.left {
-                steer -= 1.0;
-            }
-
-            if input.right {
-                steer += 1.0;
-            }
-
-            // TODO make this constant time rotation
-            state.r += f32::consts::PI / 180.0 * self.rotation * dt * steer;
-
-            if input.thrust {
-                // Constant time acceleration
-                let m = 60.0 / (1.0 / dt);
-                state.mx += state.r.cos() * self.acceleration * dt * m;
-                state.my += state.r.sin() * self.acceleration * dt * m;
-                state.flags |= 0x02;
-
-            } else {
-                state.flags &= !0x02;
-            }
-
-            // Limit diagonal speed
-            let mr = state.my.atan2(state.mx);
-            let mut s = ((state.mx * state.mx) + (state.my * state.my)).sqrt();
-
-            // Allow for easier full stop
-            if s < 0.15 {
-                s *= 0.95;
-            }
-
-            // Limit max speed
-            state.mx = mr.cos() * s.min(self.max_speed * dt);
-            state.my = mr.sin() * s.min(self.max_speed * dt);
-            state.x += state.mx;
-            state.y += state.my;
-
+        let mut steer = 0.0;
+        if input.left {
+            steer -= 1.0;
         }
 
-        // Handle state wrapping
-        level.wrap_state(&mut state);
+        if input.right {
+            steer += 1.0;
+        }
 
-        // Return new local state from replayed inputs
-        state
+        // TODO make this constant time rotation
+        state.r += f32::consts::PI / 180.0 * self.rotation * dt * steer;
+
+        if input.thrust {
+            // Constant time acceleration
+            let m = 60.0 / (1.0 / dt);
+            state.mx += state.r.cos() * self.acceleration * dt * m;
+            state.my += state.r.sin() * self.acceleration * dt * m;
+            state.flags |= 0x02;
+
+        } else {
+            state.flags &= !0x02;
+        }
+
+        // Limit diagonal speed
+        let mr = state.my.atan2(state.mx);
+        let mut s = ((state.mx * state.mx) + (state.my * state.my)).sqrt();
+
+        // Allow for easier full stop
+        if s < 0.15 {
+            s *= 0.95;
+        }
+
+        // Limit max speed
+        state.mx = mr.cos() * s.min(self.max_speed * dt);
+        state.my = mr.sin() * s.min(self.max_speed * dt);
+        state.x += state.mx;
+        state.y += state.my;
+
+        // Apply level restrictions
+        level.apply_state(state);
 
     }
 

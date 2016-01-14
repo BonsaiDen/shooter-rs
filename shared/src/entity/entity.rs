@@ -218,9 +218,13 @@ impl Entity {
         }
 
         // Apply unconfirmed inputs on top of last state confirmed by the server
-        self.state = self.entity.apply_inputs(
-            self.base_state, &self.input_states, level, dt
-        );
+        let mut new_state = self.base_state;
+        for input in self.input_states.iter() {
+            self.entity.apply_input(level, &mut new_state, input, dt);
+        }
+
+        // Assign calculated state
+        self.state = new_state;
 
         // Use the newly calculated state as the base
         if server {

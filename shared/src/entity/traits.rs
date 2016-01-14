@@ -14,14 +14,10 @@ pub trait Base {
 
     fn typ(&self) -> u8;
 
-    fn apply_inputs(
+    fn apply_input(
         &mut self,
-        mut state: entity::State,
-        &Vec<entity::Input>,
-        level: &Level,
-        dt: f32
-
-    ) -> entity::State;
+        level: &Level, state: &mut entity::State, input: &entity::Input, dt: f32
+    );
 
     fn visible_to(&self, _: &ConnectionID) -> bool {
         true
