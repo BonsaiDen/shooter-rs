@@ -24,12 +24,13 @@ pub struct Entity {
     state: entity::State,
     base_state: entity::State,
     last_state: entity::State,
-    remote_state: Option<(u8, entity::State)>,
+    confirmed_state: Option<(u8, entity::State)>,
     state_buffer: VecDeque<(u8, entity::State)>,
 
     // Inputs
     input_buffer: VecDeque<entity::Input>,
-    remote_input_tick: u8,
+    confirmed_input_tick: u8,
+    initial_input: bool,
 
     // Configuration
     input_buffer_size: usize,
@@ -67,7 +68,7 @@ impl Entity {
             last_state: entity::State::default(),
 
             // Last confirmed remote state (client only)
-            remote_state: None,
+            confirmed_state: None,
 
             // List of previous entity states for client-side interpolation
             // and server-side latency compensation
@@ -77,7 +78,8 @@ impl Entity {
             input_buffer: VecDeque::new(),
 
             // Last tick for which input was received (server only)
-            remote_input_tick: 0,
+            confirmed_input_tick: 0,
+            initial_input: true,
 
             // Configuration TODO allow external configuration
             input_buffer_size: 30,
@@ -118,7 +120,7 @@ impl Entity {
         self.owner = owner;
     }
 
-    pub fn owned_by(&mut self, owner: &ConnectionID) -> bool {
+    pub fn owned_by(&self, owner: &ConnectionID) -> bool {
         self.owner == *owner
     }
 
@@ -165,12 +167,12 @@ impl Entity {
         self.set_entity_state(state, true);
     }
 
-    pub fn set_local_state(&mut self, state: entity::State) {
+    pub fn set_remote_state(&mut self, state: entity::State) {
         self.set_entity_state(state, false);
     }
 
-    pub fn set_remote_state(&mut self, tick: u8, state: entity::State) {
-        self.remote_state = Some((tick, state));
+    pub fn set_confirmed_state(&mut self, tick: u8, state: entity::State) {
+        self.confirmed_state = Some((tick, state));
     }
 
     fn set_entity_state(&mut self, state: entity::State, override_last: bool) {
@@ -195,6 +197,10 @@ impl Entity {
 
 
     // Input ------------------------------------------------------------------
+    pub fn confirmed_tick(&self) -> u8 {
+        self.confirmed_input_tick
+    }
+
     pub fn local_input(&mut self, input: entity::Input) -> Vec<u8> {
 
         self.input(input);
@@ -208,19 +214,21 @@ impl Entity {
     }
 
     pub fn remote_input(&mut self, input: entity::Input) {
-        self.input(input);
+
+        if self.initial_input ||  tick_is_more_recent(
+            input.tick,
+            self.confirmed_input_tick
+        ) {
+            self.initial_input = false;
+            self.confirmed_input_tick = input.tick;
+            self.input(input);
+        }
+
     }
 
     fn input(&mut self, input: entity::Input) {
 
-        // Ignore inputs for past ticks
-        if self.input_buffer.len() == 0 || tick_is_more_recent(
-            input.tick,
-            self.remote_input_tick
-        ) {
-            self.input_buffer.push_back(input);
-            self.remote_input_tick = input.tick;
-        }
+        self.input_buffer.push_back(input);
 
         // Drop outdated inputs
         if self.input_buffer.len() > self.input_buffer_size {
@@ -244,19 +252,19 @@ impl Entity {
     fn tick(&mut self, level: &Level, tick: u8, dt: f32, server: bool) {
 
         // Check if we have a remote state
-        if let Some((remote_tick, remote_state)) = self.remote_state.take() {
+        if let Some((confirmed_tick, confirmed_state)) = self.confirmed_state.take() {
 
             // Set the current state as the last state
             self.last_state = self.state;
 
             // Take over the remote state as the new base
-            self.base_state = remote_state;
-            self.state = remote_state;
+            self.base_state = confirmed_state;
+            self.state = confirmed_state;
 
             // Drop all inputs confirmed by the remote so the remaining ones
             // get applied on top of the new base state
             self.input_buffer.retain(|input| {
-                tick_is_more_recent(input.tick, remote_tick)
+                tick_is_more_recent(input.tick, confirmed_tick)
             });
 
         // Otherwise reset the local state and re-apply the inputs on top of it
@@ -358,6 +366,6 @@ impl Entity {
 
 // Helpers --------------------------------------------------------------------
 pub fn tick_is_more_recent(a: u8, b: u8) -> bool {
-    (a > b) && (a - b <= 255 / 2) || (b > a) && (b - a > 255 / 2)
+    (a > b) && (a - b <= 128) || (b > a) && (b - a > 128)
 }
 

@@ -97,12 +97,14 @@ impl Handler<Server> for Game {
             // Receive inputs for entities which are controlled by clients
             if let Some(conn) = connections.get_mut(entity.owner()) {
 
-                // TODO how to handle accelerated inputs when no remote
-                // input is received
+                // Extract all unconfirmed inputs the client sent us
                 for m in conn.received() {
-                    entity.remote_input(
-                        entity::Input::from_serialized(&m[..])
-                    );
+                    for i in m.chunks(entity::Input::encoded_size()) {
+                        entity.remote_input(
+                            entity::Input::from_serialized(i)
+                        );
+                    }
+
                 }
 
             }
@@ -112,17 +114,24 @@ impl Handler<Server> for Game {
 
             // TODO store last N states of all entities
             // TODO perform collision detection based against
-            // last confirmed client tick (aka last_input_tick)
+            // last confirmed client tick (aka remote_input_tick)
 
         }
 
         // Send entity states to all clients
-        for (_, conn) in connections.iter_mut() {
+        for (id, conn) in connections.iter_mut() {
 
             // Calculate all entity states for the connection
-            let mut states = [1, self.tick as u8].to_vec();
+            let mut states = [1, self.tick as u8, 0].to_vec();
             for entity in self.entities.iter() {
+
+                // Confirm latest input tick from the client
+                if entity.owned_by(id) {
+                    states[2] = entity.confirmed_tick();
+                }
+
                 states.extend(entity.serialize_state(&conn.id()));
+
             }
 
             // TODO send old states for extra delay / interpolation?

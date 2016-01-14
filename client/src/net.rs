@@ -75,8 +75,8 @@ impl Network {
     }
 
     // Methods ----------------------------------------------------------------
-    pub fn receive(&mut self) {
-        self.client.receive_sync(&mut self.handler, &mut self.sync_token);
+    pub fn receive(&mut self, tick_delay: u32) {
+        self.client.receive_sync(&mut self.handler, &mut self.sync_token, tick_delay);
         self.client.tick_sync(&mut self.handler, &mut self.sync_token);
     }
 

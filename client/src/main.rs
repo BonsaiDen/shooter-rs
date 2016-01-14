@@ -62,6 +62,7 @@ allegro_main! {
     // Tick / Rendering Logic
     let ticks_per_second = 30;
     let tick_dt = 1.0 / ticks_per_second as f32;
+    let tick_delay = 1000 / ticks_per_second;
     let mut last_tick_time = 0.0;
 
     let frames_per_second = 60;
@@ -94,6 +95,7 @@ allegro_main! {
 
 
     // Main Loop
+    let mut foo = 0;
     'exit: loop {
 
         if redraw {
@@ -101,18 +103,19 @@ allegro_main! {
             // Network Logic --------------------------------------------------
             if frames_to_render == 0 {
 
-                network.receive();
+                network.receive(tick_delay);
 
                 while let Ok(event) = network.message(frame_time) {
                     match event {
 
                         net::EventType::Connection(_) => {
                             game.connect();
+                            tick = 0;
                         },
 
                         net::EventType::Message(_, data) =>  {
                             if data.len() > 0 {
-                                tick = game.message(
+                                game.message(
                                     &mut renderer, data[0], &data[1..],
                                     tick as u8
 
@@ -121,6 +124,7 @@ allegro_main! {
                         },
 
                         net::EventType::Tick(_, _, _) => {
+                            //println!("tick {}", tick);
                             frames_to_render = frames_per_second / ticks_per_second;
                             last_tick_time = frame_time;
                             game.tick(&mut network, &key_state, tick as u8, tick_dt as f32);
@@ -143,7 +147,12 @@ allegro_main! {
                     }
                 }
 
-                network.send();
+                //if foo % 2 == 0 {
+                    network.send();
+                //}
+                foo += 1;
+
+                //println!("{:.2} / {} - {} / {}", dt, u, message_count, network.rtt());
 
             }
 

@@ -102,7 +102,7 @@ impl Game {
 
                         if self.remote_states.len() > 20 {
                             let first = self.remote_states.remove(0);
-                            entity.set_remote_state(first.0, first.1);
+                            entity.set_confirmed_state(first.0, first.1);
                         }
 
                     },
@@ -155,8 +155,10 @@ impl Game {
                 if kind == 1 {
                     // TODO validate message length?
                     let remote_tick = data[0];
-                    self.state(&data[1..], remote_tick);
-                    remote_tick
+                    let confirmed_input_tick = data[1];
+                    //println!("confirmed input tick {} (remote: {}, local: {})", data[1], data[0], tick);
+                    self.state(&data[2..], tick, confirmed_input_tick);
+                    tick
 
                 } else {
                     tick
@@ -227,7 +229,7 @@ impl Game {
         self.state = GameState::Connected;
     }
 
-    fn state(&mut self, data: &[u8], remote_tick: u8) {
+    fn state(&mut self, data: &[u8], tick: u8, confirmed_tick: u8) {
 
         // Mark all entities as dead
         for (_, entity) in self.entities.iter_mut() {
@@ -255,7 +257,7 @@ impl Game {
                     // TODO abstract away
                     entity.set_id(id);
                     entity.set_state(state);
-                    entity.client_created(remote_tick);
+                    entity.client_created(tick);
                     entity
                 });
 
@@ -264,11 +266,11 @@ impl Game {
 
                 // Set Remote state
                 if entity.local() {
-                    entity.set_remote_state(remote_tick, state);
+                    entity.set_confirmed_state(confirmed_tick, state);
 
                 // Or overwrite local state (but keep last_state intact for interpolation)
                 } else {
-                    entity.set_local_state(state);
+                    entity.set_remote_state(state);
                 }
 
             }
@@ -281,7 +283,7 @@ impl Game {
         let mut destroyed_ids = Vec::new();
         for (_, entity) in self.entities.iter_mut() {
             if entity.alive() == false {
-                entity.client_destroyed(remote_tick);
+                entity.client_destroyed(tick);
                 destroyed_ids.push(entity.id());
             }
         }
