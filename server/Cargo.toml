@@ -5,6 +5,6 @@ authors = ["Ivo Wetzel <ivo.wetzel@googlemail.com>"]
 
 [dependencies]
 clap = "1.4.0"
-cobalt = { version = "0.5.3", path = "../../cobalt-rs" }
+cobalt = { version = "0.6.0", path = "../../cobalt-rs" }
 shared = { version = "0.1.0", path = "../shared" }
 

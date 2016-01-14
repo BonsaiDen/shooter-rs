@@ -6,7 +6,7 @@ authors = ["Ivo Wetzel <ivo.wetzel@googlemail.com>"]
 [dependencies]
 num = "*"
 rand = "~0.3.13"
-cobalt = { version = "0.5.3", path = "../../cobalt-rs" }
+cobalt = { version = "0.6.0", path = "../../cobalt-rs" }
 rustc-serialize = "0.3"
 bincode = "0.4.0"
 

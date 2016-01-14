@@ -94,17 +94,25 @@ impl Handler<Server> for Game {
         // Tick entities
         for entity in self.entities.iter_mut() {
 
-            // Receive inputs for entities which are controlled by clients
-            if let Some(conn) = connections.get_mut(entity.owner()) {
+            // Check if the entity is controlled by a client
+            let owner_connection = if let Some(owner) = entity.owner() {
+                connections.get_mut(&*owner)
 
-                // Extract all unconfirmed inputs the client sent us
+            } else {
+                None
+            };
+
+            // Receive input messages for controlled clients
+            if let Some(conn) = owner_connection {
+
                 for m in conn.received() {
+
+                    // Extract all unconfirmed inputs the client sent us
                     for i in m.chunks(entity::Input::encoded_size()) {
                         entity.remote_input(
                             entity::Input::from_serialized(i)
                         );
                     }
-
                 }
 
             }

@@ -16,7 +16,7 @@ pub struct Entity {
 
     entity: Box<Base>,
     drawable: Box<Drawable>,
-    owner: ConnectionID,
+    owner: Option<ConnectionID>,
     is_alive: bool,
     local_id: u16,
 
@@ -50,7 +50,7 @@ impl Entity {
             drawable: drawable,
 
             // Owner of the Entity
-            owner: ConnectionID(0), // TODO make this an option?
+            owner: None,
 
             // Whether the entity is still alive or should be destroyed
             is_alive: false,
@@ -112,18 +112,20 @@ impl Entity {
 
 
     // Ownership --------------------------------------------------------------
-    pub fn owner(&self) -> &ConnectionID {
-        &self.owner
+    pub fn owner(&self) -> Option<&ConnectionID> {
+        self.owner.as_ref()
     }
 
     pub fn set_owner(&mut self, owner: ConnectionID) {
-        self.owner = owner;
+        self.owner = Some(owner);
     }
 
     pub fn owned_by(&self, owner: &ConnectionID) -> bool {
-        self.owner == *owner
+        match self.owner {
+            Some(o) => o == *owner,
+            None => false
+        }
     }
-
 
     pub fn visible_to(&self, owner: &ConnectionID) -> bool {
         self.entity.visible_to(owner)
@@ -331,9 +333,8 @@ impl Entity {
         ].to_vec();
 
         // Set local flag if we're serializing for the owner
-        // TODO clean up?
         let mut state = self.state;
-        if &self.owner == owner {
+        if self.owned_by(owner) {
             state.flags |= 0x01;
         }
         data.extend(state.serialize());
