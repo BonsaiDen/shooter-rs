@@ -10,12 +10,16 @@ use renderer::Renderer;
 
 
 // Basic Entity Traits --------------------------------------------------------
-pub trait Base : Eventful {
+pub trait Base {
 
     fn typ(&self) -> u8;
 
     fn apply_inputs(
-        &mut self, mut state: entity::State, &Vec<entity::Input> , arena: &Arena, dt: f32
+        &mut self,
+        mut state: entity::State,
+        &Vec<entity::Input>,
+        arena: &Arena,
+        dt: f32
 
     ) -> entity::State;
 
@@ -23,9 +27,21 @@ pub trait Base : Eventful {
         true
     }
 
+    // Server / Client Specific Methods ---------------------------------------
+    fn server_event_tick(&mut self, _: &Arena, _: &entity::State, _: u8, _: f32) {}
+    fn client_event_tick(&mut self, _: &Arena, _: &entity::State, _: u8, _: f32) {}
+
+    fn server_event_created(&mut self, _: &entity::State, _: u8) {}
+    fn client_event_created(&mut self, _: &entity::State, _: u8) {}
+
+    fn server_event_destroyed(&mut self, _: &entity::State, _: u8) {}
+    fn client_event_destroyed(&mut self, _: &entity::State, _: u8) {}
+
+    fn event_flags(&mut self, _: u8) {}
+
 }
 
-pub trait Drawable : Eventful {
+pub trait Drawable {
 
     fn draw(
         &mut self,
@@ -35,15 +51,11 @@ pub trait Drawable : Eventful {
     ) {
     }
 
-}
+    fn event_flags(&mut self, _: u8) {}
 
-pub trait Eventful {
+    fn event_created(&mut self, _: &entity::State, _: u8) {}
 
-    fn created(&mut self) {}
-
-    fn flagged(&mut self, _: u8) {}
-
-    fn destroyed(&mut self) {}
+    fn event_destroyed(&mut self, _: &entity::State, _: u8) {}
 
 }
 

@@ -4,7 +4,6 @@ use std::f32;
 
 // Internal Dependencies ------------------------------------------------------
 use entity;
-use entity::traits::Eventful;
 use arena::Arena;
 
 
@@ -104,11 +103,8 @@ impl entity::traits::Base for Ship {
 
 }
 
-impl entity::traits::Eventful for Ship {}
-
 
 // Noop Drawable --------------------------------------------------------------
 struct ZeroDrawable;
 impl entity::traits::Drawable for ZeroDrawable {}
-impl entity::traits::Eventful for ZeroDrawable {}
 

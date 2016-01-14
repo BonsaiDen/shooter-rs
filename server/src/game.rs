@@ -54,6 +54,7 @@ impl Handler<Server> for Game {
 
             if let Some(color) = self.available_colors.pop() {
 
+                // TODO abstract this into some nicer shape with a factory or something
                 let mut player_ship = entities::Ship::create_entity(1.0);
                 let (x, y) = self.arena.center();
                 let flags = color.to_flags();
@@ -68,7 +69,7 @@ impl Handler<Server> for Game {
                 player_ship.set_id(id);
                 player_ship.set_alive(true);
                 player_ship.set_owner(conn.id());
-                player_ship.created();
+                player_ship.server_created(self.tick as u8);
 
                 self.entities.push(player_ship);
 
@@ -109,7 +110,7 @@ impl Handler<Server> for Game {
             }
 
             // Permanently advance entity state
-            entity.tick_server(&self.arena, tick_dt);
+            entity.server_tick(&self.arena, self.tick as u8, tick_dt);
 
             // TODO store last N states of all entities
             // TODO perform collision detection based against
@@ -155,7 +156,7 @@ impl Handler<Server> for Game {
             if entity.owned_by(&conn.id()) {
 
                 entity.set_alive(false);
-                entity.destroyed();
+                entity.server_destroyed(self.tick as u8);
 
                 // Release id and color
                 let color = Color::from_flags(entity.get_state().flags);

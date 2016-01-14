@@ -90,9 +90,9 @@ impl Game {
                     fire: false
                 };
 
-                let pending_input = entity.local_input(input, 30); // TODO set tick rate externally
-
-                entity.tick_client(&self.arena, dt);
+                // TODO set tick rate externally
+                let pending_input = entity.local_input(input, 30);
+                entity.client_tick(&self.arena, tick, dt);
 
                 // Emulate remote server state stuff with a 20 frames delay
                 match self.state {
@@ -119,7 +119,7 @@ impl Game {
 
 
             } else {
-                entity.tick_client(&self.arena, dt);
+                entity.client_tick(&self.arena, tick, dt);
             }
 
         }
@@ -256,7 +256,7 @@ impl Game {
                     // TODO abstract away
                     entity.set_id(id);
                     entity.set_state(state);
-                    entity.created();
+                    entity.client_created(remote_tick);
                     entity
                 });
 
@@ -282,7 +282,7 @@ impl Game {
         let mut destroyed_ids = Vec::new();
         for (_, entity) in self.entities.iter_mut() {
             if entity.alive() == false {
-                entity.destroyed();
+                entity.client_destroyed(remote_tick);
                 destroyed_ids.push(entity.id());
             }
         }

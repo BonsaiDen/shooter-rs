@@ -114,7 +114,6 @@ impl Entity {
     }
 
     pub fn set_state(&mut self, state: entity::State) {
-        self.drawable.flagged(state.flags);
         self.set_entity_state(state, true);
     }
 
@@ -128,6 +127,7 @@ impl Entity {
 
     fn set_entity_state(&mut self, state: entity::State, override_last: bool) {
 
+        let old_flags = self.state.flags;
         self.last_state = if override_last {
             state
 
@@ -138,7 +138,10 @@ impl Entity {
         self.base_state = state;
         self.state = state;
 
-        self.entity.flagged(state.flags);
+        if old_flags != state.flags {
+            self.drawable.event_flags(state.flags);
+            self.entity.event_flags(state.flags);
+        }
 
     }
 
@@ -180,11 +183,13 @@ impl Entity {
 
 
     // Ticking ----------------------------------------------------------------
-    pub fn tick_client(&mut self, arena: &Arena, dt: f32) {
+    pub fn client_tick(&mut self, arena: &Arena, tick: u8, dt: f32) {
+        self.entity.client_event_tick(arena, &self.state, tick, dt);
         self.tick(arena, dt, false);
     }
 
-    pub fn tick_server(&mut self, arena: &Arena, dt: f32) {
+    pub fn server_tick(&mut self,  arena: &Arena, tick: u8, dt: f32) {
+        self.entity.server_event_tick(arena, &self.state, tick, dt);
         self.tick(arena, dt, true);
     }
 
@@ -203,7 +208,7 @@ impl Entity {
             // Drop all inputs confirmed by the remote so the remaining ones
             // get applied on top of the new base state
             self.input_states.retain(|input| {
-                entity::tick_is_more_recent(input.tick, remote_tick)
+                tick_is_more_recent(input.tick, remote_tick)
             });
 
         // Otherwise reset the local state and re-apply the inputs on top of it
@@ -261,13 +266,22 @@ impl Entity {
 
 
     // Events -----------------------------------------------------------------
-    pub fn created(&mut self) {
-        self.entity.created();
+    pub fn server_created(&mut self, tick: u8) {
+        self.entity.server_event_created(&self.state, tick);
     }
 
-    pub fn destroyed(&mut self) {
-        self.entity.destroyed();
-        self.drawable.destroyed();
+    pub fn client_created(&mut self, tick: u8) {
+        self.entity.client_event_created(&self.state, tick);
+        self.drawable.event_created(&self.state, tick);
+    }
+
+    pub fn server_destroyed(&mut self, tick: u8) {
+        self.entity.server_event_destroyed(&self.state, tick);
+    }
+
+    pub fn client_destroyed(&mut self, tick: u8) {
+        self.entity.client_event_destroyed(&self.state, tick);
+        self.drawable.event_destroyed(&self.state, tick);
     }
 
 }
