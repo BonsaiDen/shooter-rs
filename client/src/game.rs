@@ -1,13 +1,21 @@
 use rand::{SeedableRng, XorShiftRng};
 use std::collections::HashMap;
 
-use net::{Network, MessageKind};
+use std::net::SocketAddr;
 
+use net;
 use entities;
 use shared::entity;
 use shared::color::{Color, ColorName};
 use shared::level::Level;
 use shared::renderer::Renderer;
+
+pub trait GameEvents {
+    fn init(&mut self, &mut Renderer);
+    fn tick(&mut self, &mut Renderer) -> bool;
+    fn draw(&mut self, &mut Renderer);
+    fn destroy(&mut self);
+}
 
 enum GameState {
     Disconnected,
@@ -21,32 +29,23 @@ pub struct Game {
     rng: XorShiftRng,
     entities: HashMap<u16, entity::Entity>,
     remote_states: Vec<(u8, entity::State)>,
+    tick: u8,
+    tick_rate: u32,
+    network: net::Network,
     level: Level,
     state: GameState
 }
 
-impl Game {
+impl GameEvents for Game {
 
-    pub fn new() -> Game {
-        Game {
-            back_color: Color::from_name(ColorName::Black),
-            text_color: Color::from_name(ColorName::White),
-            rng: XorShiftRng::new_unseeded(),
-            entities: HashMap::new(),
-            remote_states: Vec::new(),
-            level: Level::new(768, 768, 16),
-            state: GameState::Disconnected
-        }
-    }
-
-    pub fn init(&mut self, renderer: &mut Renderer, level: Level, remote: bool) {
+    fn init(&mut self, renderer: &mut Renderer) {
 
         // Local Test Play
-        if remote == false {
+        if self.network.connected() == false {
 
             let mut player_ship = entity_from_kind(0);
 
-            let (x, y) = level.center();
+            let (x, y) = self.level.center();
             let flags = 0b0000_0001 | Color::from_name(ColorName::Red).to_flags();
             player_ship.set_state(entity::State {
                 x: x as f32,
@@ -55,50 +54,192 @@ impl Game {
                 .. entity::State::default()
             });
 
-            self.add_entity(player_ship);
+            self.entities.insert(player_ship.id(), player_ship);
 
         }
 
-        self.level = level;
-
+        renderer.set_title("Rustgame: Shooter");
+        renderer.set_fps(60);
+        renderer.set_tick_rate(30);
         renderer.resize(self.level.width() as i32, self.level.height() as i32);
 
     }
 
+    fn tick(&mut self, renderer: &mut Renderer) -> bool {
 
-    // Networking -------------------------------------------------------------
+        let mut ticked = false;
+        let dt = 1.0 / self.tick_rate as f32;
 
-    pub fn connect(&mut self) {
+        self.network.receive(1000 / self.tick_rate);
+
+        while let Ok(event) = self.network.message(renderer.get_time()) {
+            match event {
+
+                net::EventType::Connection(_) => {
+                    self.connect();
+                },
+
+                net::EventType::Message(_, data) =>  {
+                    // TODO validate message length
+                    if data.len() > 0 {
+                        match self.state {
+                            GameState::Pending => {
+
+                                // Game Configuration
+                                if data[0] == 0 {
+                                    self.config(renderer, &data[1..]);
+                                }
+
+                            },
+                            GameState::Connected => {
+                                // Game State
+                                if data[0] == 1 {
+                                    self.state(&data[3..], data[2]);
+                                }
+                            },
+                            _ => {}
+                        }
+                    }
+                },
+
+                net::EventType::Tick(_, _, _) => {
+
+                    ticked = true;
+                    self.tick_entities(renderer, dt);
+
+                    if self.tick == 255 {
+                        self.tick = 0;
+
+                    } else {
+                        self.tick += 1;
+                    }
+
+                },
+
+                net::EventType::Close => {
+                    println!("Connection closed");
+                },
+
+                net::EventType::ConnectionLost(_) => {
+                    self.disconnect(renderer);
+                },
+
+                _ => {}
+
+            }
+        }
+
+        self.network.send();
+
+        ticked
+
+    }
+
+    fn draw(&mut self, renderer: &mut Renderer) {
+
+        renderer.clear(&self.back_color);
+
+        // Draw all entities
+        let dt = renderer.get_delta_time();
+        let u = renderer.get_delta_u();
+        for (_, entity) in self.entities.iter_mut() {
+            entity.draw(
+                renderer, &mut self.rng,
+                &self.level, dt, u
+            );
+        }
+
+        // UI
+        if let Ok(addr) = self.network.server_addr() {
+            let network_state = match self.network.connected() {
+                true => format!(
+                    "{} (Ping: {}ms, Lost: {}%, Bytes: {}/{})",
+                    addr,
+                    self.network.rtt() / 2,
+                    self.network.packet_loss(),
+                    self.network.bytes_sent(),
+                    self.network.bytes_received()
+                ),
+                false => format!("Connecting to {}...", addr)
+            };
+            renderer.text(&self.text_color, 0.0, 0.0, &network_state[..]);
+        }
+
+        renderer.draw(dt, u);
+
+    }
+
+    fn destroy(&mut self) {
+        self.network.destroy();
+    }
+
+}
+
+impl Game {
+
+    pub fn default_level() -> Level {
+        Level::new(384, 384, 16)
+    }
+
+    // TODO have tick rate configured by server
+    pub fn new(tick_rate: u32, server_addr: SocketAddr) -> Game {
+        Game {
+            back_color: Color::from_name(ColorName::Black),
+            text_color: Color::from_name(ColorName::White),
+            rng: XorShiftRng::new_unseeded(),
+            entities: HashMap::new(),
+            remote_states: Vec::new(),
+            tick: 0,
+            tick_rate: tick_rate,
+            network: net::Network::new(tick_rate, server_addr),
+            level: Game::default_level(),
+            state: GameState::Disconnected
+        }
+    }
+
+    // Internal ---------------------------------------------------------------
+
+    fn connect(&mut self) {
         self.state = GameState::Pending;
         self.reset();
     }
 
-    pub fn tick(
-        &mut self, network: &mut Network, &
-        key_state: &[bool; 255], tick: u8, dt: f32
-    ) {
+    fn disconnect(&mut self, renderer: &mut Renderer) {
+        self.tick = 0;
+        self.level = Game::default_level();
+        self.state = GameState::Disconnected;
+        self.reset();
+        self.init(renderer);
+    }
+
+    fn reset(&mut self) {
+        self.remote_states.clear();
+        self.entities.clear();
+    }
+
+    fn tick_entities(&mut self, renderer: &mut Renderer, dt: f32) {
 
         for (_, entity) in self.entities.iter_mut() {
 
             if entity.local() {
 
                 let input = entity::Input {
-                    tick: tick as u8,
-                    left: key_state[1] || key_state[82],
-                    right: key_state[4] || key_state[83],
-                    thrust: key_state[23] || key_state[84],
+                    tick: self.tick,
+                    left: renderer.key_down(1) || renderer.key_down(82),
+                    right: renderer.key_down(4) || renderer.key_down(83),
+                    thrust: renderer.key_down(23) || renderer.key_down(84),
                     fire: false
                 };
 
                 let pending_input = entity.local_input(input);
-                entity.client_tick(&self.level, tick, dt);
+                entity.client_tick(&self.level, self.tick, dt);
 
                 // Emulate remote server state stuff with a 20 frames delay
                 match self.state {
 
                     GameState::Disconnected => {
 
-                        self.remote_states.push((tick, entity.get_state()));
+                        self.remote_states.push((self.tick, entity.get_state()));
 
                         if self.remote_states.len() > 20 {
                             let first = self.remote_states.remove(0);
@@ -110,7 +251,9 @@ impl Game {
                     // Send all unconfirmed inputs to server
                     GameState::Connected => {
                         // TODO create a fake local network proxy!
-                        network.send_message(MessageKind::Instant, pending_input);
+                        self.network.send_message(
+                            net::MessageKind::Instant, pending_input
+                        );
                     },
 
                     _ => {}
@@ -118,117 +261,29 @@ impl Game {
 
 
             } else {
-                entity.client_tick(&self.level, tick, dt);
+                entity.client_tick(&self.level, self.tick, dt);
             }
 
         }
 
         self.rng.reseed([
-            ((tick as u32 + 7) * 941) as u32,
-            ((tick as u32 + 659) * 461) as u32,
-            ((tick as u32 + 13) * 227) as u32,
-            ((tick as u32 + 97) * 37) as u32
+            ((self.tick as u32 + 7) * 941) as u32,
+            ((self.tick as u32 + 659) * 461) as u32,
+            ((self.tick as u32 + 13) * 227) as u32,
+            ((self.tick as u32 + 97) * 37) as u32
         ]);
 
     }
 
-    pub fn message(
-        &mut self,
-        renderer: &mut Renderer, kind: u8, data: &[u8],
-        tick: u8
-
-    ) -> u8 {
-        match self.state {
-            GameState::Pending => {
-
-                // Game Configuration
-                if kind == 0 {
-                    // TODO validate message length
-                    self.config(renderer, data);
-                }
-
-                tick
-
-            },
-            GameState::Connected => {
-                // Game State
-                if kind == 1 {
-                    // TODO validate message length?
-                    let confirmed_input_tick = data[1];
-                    //println!("confirmed input tick {} (remote: {}, local: {})", data[1], data[0], tick);
-                    self.state(&data[2..], tick, confirmed_input_tick);
-                    tick
-
-                } else {
-                    tick
-                }
-            },
-            _ => tick
-        }
-    }
-
-    pub fn disconnect(&mut self, renderer: &mut Renderer, level: Level) {
-        self.state = GameState::Disconnected;
-        self.reset();
-        self.init(renderer, level, false);
-    }
-
-
-    // Rendering --------------------------------------------------------------
-    pub fn draw(
-        &mut self,
-        renderer: &mut Renderer,
-        network: &mut Network,
-        dt: f32, u: f32
-    ) {
-
-        renderer.clear(&self.back_color);
-
-        // Draw all entities
-        for (_, entity) in self.entities.iter_mut() {
-            entity.draw(
-                renderer, &mut self.rng,
-                &self.level, dt, u
-            );
-        }
-
-        // UI
-        if let Ok(addr) = network.server_addr() {
-            let network_state = match network.connected() {
-                true => format!(
-                    "{} (Ping: {}ms, Lost: {}%, Bytes: {}/{})",
-                    addr,
-                    network.rtt() / 2,
-                    network.packet_loss(),
-                    network.bytes_sent(),
-                    network.bytes_received()
-                ),
-                false => format!("Connecting to {}...", addr)
-            };
-            renderer.text(&self.text_color, 0.0, 0.0, &network_state[..]);
-        }
-
-        renderer.draw(dt, u);
-
-    }
-
-
-    // Internal ---------------------------------------------------------------
-    fn add_entity(&mut self, entity: entity::Entity) {
-        self.entities.insert(entity.id(), entity);
-    }
-
-    fn reset(&mut self) {
-        self.remote_states.clear();
-        self.entities.clear();
-    }
-
     fn config(&mut self, renderer: &mut Renderer, data: &[u8]) {
-        self.init(renderer, Level::from_serialized(&data[0..5]), true);
+        self.level = Level::from_serialized(&data[0..5]);
         self.state = GameState::Connected;
+        self.init(renderer);
     }
 
-    fn state(&mut self, data: &[u8], tick: u8, confirmed_tick: u8) {
+    fn state(&mut self, data: &[u8], confirmed_tick: u8) {
+
+        let tick = self.tick;
 
         // Mark all entities as dead
         for (_, entity) in self.entities.iter_mut() {
