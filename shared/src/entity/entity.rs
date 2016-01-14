@@ -1,6 +1,7 @@
 // External Dependencies ------------------------------------------------------
 use rand::XorShiftRng;
 use cobalt::ConnectionID;
+use std::collections::VecDeque;
 
 
 // Internal Dependencies ------------------------------------------------------
@@ -12,17 +13,28 @@ use entity::traits::{Base, Drawable};
 
 // Top Level Entity Structure -------------------------------------------------
 pub struct Entity {
+
     entity: Box<Base>,
     drawable: Box<Drawable>,
     owner: ConnectionID,
     is_alive: bool,
     local_id: u16,
+
+    // State
     state: entity::State,
     base_state: entity::State,
     last_state: entity::State,
     remote_state: Option<(u8, entity::State)>,
-    input_states: Vec<entity::Input>,
-    last_input_tick: u8,
+    state_buffer: VecDeque<(u8, entity::State)>,
+
+    // Inputs
+    input_buffer: VecDeque<entity::Input>,
+    remote_input_tick: u8,
+
+    // Configuration
+    input_buffer_size: usize,
+    state_buffer_size: usize
+
 }
 
 impl Entity {
@@ -42,7 +54,7 @@ impl Entity {
             // Whether the entity is still alive or should be destroyed
             is_alive: false,
 
-            // Local Entity ID
+            // Locally used Entity ID
             local_id: 0,
 
             // Current - calculated - entity state
@@ -57,11 +69,19 @@ impl Entity {
             // Last confirmed remote state (client only)
             remote_state: None,
 
+            // List of previous entity states for client-side interpolation
+            // and server-side latency compensation
+            state_buffer: VecDeque::new(),
+
             // Pending inputs (client only)
-            input_states: Vec::new(),
+            input_buffer: VecDeque::new(),
 
             // Last tick for which input was received (server only)
-            last_input_tick: 0
+            remote_input_tick: 0,
+
+            // Configuration TODO allow external configuration
+            input_buffer_size: 30,
+            state_buffer_size: 30 // length is tickDT * size
 
         }
     }
@@ -113,6 +133,34 @@ impl Entity {
         self.state
     }
 
+    pub fn offset_state(&self, tick_offset: usize) -> entity::State {
+        let buffer_len = self.state_buffer.len();
+        if buffer_len > 0 && tick_offset < buffer_len {
+            self.state_buffer[tick_offset].1
+
+        } else {
+            self.state
+        }
+    }
+
+    pub fn offset_state_pair(
+        &self, tick_offset: usize
+
+    ) -> (entity::State, entity::State) {
+        let buffer_len = self.state_buffer.len();
+        if buffer_len > 0 && tick_offset + 1 < buffer_len {
+            (
+                self.state_buffer[tick_offset].1,
+                self.state_buffer[tick_offset + 1].1
+            )
+        } else {
+            (
+                self.state,
+                self.last_state
+            )
+        }
+    }
+
     pub fn set_state(&mut self, state: entity::State) {
         self.set_entity_state(state, true);
     }
@@ -147,36 +195,36 @@ impl Entity {
 
 
     // Input ------------------------------------------------------------------
-    pub fn local_input(&mut self, input: entity::Input, max_inputs: usize) -> Vec<u8> {
+    pub fn local_input(&mut self, input: entity::Input) -> Vec<u8> {
 
-        self.input(input, max_inputs);
+        self.input(input);
 
         let mut inputs = Vec::new();
-        for input in self.input_states.iter() {
+        for input in self.input_buffer.iter() {
             inputs.extend(input.serialize());
         }
         inputs
 
     }
 
-    pub fn remote_input(&mut self, input: entity::Input, max_inputs: usize) {
-        self.input(input, max_inputs);
+    pub fn remote_input(&mut self, input: entity::Input) {
+        self.input(input);
     }
 
-    fn input(&mut self, input: entity::Input, max_inputs: usize) {
+    fn input(&mut self, input: entity::Input) {
 
         // Ignore inputs for past ticks
-        if self.input_states.len() == 0 || tick_is_more_recent(
+        if self.input_buffer.len() == 0 || tick_is_more_recent(
             input.tick,
-            self.last_input_tick
+            self.remote_input_tick
         ) {
-            self.input_states.push(input);
-            self.last_input_tick = input.tick;
+            self.input_buffer.push_back(input);
+            self.remote_input_tick = input.tick;
         }
 
         // Drop outdated inputs
-        if self.input_states.len() > max_inputs {
-            self.input_states.remove(0);
+        if self.input_buffer.len() > self.input_buffer_size {
+            self.input_buffer.pop_front();
         }
 
     }
@@ -185,15 +233,15 @@ impl Entity {
     // Ticking ----------------------------------------------------------------
     pub fn client_tick(&mut self, level: &Level, tick: u8, dt: f32) {
         self.entity.client_event_tick(level, &self.state, tick, dt);
-        self.tick(level, dt, false);
+        self.tick(level, tick, dt, false);
     }
 
     pub fn server_tick(&mut self,  level: &Level, tick: u8, dt: f32) {
         self.entity.server_event_tick(level, &self.state, tick, dt);
-        self.tick(level, dt, true);
+        self.tick(level, tick, dt, true);
     }
 
-    fn tick(&mut self, level: &Level, dt: f32, server: bool) {
+    fn tick(&mut self, level: &Level, tick: u8, dt: f32, server: bool) {
 
         // Check if we have a remote state
         if let Some((remote_tick, remote_state)) = self.remote_state.take() {
@@ -207,7 +255,7 @@ impl Entity {
 
             // Drop all inputs confirmed by the remote so the remaining ones
             // get applied on top of the new base state
-            self.input_states.retain(|input| {
+            self.input_buffer.retain(|input| {
                 tick_is_more_recent(input.tick, remote_tick)
             });
 
@@ -219,7 +267,7 @@ impl Entity {
 
         // Apply unconfirmed inputs on top of last state confirmed by the server
         let mut new_state = self.base_state;
-        for input in self.input_states.iter() {
+        for input in self.input_buffer.iter() {
             self.entity.apply_input(level, &mut new_state, input, dt);
         }
 
@@ -229,7 +277,13 @@ impl Entity {
         // Use the newly calculated state as the base
         if server {
             self.base_state = self.state;
-            self.input_states.clear();
+            self.input_buffer.clear();
+        }
+
+        // Record entity states
+        self.state_buffer.push_front((tick, new_state));
+        if self.state_buffer.len() > self.state_buffer_size {
+            self.state_buffer.pop_back();
         }
 
     }
@@ -242,8 +296,19 @@ impl Entity {
         rng: &mut XorShiftRng,
         level: &Level, dt: f32, u: f32
     ) {
-        let state = level.interpolate_state(&self.state, &self.last_state, u);
+
+        let state = if self.local() {
+            level.interpolate_state(&self.state, &self.last_state, u)
+
+        } else {
+            // TODO have both server and client use the same offset here
+            // for correct latency compensation
+            let offset = self.offset_state_pair(3); // TODO configure
+            level.interpolate_state(&offset.0, &offset.1, u)
+        };
+
         self.drawable.draw(renderer, rng, level, state, dt, u);
+
     }
 
 

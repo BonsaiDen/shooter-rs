@@ -101,8 +101,7 @@ impl Handler<Server> for Game {
                 // input is received
                 for m in conn.received() {
                     entity.remote_input(
-                        entity::Input::from_serialized(&m[..]),
-                        self.tick_rate as usize
+                        entity::Input::from_serialized(&m[..])
                     );
                 }
 

@@ -90,8 +90,7 @@ impl Game {
                     fire: false
                 };
 
-                // TODO set tick rate externally
-                let pending_input = entity.local_input(input, 30);
+                let pending_input = entity.local_input(input);
                 entity.client_tick(&self.level, tick, dt);
 
                 // Emulate remote server state stuff with a 20 frames delay
