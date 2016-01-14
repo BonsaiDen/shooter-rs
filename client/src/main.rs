@@ -95,7 +95,6 @@ allegro_main! {
 
 
     // Main Loop
-    let mut foo = 0;
     'exit: loop {
 
         if redraw {
@@ -147,10 +146,7 @@ allegro_main! {
                     }
                 }
 
-                //if foo % 2 == 0 {
-                    network.send();
-                //}
-                foo += 1;
+                network.send();
 
                 //println!("{:.2} / {} - {} / {}", dt, u, message_count, network.rtt());
 

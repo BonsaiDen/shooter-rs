@@ -154,7 +154,6 @@ impl Game {
                 // Game State
                 if kind == 1 {
                     // TODO validate message length?
-                    let remote_tick = data[0];
                     let confirmed_input_tick = data[1];
                     //println!("confirmed input tick {} (remote: {}, local: {})", data[1], data[0], tick);
                     self.state(&data[2..], tick, confirmed_input_tick);
