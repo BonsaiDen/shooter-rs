@@ -30,7 +30,6 @@ pub struct Game {
     entities: HashMap<u16, entity::Entity>,
     remote_states: Vec<(u8, entity::State)>,
     tick: u8,
-    tick_rate: u32,
     network: net::Network,
     level: Level,
     state: GameState
@@ -39,6 +38,11 @@ pub struct Game {
 impl GameEvents for Game {
 
     fn init(&mut self, renderer: &mut Renderer) {
+
+        renderer.set_title("Rustgame: Shooter");
+        renderer.set_fps(60);
+        renderer.set_tick_rate(self.network.get_tick_rate());
+        renderer.resize(self.level.width() as i32, self.level.height() as i32);
 
         // Local Test Play
         if self.network.connected() == false {
@@ -58,19 +62,15 @@ impl GameEvents for Game {
 
         }
 
-        renderer.set_title("Rustgame: Shooter");
-        renderer.set_fps(60);
-        renderer.set_tick_rate(30);
-        renderer.resize(self.level.width() as i32, self.level.height() as i32);
-
     }
 
     fn tick(&mut self, renderer: &mut Renderer) -> bool {
 
         let mut ticked = false;
-        let dt = 1.0 / self.tick_rate as f32;
+        let tick_rate = self.network.get_tick_rate();
+        let dt = 1.0 / tick_rate as f32;
 
-        self.network.receive(1000 / self.tick_rate);
+        self.network.receive();
 
         while let Ok(event) = self.network.message(renderer.get_time()) {
             match event {
@@ -87,7 +87,8 @@ impl GameEvents for Game {
 
                                 // Game Configuration
                                 if data[0] == 0 {
-                                    self.config(renderer, &data[1..]);
+                                    self.network.set_tick_rate(data[1] as u32);
+                                    self.config(renderer, &data[2..]);
                                 }
 
                             },
@@ -153,7 +154,7 @@ impl GameEvents for Game {
         if let Ok(addr) = self.network.server_addr() {
             let network_state = match self.network.connected() {
                 true => format!(
-                    "{} (Ping: {}ms, Lost: {}%, Bytes: {}/{})",
+                    "{} (Ping: {}ms, Lost: {:.2}%, Bytes: {}/{})",
                     addr,
                     self.network.rtt() / 2,
                     self.network.packet_loss(),
@@ -182,7 +183,7 @@ impl Game {
     }
 
     // TODO have tick rate configured by server
-    pub fn new(tick_rate: u32, server_addr: SocketAddr) -> Game {
+    pub fn new(server_addr: SocketAddr) -> Game {
         Game {
             back_color: Color::from_name(ColorName::Black),
             text_color: Color::from_name(ColorName::White),
@@ -190,8 +191,7 @@ impl Game {
             entities: HashMap::new(),
             remote_states: Vec::new(),
             tick: 0,
-            tick_rate: tick_rate,
-            network: net::Network::new(tick_rate, server_addr),
+            network: net::Network::new(server_addr),
             level: Game::default_level(),
             state: GameState::Disconnected
         }

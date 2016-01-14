@@ -40,7 +40,7 @@ allegro_main! {
     ));
 
     // Renderer
-    AllegroRenderContainer::new().run(game::Game::new(30, server_addr));
+    AllegroRenderContainer::new().run(game::Game::new(server_addr));
 
 }
 

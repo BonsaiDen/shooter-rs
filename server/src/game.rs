@@ -44,8 +44,8 @@ impl Handler<Server> for Game {
 
         println!("[Client {}] Connected", conn.peer_addr());
 
-        // Send Level Configuration
-        let mut config = [0].to_vec();
+        // Send Tick / Level Configuration
+        let mut config = [0, self.tick_rate as u8].to_vec();
         config.extend(self.level.serialize());
         conn.send(MessageKind::Reliable, config);
 
@@ -120,7 +120,6 @@ impl Handler<Server> for Game {
             // Permanently advance entity state
             entity.server_tick(&self.level, self.tick as u8, tick_dt);
 
-            // TODO store last N states of all entities
             // TODO perform collision detection based against
             // last confirmed client tick (aka remote_input_tick)
 

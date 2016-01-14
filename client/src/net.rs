@@ -19,17 +19,19 @@ pub struct Network {
     connection_rtt: u32,
     connection_packet_loss: f32,
     bytes_sent: u32,
-    bytes_received: u32
+    bytes_received: u32,
+    tick_rate: u32
 }
 
 impl Network {
 
-    pub fn new(tick_rate: u32, addr: SocketAddr) -> Network {
+    pub fn new(addr: SocketAddr) -> Network {
 
+        let tick_rate = 30;
         let mut handler = EventHandler::new();
-
         let mut client = Client::new(Config {
             send_rate: tick_rate,
+            connection_init_threshold: 250,
             .. Config::default()
         });
 
@@ -44,7 +46,8 @@ impl Network {
             connection_rtt: 0,
             connection_packet_loss: 0.0,
             bytes_sent: 0,
-            bytes_received: 0
+            bytes_received: 0,
+            tick_rate: tick_rate
         }
 
     }
@@ -74,9 +77,26 @@ impl Network {
         self.bytes_received
     }
 
+    pub fn get_tick_rate(&self) -> u32 {
+        self.tick_rate
+    }
+
+    pub fn set_tick_rate(&mut self, tick_rate: u32) {
+        self.tick_rate = tick_rate;
+        self.client.set_config(Config {
+            send_rate: tick_rate,
+            connection_init_threshold: 250,
+            .. Config::default()
+
+        }, &mut self.sync_token)
+    }
+
+
     // Methods ----------------------------------------------------------------
-    pub fn receive(&mut self, tick_delay: u32) {
-        self.client.receive_sync(&mut self.handler, &mut self.sync_token, tick_delay);
+    pub fn receive(&mut self) {
+        self.client.receive_sync(
+            &mut self.handler, &mut self.sync_token, 1000 / self.tick_rate
+        );
         self.client.tick_sync(&mut self.handler, &mut self.sync_token);
     }
 
