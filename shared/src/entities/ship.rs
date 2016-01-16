@@ -85,7 +85,7 @@ impl entity::traits::Base for Ship {
         state.y += state.my;
 
         // Apply level restrictions
-        level.apply_state(state);
+        level.limit_state(state);
 
     }
 

@@ -1,46 +1,70 @@
+// External Dependencies ------------------------------------------------------
 use rand::XorShiftRng;
 
+
+// Internal Dependencies ------------------------------------------------------
 use color::Color;
 use particle::Particle;
 
+
+// Renderer Abstraction -------------------------------------------------------
 pub trait Renderer {
 
-    fn set_fps(&mut self, frame_rate: u32);
-
-    fn get_fps(&mut self) -> u32;
+    // Time Related -----------------------------------------------------------
+    fn time(&self) -> f64;
 
     fn set_time(&mut self, time: f64);
 
-    fn get_time(&mut self) -> f64;
-
-    fn set_tick_rate(&mut self, tick_rate: u32);
-
-    fn get_tick_rate(&mut self) -> u32;
+    fn delta_time(&self) -> f32;
 
     fn set_delta_time(&mut self, dt: f32);
 
-    fn get_delta_time(&mut self) -> f32;
+    fn delta_u(&self) -> f32;
 
     fn set_delta_u(&mut self, u: f32);
 
-    fn get_delta_u(&mut self) -> f32;
 
-    fn set_title(&mut self, title: &str);
+    // Frame / Tick Rate ------------------------------------------------------
+    fn fps(&self) -> u32;
 
+    fn set_fps(&mut self, frame_rate: u32);
+
+    fn tick_rate(&self) -> u32;
+
+    fn set_tick_rate(&mut self, tick_rate: u32);
+
+
+    // Interpolation ----------------------------------------------------------
+    fn interpolation_ticks(&self) -> usize;
+
+    fn set_interpolation_ticks(&mut self, ticks: usize);
+
+
+    // Events / Loop ----------------------------------------------------------
     fn do_draw(&mut self) -> bool;
 
     fn events(&mut self);
 
     fn running(&mut self) -> bool;
 
+
+    // Input ------------------------------------------------------------------
     fn key_down(&mut self, key_code: u8) -> bool;
 
+
+    // RNG --------------------------------------------------------------------
     fn reseed_rng(&mut self, seed: [u32; 4]);
 
     fn rng(&mut self) -> &mut XorShiftRng;
 
+
+    // Window -----------------------------------------------------------------
+    fn set_title(&mut self, title: &str);
+
     fn resize(&mut self, width: i32, height: i32);
 
+
+    // Drawing ----------------------------------------------------------------
     fn clear(&mut self, color: &Color);
 
     fn draw(&mut self);

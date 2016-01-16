@@ -40,8 +40,8 @@ impl AllegroRenderContainer {
 
         // Create Display
         core.set_new_display_flags(allegro::OPENGL);
-        core.set_new_display_option(DisplayOption::SampleBuffers, 1, DisplayOptionImportance::Require);
-        core.set_new_display_option(DisplayOption::Samples, 8, DisplayOptionImportance::Require);
+        core.set_new_display_option(DisplayOption::SampleBuffers, 2, DisplayOptionImportance::Suggest);
+        core.set_new_display_option(DisplayOption::Samples, 16, DisplayOptionImportance::Suggest);
 
         let disp = Display::new(&core, 256, 256).ok().expect("Failed to create OPENGL context.");
         q.register_event_source(disp.get_event_source());
@@ -61,12 +61,12 @@ impl AllegroRenderContainer {
 
             if renderer.do_draw() {
 
-                let frame_time = renderer.get_time();
-                let tick_rate = renderer.get_tick_rate();
+                let frame_time = renderer.time();
+                let tick_rate = renderer.tick_rate();
 
                 if frames_per_tick == 0 {
                     if game.tick(&mut renderer) {
-                        frames_per_tick = renderer.get_fps() / tick_rate;
+                        frames_per_tick = renderer.fps() / tick_rate;
                         last_tick_time = frame_time;
                     }
                 }
@@ -109,7 +109,8 @@ pub struct AllegroRenderer {
     dt: f32,
     u: f32,
     key_state: [bool; 255],
-    rng: XorShiftRng
+    rng: XorShiftRng,
+    interpolation_ticks: usize
 }
 
 impl AllegroRenderer {
@@ -142,7 +143,8 @@ impl AllegroRenderer {
             dt: 0.0,
             u: 0.0,
             key_state: [false; 255],
-            rng: XorShiftRng::new_unseeded()
+            rng: XorShiftRng::new_unseeded(),
+            interpolation_ticks: 0
         }
 
     }
@@ -150,63 +152,67 @@ impl AllegroRenderer {
 
 impl Renderer for AllegroRenderer {
 
-    fn set_fps(&mut self, frame_rate: u32) {
-        self.frame_rate = frame_rate;
-        self.timer.set_speed(1.0 / frame_rate as f64);
-    }
 
-    fn get_fps(&mut self) -> u32 {
-        self.frame_rate
+    // Time Related -----------------------------------------------------------
+    fn time(&self) -> f64 {
+        self.time
     }
 
     fn set_time(&mut self, time: f64) {
         self.time = time;
     }
 
-    fn get_time(&mut self) -> f64 {
-        self.time
-    }
-
-    fn set_tick_rate(&mut self, tick_rate: u32) {
-        self.tick_rate = tick_rate;
-    }
-
-    fn get_tick_rate(&mut self) -> u32 {
-        self.tick_rate
+    fn delta_time(&self) -> f32{
+        self.dt
     }
 
     fn set_delta_time(&mut self, dt: f32) {
         self.dt = dt;
     }
 
+    fn delta_u(&self) -> f32 {
+        self.u
+    }
+
     fn set_delta_u(&mut self, u: f32) {
         self.u = u;
     }
 
-    fn get_delta_time(&mut self) -> f32{
-        self.dt
+
+    // Frame / Tick Rate ------------------------------------------------------
+    fn fps(&self) -> u32 {
+        self.frame_rate
     }
 
-    fn get_delta_u(&mut self) -> f32 {
-        self.u
+    fn set_fps(&mut self, frame_rate: u32) {
+        self.frame_rate = frame_rate;
+        self.timer.set_speed(1.0 / frame_rate as f64);
     }
 
-    fn set_title(&mut self, title: &str) {
-        self.display.set_window_title(title);
+    fn tick_rate(&self) -> u32 {
+        self.tick_rate
     }
 
+    fn set_tick_rate(&mut self, tick_rate: u32) {
+        self.tick_rate = tick_rate;
+    }
+
+
+    // Interpolation ----------------------------------------------------------
+    fn interpolation_ticks(&self) -> usize {
+        self.interpolation_ticks
+    }
+
+    fn set_interpolation_ticks(&mut self, ticks: usize) {
+        self.interpolation_ticks = ticks;
+    }
+
+
+    // Events / Loop ----------------------------------------------------------
     fn do_draw(&mut self) -> bool {
         let redraw = self.redraw;
         self.redraw = false;
         redraw
-    }
-
-    fn running(&mut self) -> bool {
-        self.is_running
-    }
-
-    fn key_down(&mut self, key_code: u8) -> bool {
-        self.key_state[key_code as usize]
     }
 
     fn events(&mut self) {
@@ -241,6 +247,18 @@ impl Renderer for AllegroRenderer {
         }
     }
 
+    fn running(&mut self) -> bool {
+        self.is_running
+    }
+
+
+    // Input ------------------------------------------------------------------
+    fn key_down(&mut self, key_code: u8) -> bool {
+        self.key_state[key_code as usize]
+    }
+
+
+    // RNG --------------------------------------------------------------------
     fn reseed_rng(&mut self, seed: [u32; 4]) {
         self.rng.reseed(seed);
     }
@@ -250,10 +268,17 @@ impl Renderer for AllegroRenderer {
     }
 
 
+    // Window -----------------------------------------------------------------
+    fn set_title(&mut self, title: &str) {
+        self.display.set_window_title(title);
+    }
+
     fn resize(&mut self, width: i32, height: i32) {
         self.display.resize(width, height).ok();
     }
 
+
+    // Drawing ----------------------------------------------------------------
     fn clear(&mut self, color: &Color) {
         self.core.clear_to_color(get_color(color));
     }

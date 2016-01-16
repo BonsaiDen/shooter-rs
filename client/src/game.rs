@@ -39,6 +39,7 @@ impl GameEvents for Game {
         renderer.set_title("Rustgame: Shooter");
         renderer.set_fps(60);
         renderer.set_tick_rate(self.network.get_tick_rate());
+        renderer.set_interpolation_ticks(3);
         renderer.resize(self.level.width() as i32, self.level.height() as i32);
 
         // Local Test Play
@@ -69,7 +70,7 @@ impl GameEvents for Game {
 
         self.network.receive();
 
-        while let Ok(event) = self.network.message(renderer.get_time()) {
+        while let Ok(event) = self.network.message(renderer.time()) {
             match event {
 
                 net::EventType::Connection(_) => {

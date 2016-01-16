@@ -3,6 +3,10 @@ use entity;
 use std::f32;
 
 
+// Internal Dependencies ------------------------------------------------------
+use renderer::Renderer;
+
+
 // Level Abstractions ---------------------------------------------------------
 pub struct Level {
     width: u32,
@@ -31,7 +35,7 @@ impl Level {
 
 
     // Static Methods ---------------------------------------------------------
-    pub fn apply_state(&self, state: &mut entity::State) {
+    pub fn limit_state(&self, state: &mut entity::State) {
 
         let width = (self.height + self.border * 2) as f32;
         if state.x < 0.0 {
@@ -51,10 +55,14 @@ impl Level {
 
     }
 
-    pub fn interpolate_state(
-        &self, current: &entity::State, last: &entity::State, u: f32
+    pub fn interpolate_entity_state(
+        &self,
+        renderer: &mut Renderer,
+        current: &entity::State, last: &entity::State
 
     ) -> entity::State {
+
+        let u = renderer.delta_u();
 
         // Skip interpolation if distance is too large too avoid glitching
         // when wrapping at the level boundaries occurs

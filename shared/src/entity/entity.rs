@@ -136,7 +136,7 @@ impl Entity {
         &self.state
     }
 
-    pub fn offset_state(&self, tick_offset: usize) -> &entity::State {
+    pub fn buffered_state(&self, tick_offset: usize) -> &entity::State {
         let buffer_len = self.state_buffer.len();
         if buffer_len > 0 && tick_offset < buffer_len {
             &self.state_buffer[tick_offset].1
@@ -146,7 +146,7 @@ impl Entity {
         }
     }
 
-    pub fn offset_state_pair(
+    pub fn buffered_states(
         &self, tick_offset: usize
 
     ) -> (&entity::State, &entity::State) {
@@ -301,15 +301,12 @@ impl Entity {
     // Drawing ----------------------------------------------------------------
     pub fn draw(&mut self, renderer: &mut Renderer, level: &Level) {
 
-        let u = renderer.get_delta_u();
         let state = if self.local() {
-            level.interpolate_state(&self.state, &self.last_state, u)
+            level.interpolate_entity_state(renderer, &self.state, &self.last_state)
 
         } else {
-            // TODO have both server and client use the same offset here
-            // for correct latency compensation
-            let offset = self.offset_state_pair(3); // TODO configure
-            level.interpolate_state(&offset.0, &offset.1, u)
+            let offset = self.buffered_states(renderer.interpolation_ticks());
+            level.interpolate_entity_state(renderer, &offset.0, &offset.1)
         };
 
         self.drawable.draw(renderer, level, state);
