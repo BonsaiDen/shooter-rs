@@ -141,8 +141,6 @@ impl Handler<Server> for Game {
 
             }
 
-            // TODO send old states for extra delay / interpolation?
-
             // We don't care about dropped packets
             conn.send(MessageKind::Instant, states);
 
@@ -173,8 +171,8 @@ impl Handler<Server> for Game {
                 entity.server_destroyed(self.tick as u8);
 
                 // Release id and color
-                let color = Color::from_flags(entity.get_state().flags);
-                println!("[Client {}] Destroyed entity (color {:?})", conn.peer_addr(), color);
+                let color = Color::from_flags(entity.state().flags);
+                println!("[Client {}] Destroyed entity ({:?})", conn.peer_addr(), color);
 
                 self.id_pool.release_id(entity.id());
                 self.available_colors.push(color);

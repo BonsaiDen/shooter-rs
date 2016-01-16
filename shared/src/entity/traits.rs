@@ -1,5 +1,4 @@
 // External Dependencies ------------------------------------------------------
-use rand::XorShiftRng;
 use cobalt::ConnectionID;
 
 
@@ -39,13 +38,7 @@ pub trait Base {
 
 pub trait Drawable {
 
-    fn draw(
-        &mut self,
-        _: &mut Renderer,
-        _: &mut XorShiftRng,
-        _: &Level, _: entity::State, _: f32, _: f32
-    ) {
-    }
+    fn draw(&mut self, _: &mut Renderer, _: &Level, _: entity::State) {}
 
     fn event_flags(&mut self, _: u8) {}
 

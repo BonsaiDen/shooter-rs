@@ -1,6 +1,4 @@
-use rand::{SeedableRng, XorShiftRng};
 use std::collections::HashMap;
-
 use std::net::SocketAddr;
 
 use net;
@@ -26,7 +24,6 @@ enum GameState {
 pub struct Game {
     back_color: Color,
     text_color: Color,
-    rng: XorShiftRng,
     entities: HashMap<u16, entity::Entity>,
     remote_states: Vec<(u8, entity::State)>,
     tick: u8,
@@ -141,13 +138,8 @@ impl GameEvents for Game {
         renderer.clear(&self.back_color);
 
         // Draw all entities
-        let dt = renderer.get_delta_time();
-        let u = renderer.get_delta_u();
         for (_, entity) in self.entities.iter_mut() {
-            entity.draw(
-                renderer, &mut self.rng,
-                &self.level, dt, u
-            );
+            entity.draw(renderer, &self.level);
         }
 
         // UI
@@ -166,7 +158,7 @@ impl GameEvents for Game {
             renderer.text(&self.text_color, 0.0, 0.0, &network_state[..]);
         }
 
-        renderer.draw(dt, u);
+        renderer.draw();
 
     }
 
@@ -182,12 +174,10 @@ impl Game {
         Level::new(384, 384, 16)
     }
 
-    // TODO have tick rate configured by server
     pub fn new(server_addr: SocketAddr) -> Game {
         Game {
             back_color: Color::from_name(ColorName::Black),
             text_color: Color::from_name(ColorName::White),
-            rng: XorShiftRng::new_unseeded(),
             entities: HashMap::new(),
             remote_states: Vec::new(),
             tick: 0,
@@ -198,24 +188,6 @@ impl Game {
     }
 
     // Internal ---------------------------------------------------------------
-
-    fn connect(&mut self) {
-        self.state = GameState::Pending;
-        self.reset();
-    }
-
-    fn disconnect(&mut self, renderer: &mut Renderer) {
-        self.tick = 0;
-        self.level = Game::default_level();
-        self.state = GameState::Disconnected;
-        self.reset();
-        self.init(renderer);
-    }
-
-    fn reset(&mut self) {
-        self.remote_states.clear();
-        self.entities.clear();
-    }
 
     fn tick_entities(&mut self, renderer: &mut Renderer, dt: f32) {
 
@@ -239,7 +211,7 @@ impl Game {
 
                     GameState::Disconnected => {
 
-                        self.remote_states.push((self.tick, entity.get_state()));
+                        self.remote_states.push((self.tick, entity.state()));
 
                         if self.remote_states.len() > 20 {
                             let first = self.remote_states.remove(0);
@@ -266,13 +238,31 @@ impl Game {
 
         }
 
-        self.rng.reseed([
+        renderer.reseed_rng([
             ((self.tick as u32 + 7) * 941) as u32,
             ((self.tick as u32 + 659) * 461) as u32,
             ((self.tick as u32 + 13) * 227) as u32,
             ((self.tick as u32 + 97) * 37) as u32
         ]);
 
+    }
+
+    fn connect(&mut self) {
+        self.state = GameState::Pending;
+        self.reset();
+    }
+
+    fn disconnect(&mut self, renderer: &mut Renderer) {
+        self.tick = 0;
+        self.level = Game::default_level();
+        self.state = GameState::Disconnected;
+        self.reset();
+        self.init(renderer);
+    }
+
+    fn reset(&mut self) {
+        self.remote_states.clear();
+        self.entities.clear();
     }
 
     fn config(&mut self, renderer: &mut Renderer, data: &[u8]) {
@@ -318,7 +308,7 @@ impl Game {
                 // Mark entity as alive
                 entity.set_alive(true);
 
-                // Set Remote state
+                // Set confirmed state
                 if entity.local() {
                     entity.set_confirmed_state(confirmed_tick, state);
 

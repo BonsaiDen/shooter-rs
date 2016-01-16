@@ -1,3 +1,5 @@
+use rand::XorShiftRng;
+
 use color::Color;
 use particle::Particle;
 
@@ -17,9 +19,9 @@ pub trait Renderer {
 
     fn set_delta_time(&mut self, dt: f32);
 
-    fn set_delta_u(&mut self, u: f32);
-
     fn get_delta_time(&mut self) -> f32;
+
+    fn set_delta_u(&mut self, u: f32);
 
     fn get_delta_u(&mut self) -> f32;
 
@@ -33,11 +35,15 @@ pub trait Renderer {
 
     fn key_down(&mut self, key_code: u8) -> bool;
 
+    fn reseed_rng(&mut self, seed: [u32; 4]);
+
+    fn rng(&mut self) -> &mut XorShiftRng;
+
     fn resize(&mut self, width: i32, height: i32);
 
     fn clear(&mut self, color: &Color);
 
-    fn draw(&mut self, dt: f32, u: f32);
+    fn draw(&mut self);
 
     fn triangle(
         &mut self, color: &Color,

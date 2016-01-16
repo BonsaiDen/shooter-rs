@@ -1,5 +1,4 @@
 // External Dependencies ------------------------------------------------------
-use rand::XorShiftRng;
 use cobalt::ConnectionID;
 use std::collections::VecDeque;
 
@@ -133,7 +132,7 @@ impl Entity {
 
 
     // State ------------------------------------------------------------------
-    pub fn get_state(&self) -> entity::State {
+    pub fn state(&self) -> entity::State {
         self.state
     }
 
@@ -300,13 +299,9 @@ impl Entity {
 
 
     // Drawing ----------------------------------------------------------------
-    pub fn draw(
-        &mut self,
-        renderer: &mut Renderer,
-        rng: &mut XorShiftRng,
-        level: &Level, dt: f32, u: f32
-    ) {
+    pub fn draw(&mut self, renderer: &mut Renderer, level: &Level) {
 
+        let u = renderer.get_delta_u();
         let state = if self.local() {
             level.interpolate_state(&self.state, &self.last_state, u)
 
@@ -317,7 +312,7 @@ impl Entity {
             level.interpolate_state(&offset.0, &offset.1, u)
         };
 
-        self.drawable.draw(renderer, rng, level, state, dt, u);
+        self.drawable.draw(renderer, level, state);
 
     }
 

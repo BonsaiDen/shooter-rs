@@ -1,6 +1,6 @@
 // External Dependencies ------------------------------------------------------
 use std::{cmp, f32};
-use rand::{Rng, XorShiftRng};
+use rand::Rng;
 
 
 // Internal Dependencies ------------------------------------------------------
@@ -48,14 +48,7 @@ impl entity::traits::Drawable for Ship {
         self.color_mid = self.color_light.darken(0.5);
     }
 
-    fn draw(
-        &mut self,
-        renderer: &mut Renderer,
-        rng: &mut XorShiftRng,
-        _: &Level,
-        state: entity::State,
-        _: f32, _: f32
-    ) {
+    fn draw(&mut self, renderer: &mut Renderer, _: &Level, state: entity::State) {
 
         let light = &self.color_light;
         let mid = &self.color_mid;
@@ -80,11 +73,13 @@ impl entity::traits::Drawable for Ship {
         // Effects
         if state.flags & 0x02 == 0x02 {
 
-            if rng.gen::<u8>() > 50 || self.particle_count > 1 {
+            if renderer.rng().gen::<u8>() > 50 || self.particle_count > 1 {
 
                 // Exhause more particles initially
                 for _ in 0..self.particle_count {
 
+                    let ar = renderer.rng().gen::<u8>() as f32;
+                    let v = renderer.rng().gen::<u8>() as f32;
                     if let Some(p) = renderer.particle() {
 
                         // Exhaust angle
@@ -102,7 +97,7 @@ impl entity::traits::Drawable for Ship {
                         let cs = (1.0 - w) * mr.cos() + w * state.r.cos();
                         let sn = (1.0 - w) * mr.sin() + w * state.r.sin();
                         let mr = sn.atan2(cs) + f32::consts::PI;
-                        let ar = ((rng.gen::<u8>() as f32) / 255.0 - 0.5) * (f32::consts::PI * 0.65);
+                        let ar = (ar / 255.0 - 0.5) * (f32::consts::PI * 0.65);
 
                         // Spawn exhaust particles
                         p.color.set_from_color(&self.color_light);
@@ -110,7 +105,7 @@ impl entity::traits::Drawable for Ship {
                         p.y = state.y + mr.sin() * 9.0 * self.scale + 0.5;
                         p.s = 2.5 * self.scale;
                         p.sms = -1.25 * self.scale;
-                        p.v = ((86.0 + rng.gen::<u8>() as f32 / 9.0) * 0.5 + dr * 30.0) * 0.5 * self.scale;
+                        p.v = ((86.0 + v / 9.0) * 0.5 + dr * 30.0) * 0.5 * self.scale;
                         p.vms = 0.0;
                         p.r = mr - ar * 1.7;
                         // Spread out exhaust

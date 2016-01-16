@@ -1,3 +1,5 @@
+use rand::{SeedableRng, XorShiftRng};
+
 use allegro;
 use allegro::{
     Core,
@@ -11,6 +13,7 @@ use allegro::{
 };
 use allegro_font::{FontDrawing, FontAddon, Font, FontAlign};
 use allegro_primitives::PrimitivesAddon;
+
 
 use game::GameEvents;
 use shared::color::Color;
@@ -38,7 +41,7 @@ impl AllegroRenderContainer {
         // Create Display
         core.set_new_display_flags(allegro::OPENGL);
         core.set_new_display_option(DisplayOption::SampleBuffers, 1, DisplayOptionImportance::Require);
-        core.set_new_display_option(DisplayOption::Samples, 16, DisplayOptionImportance::Require);
+        core.set_new_display_option(DisplayOption::Samples, 8, DisplayOptionImportance::Require);
 
         let disp = Display::new(&core, 256, 256).ok().expect("Failed to create OPENGL context.");
         q.register_event_source(disp.get_event_source());
@@ -105,7 +108,8 @@ pub struct AllegroRenderer {
     time: f64,
     dt: f32,
     u: f32,
-    key_state: [bool; 255]
+    key_state: [bool; 255],
+    rng: XorShiftRng
 }
 
 impl AllegroRenderer {
@@ -137,7 +141,8 @@ impl AllegroRenderer {
             time: 0.0,
             dt: 0.0,
             u: 0.0,
-            key_state: [false; 255]
+            key_state: [false; 255],
+            rng: XorShiftRng::new_unseeded()
         }
 
     }
@@ -236,6 +241,15 @@ impl Renderer for AllegroRenderer {
         }
     }
 
+    fn reseed_rng(&mut self, seed: [u32; 4]) {
+        self.rng.reseed(seed);
+    }
+
+    fn rng(&mut self) -> &mut XorShiftRng {
+        &mut self.rng
+    }
+
+
     fn resize(&mut self, width: i32, height: i32) {
         self.display.resize(width, height).ok();
     }
@@ -244,9 +258,9 @@ impl Renderer for AllegroRenderer {
         self.core.clear_to_color(get_color(color));
     }
 
-    fn draw(&mut self, dt: f32, _: f32) {
+    fn draw(&mut self) {
         let prim = &self.prim;
-        self.particle_system.draw(dt, |ref color, s, x, y| {
+        self.particle_system.draw(self.dt, |ref color, s, x, y| {
             prim.draw_filled_rectangle(
                 x - s + 0.5, y - s + 0.5, x + s + 0.5, y + s + 0.5,
                 get_color(color)
