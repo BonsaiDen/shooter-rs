@@ -128,7 +128,7 @@ impl Color {
         (self.to_u8() << 4) & 0xff
     }
 
-    pub fn set_from_color(&mut self, color: &Color) {
+    pub fn set_to(&mut self, color: &Color) {
         self.r = color.r;
         self.g = color.g;
         self.b = color.b;

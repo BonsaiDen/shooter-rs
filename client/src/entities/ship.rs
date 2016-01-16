@@ -100,7 +100,7 @@ impl entity::traits::Drawable for Ship {
                         let ar = (ar / 255.0 - 0.5) * (f32::consts::PI * 0.65);
 
                         // Spawn exhaust particles
-                        p.color.set_from_color(&self.color_light);
+                        p.color.set_to(&self.color_light);
                         p.x = state.x + mr.cos() * 9.0 * self.scale + 0.5;
                         p.y = state.y + mr.sin() * 9.0 * self.scale + 0.5;
                         p.s = 2.5 * self.scale;
