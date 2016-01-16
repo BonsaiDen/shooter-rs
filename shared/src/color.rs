@@ -11,14 +11,14 @@ pub enum ColorName {
     Purple,
     Pink,
     Black,
-    White
+    White,
+    Custom
 }
 
 impl ColorName {
 
     pub fn to_u8(&self) -> u8 {
         match *self {
-            ColorName::Grey => 0,
             ColorName::Red => 1,
             ColorName::Orange => 2,
             ColorName::Yellow => 3,
@@ -42,7 +42,7 @@ impl ColorName {
             6 => ColorName::Blue,
             7 => ColorName::Purple,
             8 => ColorName::Pink,
-            _ => ColorName::Grey
+            _ => ColorName::Custom
         }
     }
 
@@ -84,7 +84,6 @@ impl Color {
 
     pub fn from_name(name: ColorName) -> Color {
         match name  {
-            ColorName::Grey => Color::new(0x80, 0x80, 0x80, 0xff),
             ColorName::Red => Color::new(0xf2, 0x00, 0x26, 0xff),
             ColorName::Orange => Color::new(0xfd, 0x83, 0x1c, 0xff),
             ColorName::Yellow => Color::new(0xfd, 0xda, 0x31, 0xff),
@@ -94,7 +93,8 @@ impl Color {
             ColorName::Purple => Color::new(0x82, 0x0c, 0xe6, 0xff),
             ColorName::Pink => Color::new(0xec, 0x34, 0xa7, 0xff),
             ColorName::Black => Color::new(0x00, 0x00, 0x00, 0xff),
-            ColorName::White => Color::new(0xff, 0xff, 0xff, 0xff)
+            ColorName::White => Color::new(0xff, 0xff, 0xff, 0xff),
+            _ => Color::new(0x80, 0x80, 0x80, 0xff)
         }
     }
 
@@ -119,7 +119,7 @@ impl Color {
             (0xec, 0x34, 0xa7) => ColorName::Pink,
             (0x00, 0x00, 0x00) => ColorName::Black,
             (0xff, 0xff, 0xff) => ColorName::White,
-            (_, _, _) => ColorName::Grey
+            (_, _, _) => ColorName::Custom
         }
     }
 
