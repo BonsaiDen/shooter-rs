@@ -17,7 +17,8 @@ mod game;
 mod net;
 
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
-use allegro_renderer::AllegroRenderContainer;
+use shared::renderer::Renderer;
+use allegro_renderer::AllegroRenderer;
 
 allegro_main! {
 
@@ -40,7 +41,7 @@ allegro_main! {
     ));
 
     // Renderer
-    AllegroRenderContainer::new().run(game::Game::new(server_addr));
+    AllegroRenderer::run(game::Game::new(server_addr));
 
 }
 

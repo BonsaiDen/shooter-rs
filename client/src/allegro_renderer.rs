@@ -14,84 +14,10 @@ use allegro::{
 use allegro_font::{FontDrawing, FontAddon, Font, FontAlign};
 use allegro_primitives::PrimitivesAddon;
 
-
-use game::GameEvents;
 use shared::color::Color;
-use shared::renderer::Renderer;
+use shared::renderer::{Renderer, Runnable};
 use shared::particle::{Particle, ParticleSystem};
 
-pub struct AllegroRenderContainer;
-
-impl AllegroRenderContainer {
-
-    pub fn new() -> AllegroRenderContainer {
-        AllegroRenderContainer
-    }
-
-    pub fn run<G: GameEvents>(&self, mut game: G)  {
-
-        // Init Allegro
-        let mut core = Core::init().unwrap();
-        let q = EventQueue::new(&core).unwrap();
-
-        // Keyboard
-        core.install_keyboard().unwrap();
-        q.register_event_source(core.get_keyboard_event_source());
-
-        // Create Display
-        core.set_new_display_flags(allegro::OPENGL);
-        core.set_new_display_option(DisplayOption::SampleBuffers, 2, DisplayOptionImportance::Suggest);
-        core.set_new_display_option(DisplayOption::Samples, 16, DisplayOptionImportance::Suggest);
-
-        let disp = Display::new(&core, 256, 256).ok().expect("Failed to create OPENGL context.");
-        q.register_event_source(disp.get_event_source());
-
-        // Create renderer
-        let mut renderer = AllegroRenderer::new(core, disp, q);
-
-        // Init callback
-        game.init(&mut renderer);
-
-        // Mainloop
-        let mut last_tick_time = 0.0;
-        let mut last_frame_time = 0.0;
-        let mut frames_per_tick = 0;
-
-        while renderer.running() {
-
-            if renderer.do_draw() {
-
-                let frame_time = renderer.time();
-                let tick_rate = renderer.tick_rate();
-
-                if frames_per_tick == 0 {
-                    if game.tick(&mut renderer) {
-                        frames_per_tick = renderer.fps() / tick_rate;
-                        last_tick_time = frame_time;
-                    }
-                }
-
-                renderer.set_delta_time((frame_time - last_frame_time) as f32);
-                renderer.set_delta_u(
-                    1.0 / (1.0 / tick_rate as f32) * (frame_time - last_tick_time) as f32
-                );
-
-                game.draw(&mut renderer);
-
-                last_frame_time = frame_time;
-                frames_per_tick -= 1;
-
-            }
-
-            renderer.events();
-
-        }
-
-        game.destroy();
-
-    }
-
-}
 
 pub struct AllegroRenderer {
     core: Core,
@@ -114,6 +40,7 @@ pub struct AllegroRenderer {
 }
 
 impl AllegroRenderer {
+
     pub fn new(
         core: Core, display: Display, queue: EventQueue
 
@@ -148,10 +75,115 @@ impl AllegroRenderer {
         }
 
     }
+
+    fn should_draw(&mut self) -> bool {
+        let redraw = self.redraw;
+        self.redraw = false;
+        redraw
+    }
+
+    fn events(&mut self) {
+        match self.queue.wait_for_event() {
+
+            allegro::DisplayClose{ ..} => {
+                self.is_running = false;
+            },
+
+            allegro::KeyDown{keycode: k, ..} if (k as u32) < 255 => {
+
+                self.key_state[k as usize] = true;
+
+                // Exit via Ctrl-C
+                if k == KeyCode::C && self.key_state[KeyCode::LCtrl as usize] {
+                    self.is_running = false;
+                }
+
+            },
+
+            allegro::KeyUp{keycode: k, ..} if (k as u32) < 255 => {
+                self.key_state[k as usize] = false;
+            },
+
+            allegro::TimerTick{timestamp: t, ..} => {
+                self.set_time(t);
+                self.redraw = true;
+            },
+
+            _ => ()
+
+        }
+    }
+
+    fn running(&mut self) -> bool {
+        self.is_running
+    }
+
 }
 
 impl Renderer for AllegroRenderer {
 
+    fn run<R: Runnable>(mut runnable: R) where Self: Sized {
+
+        // Init Allegro
+        let mut core = Core::init().unwrap();
+        let q = EventQueue::new(&core).unwrap();
+
+        // Keyboard
+        core.install_keyboard().unwrap();
+        q.register_event_source(core.get_keyboard_event_source());
+
+        // Create Display
+        core.set_new_display_flags(allegro::OPENGL);
+        core.set_new_display_option(DisplayOption::SampleBuffers, 2, DisplayOptionImportance::Suggest);
+        core.set_new_display_option(DisplayOption::Samples, 16, DisplayOptionImportance::Suggest);
+
+        let disp = Display::new(&core, 256, 256).ok().expect("Failed to create OPENGL context.");
+        q.register_event_source(disp.get_event_source());
+
+        // Create renderer
+        let mut renderer = AllegroRenderer::new(core, disp, q);
+
+        // Init callback
+        runnable.init(&mut renderer);
+
+        // Mainloop
+        let mut last_tick_time = 0.0;
+        let mut last_frame_time = 0.0;
+        let mut frames_per_tick = 0;
+
+        while renderer.running() {
+
+            if renderer.should_draw() {
+
+                let frame_time = renderer.time();
+                let tick_rate = renderer.tick_rate();
+
+                if frames_per_tick == 0 {
+                    if runnable.tick(&mut renderer) {
+                        frames_per_tick = renderer.fps() / tick_rate;
+                        last_tick_time = frame_time;
+                    }
+                }
+
+                renderer.set_delta_time((frame_time - last_frame_time) as f32);
+                renderer.set_delta_u(
+                    1.0 / (1.0 / tick_rate as f32) * (frame_time - last_tick_time) as f32
+                );
+
+                runnable.draw(&mut renderer);
+
+                last_frame_time = frame_time;
+                frames_per_tick -= 1;
+
+            }
+
+            renderer.events();
+
+        }
+
+        runnable.destroy();
+
+    }
 
     // Time Related -----------------------------------------------------------
     fn time(&self) -> f64 {
@@ -205,50 +237,6 @@ impl Renderer for AllegroRenderer {
 
     fn set_interpolation_ticks(&mut self, ticks: usize) {
         self.interpolation_ticks = ticks;
-    }
-
-
-    // Events / Loop ----------------------------------------------------------
-    fn do_draw(&mut self) -> bool {
-        let redraw = self.redraw;
-        self.redraw = false;
-        redraw
-    }
-
-    fn events(&mut self) {
-        match self.queue.wait_for_event() {
-
-            allegro::DisplayClose{ ..} => {
-                self.is_running = false;
-            },
-
-            allegro::KeyDown{keycode: k, ..} if (k as u32) < 255 => {
-
-                self.key_state[k as usize] = true;
-
-                // Exit via Ctrl-C
-                if k == KeyCode::C && self.key_state[KeyCode::LCtrl as usize] {
-                    self.is_running = false;
-                }
-
-            },
-
-            allegro::KeyUp{keycode: k, ..} if (k as u32) < 255 => {
-                self.key_state[k as usize] = false;
-            },
-
-            allegro::TimerTick{timestamp: t, ..} => {
-                self.set_time(t);
-                self.redraw = true;
-            },
-
-            _ => ()
-
-        }
-    }
-
-    fn running(&mut self) -> bool {
-        self.is_running
     }
 
 

@@ -6,14 +6,7 @@ use entities;
 use shared::entity;
 use shared::color::{Color, ColorName};
 use shared::level::Level;
-use shared::renderer::Renderer;
-
-pub trait GameEvents {
-    fn init(&mut self, &mut Renderer);
-    fn tick(&mut self, &mut Renderer) -> bool;
-    fn draw(&mut self, &mut Renderer);
-    fn destroy(&mut self);
-}
+use shared::renderer::{Renderer, Runnable};
 
 enum GameState {
     Disconnected,
@@ -32,7 +25,7 @@ pub struct Game {
     state: GameState
 }
 
-impl GameEvents for Game {
+impl Runnable for Game {
 
     fn init(&mut self, renderer: &mut Renderer) {
 

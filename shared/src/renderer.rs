@@ -6,9 +6,18 @@ use rand::XorShiftRng;
 use color::Color;
 use particle::Particle;
 
+pub trait Runnable {
+    fn init(&mut self, &mut Renderer);
+    fn tick(&mut self, &mut Renderer) -> bool;
+    fn draw(&mut self, &mut Renderer);
+    fn destroy(&mut self);
+}
+
 
 // Renderer Abstraction -------------------------------------------------------
 pub trait Renderer {
+
+    fn run<R: Runnable>(runnable: R) where Self: Sized;
 
     // Time Related -----------------------------------------------------------
     fn time(&self) -> f64;
@@ -38,14 +47,6 @@ pub trait Renderer {
     fn interpolation_ticks(&self) -> usize;
 
     fn set_interpolation_ticks(&mut self, ticks: usize);
-
-
-    // Events / Loop ----------------------------------------------------------
-    fn do_draw(&mut self) -> bool;
-
-    fn events(&mut self);
-
-    fn running(&mut self) -> bool;
 
 
     // Input ------------------------------------------------------------------
