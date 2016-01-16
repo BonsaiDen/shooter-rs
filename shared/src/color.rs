@@ -1,3 +1,4 @@
+// Color Name Mapping ---------------------------------------------------------
 #[derive(Debug, Copy, Clone)]
 pub enum ColorName {
     Grey,
@@ -47,6 +48,8 @@ impl ColorName {
 
 }
 
+
+// RGB Color ------------------------------------------------------------------
 #[derive(Debug)]
 pub struct Color {
     pub r: u8,
@@ -135,14 +138,64 @@ impl Color {
         self.a = color.a;
     }
 
+    pub fn to_hsl(&self) -> HSLColor {
+
+        let (r, g, b) = (
+            self.r as f32 / 255.0,
+            self.g as f32 / 255.0,
+            self.b as f32 / 255.0
+        );
+
+        let (min, max) = (r.min(g).min(b), r.max(g).max(b));
+        let l = (max + min) / 2.0;
+
+        let (h, s) = if max == min {
+            // Achromatic Case
+            (0.0, 0.0)
+
+        } else {
+            let d = max - min;
+            let h = if max == r {
+                (g - b) / d + if g < b {
+                    6.0
+
+                } else {
+                    0.0
+                }
+
+            } else if max == g {
+                (b - r) / d + 2.0
+
+            } else {
+                (r - g) / d + 4.0
+            };
+
+            let s = if l > 0.5 {
+                d / (2.0 - max - min)
+
+            } else {
+                d / (max + min)
+            };
+
+            (h / 6.0, s)
+        };
+
+        HSLColor::new(h, s, l, self.a)
+
+    }
+
     pub fn darken(&self, by: f32) -> Color {
-        let mut hsl = rgb_to_hsl(self);
-        hsl.l = hsl.l * (1.0 - by);
-        hsl_to_rgb(&hsl)
+        self.to_hsl().darken(by).to_rgb()
+    }
+
+    pub fn lighten(&self, by: f32) -> Color {
+        self.to_hsl().lighten(by).to_rgb()
     }
 
 }
 
+
+// HSL Color ------------------------------------------------------------------
 #[derive(Debug)]
 pub struct HSLColor {
     pub h: f32,
@@ -151,106 +204,83 @@ pub struct HSLColor {
     pub a: u8
 }
 
-pub fn rgb_to_hsl(color: &Color) -> HSLColor {
+impl HSLColor {
 
-    let r = color.r as f32 / 255.0;
-    let g = color.g as f32 / 255.0;
-    let b = color.b as f32 / 255.0;
+    pub fn new(h: f32, s: f32, l: f32, a: u8) -> HSLColor {
+        HSLColor {
+            h: h,
+            s: s,
+            l: l,
+            a: a
+        }
+    }
 
-    let max = r.max(g).max(b);
-    let min = r.min(g).min(b);
-    let l = (max + min) / 2.0;
-    let mut h = 0.0;
-    let mut s = 0.0;
+    pub fn to_rgb(&self) -> Color {
 
-    if max != min {
-
-        let d = max - min;
-
-        s = if l > 0.5 {
-            d / (2.0 - max - min)
+        let (r, g, b) = if self.s == 0.0 {
+            // Achromatic
+            (self.l, self.l, self.l)
 
         } else {
-            d / (max + min)
+            let q = if self.l < 0.5  {
+                self.l * (1.0 + self.s)
+
+            } else {
+                self.l + self.s - self.l * self.s
+            };
+
+            let p = 2.0 * self.l - q;
+
+            (
+                hue_to_rgb(p, q, self.h + 1.0 / 3.0),
+                hue_to_rgb(p, q, self.h),
+                hue_to_rgb(p, q, self.h - 1.0 / 3.0)
+            )
+
         };
 
-        h = if r > g && r > b {
-            (g - b) / d + if g < b {
-                6.0
-            } else {
-                0.0
-            }
-
-        } else if g > b {
-            (b - r) / d + 2.0
-
-        } else {
-            (r - g) / d + 4.0
-
-        } / 6.0 * 360.0;
+        Color::new(
+            (r * 255.0).ceil() as u8,
+            (g * 255.0).ceil() as u8,
+            (b * 255.0).ceil() as u8,
+            self.a
+        )
 
     }
 
-    HSLColor {
-        h: h,
-        s: s,
-        l: l,
-        a: color.a
+    pub fn darken(&self, by: f32) -> HSLColor {
+        HSLColor::new(self.h, self.s, (self.l * (1.0 - by)).max(0.0), self.a)
+    }
+
+    pub fn lighten(&self, by: f32) -> HSLColor {
+        HSLColor::new(self.h, self.s, (self.l * (1.0 + by)).min(1.0), self.a)
     }
 
 }
 
-pub fn hsl_to_rgb(color: &HSLColor) -> Color {
+fn hue_to_rgb(p: f32, q: f32, t: f32) -> f32 {
 
-    let h = color.h;
-    let s = color.s;
-    let l = color.l;
+    let t = if t < 0.0 {
+        t + 1.0
 
-    let m2 = if l <= 0.5 {
-        l * (s + 1.0)
+    } else if t > 1.0 {
+        t - 1.0
 
     } else {
-        l + s - l*s
+        t
     };
 
-    let m1 = l * 2.0 - m2;
-    let h = h / 360.0;
+    if t < 1.0 / 6.0 {
+        p + (q - p) * 6.0 * t
 
-    fn hue_to_rgb(m1: f32, m2: f32, h: f32) -> f32 {
+    } else if t < 1.0 / 2.0 {
+        q
 
-        let h = if h < 0.0 {
-            h + 1.0
+    } else if t < 2.0 / 3.0 {
+        p + (q - p) * (2.0 / 3.0 - t) * 6.0
 
-        } else if h > 1.0 {
-            h - 1.0
-
-        } else {
-            h
-        };
-
-        if 0.0 <= h && h < 1.0/6.0 {
-            m1 + (m2 - m1)*h*6.0
-
-        } else if 1.0/6.0 <= h && h < 1.0/2.0 {
-            m2
-
-        } else if 1.0/2.0 <= h && h < 2.0/3.0 {
-            m1 + (m2 - m1)*(4.0 - 6.0*h)
-
-        } else if 2.0/3.0 <= h && h <= 1.0 {
-            m1
-
-        } else {
-            0.0
-        }
-
-    }
-
-    Color {
-        r: (255.0 * hue_to_rgb(m1, m2, h + 1.0 / 3.0)).round() as u8,
-        g: (255.0 * hue_to_rgb(m1, m2, h)).round() as u8,
-        b: (255.0 * hue_to_rgb(m1, m2, h - 1.0 / 3.0)).round() as u8,
-        a: color.a
+    } else {
+        p
     }
 
 }
