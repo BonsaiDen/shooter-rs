@@ -4,7 +4,7 @@ use bincode::rustc_serialize::{encode, decode};
 
 
 // Entity Input ---------------------------------------------------------------
-#[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct EntityInput {
     pub tick: u8,
     pub left: bool,
