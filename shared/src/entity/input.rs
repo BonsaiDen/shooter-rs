@@ -7,10 +7,7 @@ use bincode::rustc_serialize::{encode, decode};
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct EntityInput {
     pub tick: u8,
-    pub left: bool,
-    pub right: bool,
-    pub thrust: bool,
-    pub fire: bool
+    pub fields: u32
 }
 
 impl EntityInput {
@@ -36,10 +33,7 @@ impl Default for EntityInput {
     fn default() -> EntityInput {
         EntityInput {
             tick: 0,
-            left: false,
-            right: false,
-            thrust: false,
-            fire: false
+            fields: 0
         }
     }
 }

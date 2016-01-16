@@ -47,18 +47,18 @@ impl entity::traits::Base for Ship {
     ) {
 
         let mut steer = 0.0;
-        if input.left {
+        if input.fields & 0x01 == 0x01 {
             steer -= 1.0;
         }
 
-        if input.right {
+        if input.fields & 0x02 == 0x02 {
             steer += 1.0;
         }
 
         // TODO make this constant time rotation
         state.r += f32::consts::PI / 180.0 * self.rotation * dt * steer;
 
-        if input.thrust {
+        if input.fields & 0x04 == 0x04{
             // Constant time acceleration
             let m = 60.0 / (1.0 / dt);
             state.mx += state.r.cos() * self.acceleration * dt * m;

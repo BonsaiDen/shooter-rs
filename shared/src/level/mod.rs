@@ -1,9 +1,9 @@
 // Internal Dependencies ------------------------------------------------------
-use entity;
 use std::f32;
 
 
 // Internal Dependencies ------------------------------------------------------
+use entity;
 use renderer::Renderer;
 
 
