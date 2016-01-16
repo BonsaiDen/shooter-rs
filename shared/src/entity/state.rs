@@ -4,7 +4,7 @@ use bincode::rustc_serialize::{encode, decode};
 
 
 // Entity State ---------------------------------------------------------------
-#[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct EntityState {
     pub x: f32,
     pub y: f32,
@@ -26,6 +26,26 @@ impl EntityState {
 
     pub fn serialize(&self) -> Vec<u8> {
         encode(&self, SizeLimit::Infinite).unwrap()
+    }
+
+    pub fn set_to(&mut self, state: &EntityState) {
+        self.x = state.x;
+        self.y = state.y;
+        self.r = state.r;
+        self.mx = state.mx;
+        self.my = state.my;
+        self.flags = state.flags;
+    }
+
+    pub fn clone(&self) -> EntityState {
+        EntityState {
+            x: self.x,
+            y: self.y,
+            r: self.r,
+            mx: self.mx,
+            my: self.my,
+            flags: self.flags
+        }
     }
 
 }

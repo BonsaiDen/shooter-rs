@@ -132,34 +132,34 @@ impl Entity {
 
 
     // State ------------------------------------------------------------------
-    pub fn state(&self) -> entity::State {
-        self.state
+    pub fn state(&self) -> &entity::State {
+        &self.state
     }
 
-    pub fn offset_state(&self, tick_offset: usize) -> entity::State {
+    pub fn offset_state(&self, tick_offset: usize) -> &entity::State {
         let buffer_len = self.state_buffer.len();
         if buffer_len > 0 && tick_offset < buffer_len {
-            self.state_buffer[tick_offset].1
+            &self.state_buffer[tick_offset].1
 
         } else {
-            self.state
+            &self.state
         }
     }
 
     pub fn offset_state_pair(
         &self, tick_offset: usize
 
-    ) -> (entity::State, entity::State) {
+    ) -> (&entity::State, &entity::State) {
         let buffer_len = self.state_buffer.len();
         if buffer_len > 0 && tick_offset + 1 < buffer_len {
             (
-                self.state_buffer[tick_offset].1,
-                self.state_buffer[tick_offset + 1].1
+                &self.state_buffer[tick_offset].1,
+                &self.state_buffer[tick_offset + 1].1
             )
         } else {
             (
-                self.state,
-                self.last_state
+                &self.state,
+                &self.last_state
             )
         }
     }
@@ -179,15 +179,15 @@ impl Entity {
     fn set_entity_state(&mut self, state: entity::State, override_last: bool) {
 
         let old_flags = self.state.flags;
-        self.last_state = if override_last {
-            state
+        if override_last {
+            self.last_state.set_to(&state);
 
         } else {
-            self.state
+            self.last_state.set_to(&self.state);
         };
 
-        self.base_state = state;
-        self.state = state;
+        self.base_state.set_to(&state);
+        self.state.set_to(&state);
 
         if old_flags != state.flags {
             self.drawable.event_flags(state.flags);
@@ -256,11 +256,11 @@ impl Entity {
         if let Some((confirmed_tick, confirmed_state)) = self.confirmed_state.take() {
 
             // Set the current state as the last state
-            self.last_state = self.state;
+            self.last_state.set_to(&self.state);
 
             // Take over the remote state as the new base
-            self.base_state = confirmed_state;
-            self.state = confirmed_state;
+            self.base_state.set_to(&confirmed_state);
+            self.state.set_to(&confirmed_state);
 
             // Drop all inputs confirmed by the remote so the remaining ones
             // get applied on top of the new base state
@@ -270,22 +270,22 @@ impl Entity {
 
         // Otherwise reset the local state and re-apply the inputs on top of it
         } else {
-            self.last_state = self.state;
-            self.state = self.base_state;
+            self.last_state.set_to(&self.state);
+            self.state.set_to(&self.base_state);
         }
 
         // Apply unconfirmed inputs on top of last state confirmed by the server
-        let mut new_state = self.base_state;
+        let mut new_state = self.base_state.clone();
         for input in self.input_buffer.iter() {
             self.entity.apply_input(level, &mut new_state, input, dt);
         }
 
         // Assign calculated state
-        self.state = new_state;
+        self.state.set_to(&new_state);
 
         // Use the newly calculated state as the base
         if server {
-            self.base_state = self.state;
+            self.base_state.set_to(&self.state);
             self.input_buffer.clear();
         }
 
@@ -328,7 +328,7 @@ impl Entity {
         ].to_vec();
 
         // Set local flag if we're serializing for the owner
-        let mut state = self.state;
+        let mut state = self.state.clone();
         if self.owned_by(owner) {
             state.flags |= 0x01;
         }

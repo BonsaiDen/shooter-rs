@@ -211,7 +211,7 @@ impl Game {
 
                     GameState::Disconnected => {
 
-                        self.remote_states.push((self.tick, entity.state()));
+                        self.remote_states.push((self.tick, entity.state().clone()));
 
                         if self.remote_states.len() > 20 {
                             let first = self.remote_states.remove(0);
@@ -300,7 +300,7 @@ impl Game {
                     let mut entity = entity_from_kind(kind);
                     // TODO abstract away
                     entity.set_id(id);
-                    entity.set_state(state);
+                    entity.set_state(state.clone());
                     entity.client_created(tick);
                     entity
                 });

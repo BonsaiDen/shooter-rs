@@ -6,84 +6,6 @@ use std::cmp;
 use color::{Color, ColorName};
 
 
-// Particle -------------------------------------------------------------------
-pub struct Particle {
-
-    active: bool,
-
-    pub color: Color,
-
-    // Position
-    pub x: f32,
-    pub y: f32,
-
-    // Velocity
-    pub v: f32,
-
-    // Size
-    pub s: f32,
-
-    // Size modification per second
-    pub sms: f32,
-
-    // Velocity modification per seond
-    pub vms: f32,
-
-    // Angle
-    pub r: f32,
-
-    // Angle modification per second
-    pub rms: f32,
-
-    pub fadeout: f32,
-    pub lifetime: f32,
-    pub remaining: f32,
-
-    pub id: usize,
-    pub next_available: usize
-
-}
-
-impl Particle {
-
-    fn is_active(&mut self) -> bool {
-        self.active
-    }
-
-    fn step(&mut self, dt: f32) -> bool {
-        if self.remaining <= 0.0 {
-            self.active = false;
-            false
-
-        } else {
-            self.x += self.r.cos() * self.v * dt;
-            self.y += self.r.sin() * self.v * dt;
-            self.s += self.sms * dt;
-            self.r += self.rms * dt;
-            self.v += self.vms * dt;
-            self.remaining -= dt;
-            true
-        }
-    }
-
-    fn draw<F>(&mut self, f: &F) where F: Fn(&Color, f32, f32, f32) {
-
-        let lp = 1.0 / self.lifetime * self.remaining;
-        let alpha = if lp <= self.fadeout {
-            255.0 / (self.lifetime * self.fadeout) * self.remaining.max(0.0)
-
-        } else {
-            255.0
-        };
-
-        self.color.a = alpha as u8;
-        f(&self.color, self.s / 2.0, self.x, self.y);
-
-    }
-
-}
-
-
 // ParticleSystem -------------------------------------------------------------
 pub struct ParticleSystem {
     first_available_particle: usize,
@@ -168,6 +90,84 @@ impl ParticleSystem {
         }
 
         self.max_used_particle = max_used_particle;
+
+    }
+
+}
+
+
+// Particle -------------------------------------------------------------------
+pub struct Particle {
+
+    active: bool,
+
+    pub color: Color,
+
+    // Position
+    pub x: f32,
+    pub y: f32,
+
+    // Velocity
+    pub v: f32,
+
+    // Size
+    pub s: f32,
+
+    // Size modification per second
+    pub sms: f32,
+
+    // Velocity modification per seond
+    pub vms: f32,
+
+    // Angle
+    pub r: f32,
+
+    // Angle modification per second
+    pub rms: f32,
+
+    pub fadeout: f32,
+    pub lifetime: f32,
+    pub remaining: f32,
+
+    pub id: usize,
+    pub next_available: usize
+
+}
+
+impl Particle {
+
+    fn is_active(&mut self) -> bool {
+        self.active
+    }
+
+    fn step(&mut self, dt: f32) -> bool {
+        if self.remaining <= 0.0 {
+            self.active = false;
+            false
+
+        } else {
+            self.x += self.r.cos() * self.v * dt;
+            self.y += self.r.sin() * self.v * dt;
+            self.s += self.sms * dt;
+            self.r += self.rms * dt;
+            self.v += self.vms * dt;
+            self.remaining -= dt;
+            true
+        }
+    }
+
+    fn draw<F>(&mut self, f: &F) where F: Fn(&Color, f32, f32, f32) {
+
+        let lp = 1.0 / self.lifetime * self.remaining;
+        let alpha = if lp <= self.fadeout {
+            255.0 / (self.lifetime * self.fadeout) * self.remaining.max(0.0)
+
+        } else {
+            255.0
+        };
+
+        self.color.a = alpha as u8;
+        f(&self.color, self.s / 2.0, self.x, self.y);
 
     }
 

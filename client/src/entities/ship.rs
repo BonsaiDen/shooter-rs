@@ -54,7 +54,7 @@ impl entity::traits::Drawable for Ship {
         let mid = &self.color_mid;
         let scale = self.scale;
 
-        self.last_draw_state = state;
+        self.last_draw_state.set_to(&state);
 
         // Rendering
         draw_triangle(
