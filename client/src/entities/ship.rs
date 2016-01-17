@@ -43,9 +43,11 @@ impl Ship {
 
 impl entity::traits::Drawable for Ship {
 
-    fn event_flags(&mut self, flags: u8) {
-        self.color_light = Color::from_flags(flags);
-        self.color_mid = self.color_light.darken(0.5);
+    fn event(&mut self, event: &entity::Event, _: &entity::State) {
+        if let &entity::Event::Flags(flags) = event {
+            self.color_light = Color::from_flags(flags);
+            self.color_mid = self.color_light.darken(0.5);
+        }
     }
 
     fn draw(&mut self, renderer: &mut Renderer, _: &Level, state: entity::State) {

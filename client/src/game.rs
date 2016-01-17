@@ -317,7 +317,7 @@ impl Game {
                     // TODO abstract away
                     entity.set_id(id);
                     entity.set_state(state.clone());
-                    entity.client_created(tick);
+                    entity.event(entity::Event::Created(tick));
                     entity
                 });
 
@@ -343,7 +343,7 @@ impl Game {
         let mut destroyed_ids = Vec::new();
         for (_, entity) in self.entities.iter_mut() {
             if entity.alive() == false {
-                entity.client_destroyed(tick);
+                entity.event(entity::Event::Destroyed(tick));
                 destroyed_ids.push(entity.id());
             }
         }

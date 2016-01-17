@@ -43,7 +43,9 @@ impl entity::traits::Base for Ship {
 
     fn apply_input(
         &mut self,
-        level: &BaseLevel, state: &mut entity::State, input: &entity::Input, dt: f32
+        level: &BaseLevel,
+        state: &mut entity::State, input: &entity::Input,
+        dt: f32
     ) {
 
         let mut steer = 0.0;

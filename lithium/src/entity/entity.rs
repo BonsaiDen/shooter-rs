@@ -190,8 +190,7 @@ impl Entity {
         self.state.set_to(&state);
 
         if old_flags != state.flags {
-            self.drawable.event_flags(state.flags);
-            self.entity.event_flags(state.flags);
+            self.event(entity::Event::Flags(state.flags));
         }
 
     }
@@ -241,12 +240,12 @@ impl Entity {
 
     // Ticking ----------------------------------------------------------------
     pub fn client_tick(&mut self, level: &Level, tick: u8, dt: f32) {
-        self.entity.client_event_tick(level, &self.state, tick, dt);
+        self.event(entity::Event::Tick(tick, dt));
         self.tick(level, tick, dt, false);
     }
 
-    pub fn server_tick(&mut self,  level: &Level, tick: u8, dt: f32) {
-        self.entity.server_event_tick(level, &self.state, tick, dt);
+    pub fn server_tick(&mut self, level: &Level, tick: u8, dt: f32) {
+        self.event(entity::Event::Tick(tick, dt));
         self.tick(level, tick, dt, true);
     }
 
@@ -336,22 +335,9 @@ impl Entity {
 
 
     // Events -----------------------------------------------------------------
-    pub fn server_created(&mut self, tick: u8) {
-        self.entity.server_event_created(&self.state, tick);
-    }
-
-    pub fn client_created(&mut self, tick: u8) {
-        self.entity.client_event_created(&self.state, tick);
-        self.drawable.event_created(&self.state, tick);
-    }
-
-    pub fn server_destroyed(&mut self, tick: u8) {
-        self.entity.server_event_destroyed(&self.state, tick);
-    }
-
-    pub fn client_destroyed(&mut self, tick: u8) {
-        self.entity.client_event_destroyed(&self.state, tick);
-        self.drawable.event_destroyed(&self.state, tick);
+    pub fn event(&mut self, event: entity::Event) {
+        self.entity.event(&event, &self.state);
+        self.drawable.event(&event, &self.state);
     }
 
 }

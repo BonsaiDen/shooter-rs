@@ -5,11 +5,7 @@
 
 # Level 
 
-- Clean serialization interface via rustc_serialize
-
 - Split up to support drawable
-- Better serialization 
-    - LevelConfig object with for raw serialization
 
 # Client
 
@@ -18,7 +14,6 @@
 
 # Server 
 
-- Send tick interpolation config to client
 
 
 # Entities

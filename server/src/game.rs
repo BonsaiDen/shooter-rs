@@ -4,8 +4,7 @@ use cobalt::{Connection, ConnectionID, MessageKind, Handler, Server};
 
 
 // Internal Dependencies ------------------------------------------------------
-use lithium::entity;
-use lithium::IdPool;
+use lithium::{entity, IdPool, Level};
 
 use shared::level;
 use shared::entities;
@@ -77,7 +76,7 @@ impl Handler<Server> for Game {
                 player_ship.set_id(id);
                 player_ship.set_alive(true);
                 player_ship.set_owner(conn.id());
-                player_ship.server_created(self.tick as u8);
+                player_ship.event(entity::Event::Created(self.tick as u8));
 
                 self.entities.push(player_ship);
 
@@ -179,7 +178,7 @@ impl Handler<Server> for Game {
             if entity.owned_by(&conn.id()) {
 
                 entity.set_alive(false);
-                entity.server_destroyed(self.tick as u8);
+                entity.event(entity::Event::Destroyed(self.tick as u8));
 
                 // Release id and color
                 let color = Color::from_flags(entity.state().flags);
