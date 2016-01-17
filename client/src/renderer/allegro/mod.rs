@@ -18,9 +18,9 @@ use allegro_primitives::PrimitivesAddon;
 
 // Internal Dependencies ------------------------------------------------------
 mod traits;
-use lithium::Renderer as LithiumRenderer;
 use shared::color::Color;
-use shared::particle::{Particle, ParticleSystem};
+use lithium::Renderer as LithiumRenderer;
+use renderer::particle::{Particle, ParticleSystem};
 
 
 // Allegro Based Renderer -----------------------------------------------------

@@ -18,7 +18,8 @@ pub struct Game {
     entities: Vec<entity::Entity>,
     level: level::Level,
     available_colors: Vec<Color>,
-    tick_rate: u32,
+    interpolation_ticks: u8,
+    tick_rate: u8,
     tick: u16
 }
 
@@ -29,7 +30,8 @@ impl Game {
             entities: Vec::new(),
             level: level::Level::new(width, height, border),
             available_colors: Color::all_colored().into_iter().rev().collect(),
-            tick_rate: tps,
+            interpolation_ticks: 3,
+            tick_rate: tps as u8,
             tick: 0
         }
     }
@@ -46,9 +48,15 @@ impl Handler<Server> for Game {
         println!("[Client {}] Connected", conn.peer_addr());
 
         // Send Tick / Level Configuration
-        // TODO send interpolation tick configuration
-        let mut config = [0, self.tick_rate as u8].to_vec();
+        let mut config = [
+            0,
+            self.tick_rate,
+            self.interpolation_ticks as u8
+
+        ].to_vec();
+
         config.extend(self.level.serialize());
+
         conn.send(MessageKind::Reliable, config);
 
         // Create a ship entity from one of the available ids / colors

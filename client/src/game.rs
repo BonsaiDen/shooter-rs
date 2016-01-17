@@ -87,7 +87,8 @@ impl Runnable for Game {
                                 // Game Configuration
                                 if data[0] == 0 {
                                     self.network.set_tick_rate(data[1] as u32);
-                                    self.config(renderer, &data[2..]);
+                                    renderer.set_interpolation_ticks(data[2] as usize);
+                                    self.config(renderer, &data[3..]);
                                 }
 
                             },
@@ -281,7 +282,7 @@ impl Game {
     }
 
     fn config(&mut self, renderer: &mut Renderer, data: &[u8]) {
-        self.level = Level::from_serialized(&data[0..5]);
+        self.level = Level::from_serialized(&data[0..]);
         self.state = GameState::Connected;
         self.init(renderer);
     }

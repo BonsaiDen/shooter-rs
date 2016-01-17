@@ -3,64 +3,12 @@ use std::f32;
 
 
 // Internal Dependencies ------------------------------------------------------
-use lithium::entity;
-use lithium::Renderer;
-use lithium::Level as BaseLevel;
+use lithium::{entity, Renderer, Level as LithiumLevel};
+use super::Level;
 
 
-// Level Abstractions ---------------------------------------------------------
-pub struct Level {
-    width: u32,
-    height: u32,
-    border: u32
-}
-
-impl Level {
-
-    // Constructors -----------------------------------------------------------
-    pub fn new(width: u32, height: u32, border: u32) -> Level {
-        Level {
-            width: width,
-            height: height,
-            border: border
-        }
-    }
-
-    pub fn from_serialized(data: &[u8]) -> Level {
-        Level {
-            width: ((data[0] as u32) << 8) | data[1] as u32,
-            height: ((data[2] as u32) << 8) | data[3] as u32,
-            border: data[4] as u32
-        }
-    }
-
-    // Getters ----------------------------------------------------------------
-    pub fn width(&self) -> u32 {
-        self.width
-    }
-
-    pub fn height(&self) -> u32 {
-        self.height
-    }
-
-    pub fn center(&self) -> (u32, u32) {
-        (self.width / 2 + self.border, self.height / 2 + self.border)
-    }
-
-    pub fn serialize(&self) -> Vec<u8> {
-        [
-            (self.width >> 8) as u8,
-            self.width as u8,
-            (self.height >> 8) as u8,
-            self.height as u8,
-            self.border as u8
-
-        ].to_vec()
-    }
-
-}
-
-impl BaseLevel for Level {
+// Level Trait Implementation -------------------------------------------------
+impl LithiumLevel for Level {
 
     fn limit_state(&self, state: &mut entity::State) {
 

@@ -5,4 +5,5 @@ authors = ["Ivo Wetzel <ivo.wetzel@googlemail.com>"]
 
 [dependencies]
 lithium = { version = "0.1.0", path = "../lithium" }
-
+rustc-serialize = "0.3"
+bincode = "0.4.0"
