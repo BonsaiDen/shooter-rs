@@ -10,6 +10,7 @@ mod registry;
 use entity;
 use level::Level;
 use util::IdPool;
+use renderer::Renderer;
 use self::registry::EntityRegistry;
 use self::config::EntityManagerConfig;
 
@@ -67,6 +68,14 @@ impl EntityManager {
         }
     }
 
+    pub fn tick(&self) -> u8 {
+        self.tick
+    }
+
+    pub fn config(&self) -> &Config {
+        &self.config
+    }
+
     pub fn reset(&mut self) {
         self.tick = 0;
         self.entities.clear();
@@ -75,27 +84,7 @@ impl EntityManager {
 
 
     // Entities ---------------------------------------------------------------
-    pub fn tick<F>(
-        &mut self, level: &mut Level, dt: f32, mut callback: F
-
-    ) where F: FnMut(&mut entity::Entity, &mut Level, u8, f32) {
-
-        for (_, entity) in self.entities.iter_mut() {
-            callback(entity, level, self.tick, dt);
-            entity.event(entity::Event::Tick(self.tick, dt)); // TODO useful?
-            entity.tick(level, self.tick, dt, self.server_mode);
-        }
-
-        if self.tick == 255 {
-            self.tick = 0;
-
-        } else {
-            self.tick += 1;
-        }
-
-    }
-
-    pub fn create(
+    pub fn create_entity(
         &mut self,
         type_id: u8,
         state: Option<entity::State>,
@@ -126,7 +115,33 @@ impl EntityManager {
         }
     }
 
-    pub fn destroy(&mut self, entity_id: u16) -> Option<entity::Entity> {
+    pub fn tick_entities<F>(
+        &mut self, level: &mut Level, dt: f32, mut callback: F
+
+    ) where F: FnMut(&mut entity::Entity, &mut Level, u8, f32) {
+
+        for (_, entity) in self.entities.iter_mut() {
+            callback(entity, level, self.tick, dt);
+            entity.event(entity::Event::Tick(self.tick, dt)); // TODO useful?
+            entity.tick(level, self.tick, dt, self.server_mode);
+        }
+
+        if self.tick == 255 {
+            self.tick = 0;
+
+        } else {
+            self.tick += 1;
+        }
+
+    }
+
+    pub fn draw_entities(&mut self, renderer: &mut Renderer, level: &Level) {
+        for (_, entity) in self.entities.iter_mut() {
+            entity.draw(renderer, level);
+        }
+    }
+
+    pub fn destroy_entity(&mut self, entity_id: u16) -> Option<entity::Entity> {
 
         if let Some(mut entity) = self.entities.remove(&entity_id) {
             entity.set_alive(false);
@@ -139,7 +154,10 @@ impl EntityManager {
 
     }
 
-    pub fn from_owner(&mut self, owner: &ConnectionID) -> Option<&mut entity::Entity> {
+    pub fn entity_for_owner(
+        &mut self, owner: &ConnectionID
+
+    ) -> Option<&mut entity::Entity> {
         for (_, entity) in self.entities.iter_mut() {
             if entity.owned_by(owner) {
                 return Some(entity);
