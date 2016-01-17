@@ -19,8 +19,9 @@ mod renderer;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
 use lithium::Renderer;
-use renderer::Allegro;
+use renderer::AllegroRenderer;
 
+// Main -----------------------------------------------------------------------
 allegro_main! {
 
     let args = clap::App::new("client")
@@ -33,7 +34,8 @@ allegro_main! {
 
         ).get_matches();
 
-    // Server address argument
+
+    // Arguments --------------------------------------------------------------
     let server_addr = value_t!(
         args.value_of("address:port"), SocketAddr
 
@@ -41,8 +43,9 @@ allegro_main! {
         SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 31476)
     ));
 
-    // Renderer
-    Allegro::run(game::Game::new(server_addr));
+
+    // Client Setup -----------------------------------------------------------
+    AllegroRenderer::run(game::Game::new(server_addr));
 
 }
 

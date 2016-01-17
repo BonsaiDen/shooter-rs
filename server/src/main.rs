@@ -14,7 +14,7 @@ use cobalt::{Config, Handler, Server};
 mod game;
 
 
-// Main Loop ------------------------------------------------------------------
+// Main -----------------------------------------------------------------------
 fn main() {
 
     let args = clap::App::new("server")
@@ -27,7 +27,8 @@ fn main() {
 
         ).get_matches();
 
-    // Server address argument
+
+    // Arguments --------------------------------------------------------------
     let server_addr = value_t!(
         args.value_of("address:port"), SocketAddr
 
@@ -35,7 +36,8 @@ fn main() {
         SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 31476)
     ));
 
-    // Server Setup
+
+    // Server Setup -----------------------------------------------------------
     let tick_rate = 30;
     let mut game = game::Game::new(384, 384, 16, tick_rate);
     let mut server = Server::new(Config {

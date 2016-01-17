@@ -12,7 +12,7 @@ use shared::level::Level;
 
 use net;
 use entities;
-use renderer::Allegro;
+use renderer::AllegroRenderer;
 
 enum GameState {
     Disconnected,
@@ -39,7 +39,7 @@ impl Runnable for Game {
         renderer.set_tick_rate(self.network.get_tick_rate());
         renderer.set_interpolation_ticks(3);
 
-        let ar = Allegro::get(renderer);
+        let ar = AllegroRenderer::downcast_mut(renderer);
         ar.set_title("Rustgame: Shooter");
         ar.resize(self.level.width() as i32, self.level.height() as i32);
 
@@ -137,7 +137,7 @@ impl Runnable for Game {
 
     fn draw(&mut self, renderer: &mut Renderer) {
 
-        Allegro::get(renderer).clear(&self.back_color);
+        AllegroRenderer::downcast_mut(renderer).clear(&self.back_color);
 
         // Draw all entities
         for (_, entity) in self.entities.iter_mut() {
@@ -158,7 +158,7 @@ impl Runnable for Game {
                 false => format!("Connecting to {}...", addr)
             };
 
-            Allegro::get(renderer).text(
+            AllegroRenderer::downcast_mut(renderer).text(
                 &self.text_color, 0.0, 0.0, &network_state[..]
             );
 
@@ -195,8 +195,7 @@ impl Game {
 
     fn tick_entities(&mut self, renderer: &mut Renderer, dt: f32) {
 
-        let ar = Allegro::get(renderer);
-
+        let ar = AllegroRenderer::downcast_mut(renderer);
         ar.reseed_rng([
             ((self.tick as u32 + 7) * 941) as u32,
             ((self.tick as u32 + 659) * 461) as u32,

@@ -8,7 +8,7 @@ use shared::entities;
 use shared::color::{Color, ColorName};
 use lithium::{entity, Renderer, Level};
 
-use renderer::Allegro;
+use renderer::AllegroRenderer;
 
 
 // Ship Drawable Implementation Dependencies ----------------------------------
@@ -73,7 +73,7 @@ impl entity::traits::Drawable for Ship {
         // Effects
         if state.flags & 0x02 == 0x02 {
 
-            let ar = Allegro::get(renderer);
+            let ar = AllegroRenderer::downcast_mut(renderer);
             if ar.rng().gen::<u8>() > 50 || self.particle_count > 1 {
 
                 // Exhause more particles initially
@@ -150,7 +150,7 @@ fn draw_triangle(
     let by = oy + state.y + (state.r + beta).sin() * db * body_scale;
     let cx = ox + state.x + (state.r - beta).cos() * db * body_scale;
     let cy = oy + state.y + (state.r - beta).sin() * db * body_scale;
-    Allegro::get(renderer).triangle(
+    AllegroRenderer::downcast_mut(renderer).triangle(
         color, ax, ay, bx, by, cx, cy, 0.5 * body_scale
     );
 }

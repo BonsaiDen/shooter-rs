@@ -1,3 +1,3 @@
 mod allegro;
-pub use renderer::allegro::AllegroRenderer as Allegro;
+pub use self::allegro::Renderer as AllegroRenderer;
 
