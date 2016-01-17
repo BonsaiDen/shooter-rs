@@ -32,6 +32,13 @@ impl<T> IdPool<T> where T: Copy
         }
     }
 
+    pub fn reset(&mut self) {
+        self.acquired_ids.clear();
+        self.used_ids = T::zero();
+        self.next_id = T::zero();
+        self.released_ids.clear();
+    }
+
     pub fn get_id(&mut self) -> Option<T> {
 
         // Don't exceed the pool size

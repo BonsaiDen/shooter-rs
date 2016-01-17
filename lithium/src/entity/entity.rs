@@ -176,21 +176,21 @@ impl Entity {
         self.confirmed_state = Some((tick, state));
     }
 
-    fn set_entity_state(&mut self, state: entity::State, override_last: bool) {
+    fn set_entity_state(&mut self, new_state: entity::State, override_last: bool) {
 
         let old_flags = self.state.flags;
         if override_last {
-            self.last_state.set_to(&state);
+            self.last_state.set_to(&new_state);
 
         } else {
             self.last_state.set_to(&self.state);
         };
 
-        self.base_state.set_to(&state);
-        self.state.set_to(&state);
+        self.base_state.set_to(&new_state);
+        self.state.set_to(&new_state);
 
-        if old_flags != state.flags {
-            self.event(entity::Event::Flags(state.flags));
+        if old_flags != new_state.flags {
+            self.event(entity::Event::Flags(new_state.flags));
         }
 
     }
@@ -240,26 +240,31 @@ impl Entity {
 
     // Ticking ----------------------------------------------------------------
     pub fn client_tick(&mut self, level: &Level, tick: u8, dt: f32) {
-        self.event(entity::Event::Tick(tick, dt));
+        self.event(entity::Event::Tick(tick, dt)); // TODO useful?
         self.tick(level, tick, dt, false);
     }
 
     pub fn server_tick(&mut self, level: &Level, tick: u8, dt: f32) {
-        self.event(entity::Event::Tick(tick, dt));
+        self.event(entity::Event::Tick(tick, dt)); // TODO useful?
         self.tick(level, tick, dt, true);
     }
 
-    fn tick(&mut self, level: &Level, tick: u8, dt: f32, server: bool) {
+    pub fn tick(&mut self, level: &Level, tick: u8, dt: f32, server: bool) {
 
         // Check if we have a remote state
         if let Some((confirmed_tick, confirmed_state)) = self.confirmed_state.take() {
 
+            // TODO remove duplciated code
             // Set the current state as the last state
-            self.last_state.set_to(&self.state);
+            //self.last_state.set_to(&self.state);
 
             // Take over the remote state as the new base
-            self.base_state.set_to(&confirmed_state);
-            self.state.set_to(&confirmed_state);
+            //self.base_state.set_to(&confirmed_state);
+            //self.state.set_to(&confirmed_state);
+
+            // Set the current state as the last state and tkae over the
+            // confirmed state as new base state
+            self.set_entity_state(confirmed_state, false);
 
             // Drop all inputs confirmed by the remote so the remaining ones
             // get applied on top of the new base state
@@ -316,6 +321,7 @@ impl Entity {
     // Serialization ----------------------------------------------------------
     pub fn serialize_state(&self, owner: &ConnectionID) -> Vec<u8> {
 
+        // Entity Header
         let mut data = [
             (self.local_id >> 8) as u8,
             self.local_id as u8,
@@ -323,11 +329,17 @@ impl Entity {
 
         ].to_vec();
 
-        // Set local flag if we're serializing for the owner
+        // Create a copy of the current state
         let mut state = self.state.clone();
+
+        // Set local flag if we're serializing for the owner
         if self.owned_by(owner) {
             state.flags |= 0x01;
         }
+
+        // Invoke type specific serialization handler
+        self.entity.serialize_state(&mut state, owner);
+
         data.extend(state.serialize());
         data
 

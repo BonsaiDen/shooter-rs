@@ -1,0 +1,281 @@
+// External Dependencies ------------------------------------------------------
+use std::collections::HashMap;
+use cobalt::ConnectionID;
+
+
+// Internal Dependencies ------------------------------------------------------
+mod config;
+mod registry;
+
+use entity;
+use level::Level;
+use util::IdPool;
+use self::registry::EntityRegistry;
+use self::config::EntityManagerConfig;
+
+
+// Re-Exports -----------------------------------------------------------------
+use self::config::EntityManagerConfig as Config;
+use self::registry::EntityRegistry as Registry;
+
+
+
+// Entity Manager Implementation ----------------------------------------------
+pub struct EntityManager {
+
+    // Id pool for entities
+    id_pool: IdPool<u16>,
+
+    // Vector of entities
+    entities: HashMap<u16, entity::Entity>,
+
+    // Configuration
+    config: EntityManagerConfig,
+
+    // Current tick
+    tick: u8,
+
+    // Wether to run in server mode
+    server_mode: bool,
+
+    // Entity Registry
+    registry: Box<EntityRegistry>
+
+}
+
+impl EntityManager {
+
+    pub fn new(
+        tick_rate: u8,
+        buffer_ms: u32,
+        interp_ms: u32,
+        server_mode: bool,
+        registry: Box<EntityRegistry>
+
+    ) -> EntityManager {
+        EntityManager {
+            id_pool: IdPool::new(),
+            entities: HashMap::new(),
+            config: EntityManagerConfig {
+                buffered_ticks: (buffer_ms as f32 / (1000.0 / tick_rate as f32)).ceil() as u8,
+                interpolation_ticks: (interp_ms as f32 / (1000.0 / tick_rate as f32)).ceil() as u8,
+                tick_rate: tick_rate,
+            },
+            tick: 0,
+            server_mode: server_mode,
+            registry: registry
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.tick = 0;
+        self.entities.clear();
+        self.id_pool.reset();
+    }
+
+
+    // Entities ---------------------------------------------------------------
+    pub fn tick<F>(
+        &mut self, level: &mut Level, dt: f32, mut callback: F
+
+    ) where F: FnMut(&mut entity::Entity, &mut Level, u8, f32) {
+
+        for (_, entity) in self.entities.iter_mut() {
+            callback(entity, level, self.tick, dt);
+            entity.event(entity::Event::Tick(self.tick, dt)); // TODO useful?
+            entity.tick(level, self.tick, dt, self.server_mode);
+        }
+
+        if self.tick == 255 {
+            self.tick = 0;
+
+        } else {
+            self.tick += 1;
+        }
+
+    }
+
+    pub fn create(
+        &mut self,
+        type_id: u8,
+        state: Option<entity::State>,
+        owner: Option<&ConnectionID>
+
+    ) -> Option<&mut entity::Entity> {
+        if let Some(id) = self.id_pool.get_id() {
+
+            let mut entity = self.registry.entity_from_type_id(type_id);
+            entity.set_id(id);
+            entity.set_alive(true);
+
+            if let Some(owner) = owner {
+                entity.set_owner(*owner);
+            }
+
+            if let Some(state) = state {
+                entity.set_state(state);
+            }
+
+            entity.event(entity::Event::Created(self.tick));
+
+            self.entities.insert(id, entity);
+            self.entities.get_mut(&id)
+
+        } else {
+            None
+        }
+    }
+
+    pub fn destroy(&mut self, entity_id: u16) -> Option<entity::Entity> {
+
+        if let Some(mut entity) = self.entities.remove(&entity_id) {
+            entity.set_alive(false);
+            entity.event(entity::Event::Destroyed(self.tick));
+            Some(entity)
+
+        } else {
+            None
+        }
+
+    }
+
+    pub fn from_owner(&mut self, owner: &ConnectionID) -> Option<&mut entity::Entity> {
+        for (_, entity) in self.entities.iter_mut() {
+            if entity.owned_by(owner) {
+                return Some(entity);
+            }
+        }
+        None
+    }
+
+
+    // State Serialization ----------------------------------------------------
+    pub fn serialize_config(&self) -> Vec<u8> {
+
+        let mut config = [
+            // Message Type (TODO use enum)
+            0,
+
+        ].to_vec();
+
+        config.extend(self.config.serialize());
+
+        config
+
+    }
+
+    pub fn receive_config<'a>(&mut self, data: &'a [u8]) -> &'a [u8] {
+        self.config = EntityManagerConfig::from_serialized(data);
+        &data[EntityManagerConfig::encoded_size()..]
+    }
+
+    pub fn serialize_state(&self, owner: &ConnectionID) -> Vec<u8> {
+
+        let mut state = [
+
+            // Message Type (TODO use enum)
+            1,
+
+            // Current tick (TODO do we actually need this?)
+            self.tick as u8,
+
+            // Confirmed
+            0
+
+        ].to_vec();
+
+        for (_, entity) in self.entities.iter() {
+
+            // TODO handle visibility with entity.visible_to(owner)
+            // TODO still create entity but hide it and do not tranmit state?
+
+            // Set last confirmed entity tick if owned by the current connection
+            // TODO set this on a per entity basis? otherwise we can only control
+            // one entity per connection
+            if entity.owned_by(owner) {
+                state[2] = entity.confirmed_tick();
+            }
+
+            // Serialize entity state for the connection
+            state.extend(entity.serialize_state(owner));
+
+        }
+
+        state
+
+    }
+
+    pub fn receive_state(&mut self, data: &[u8]) {
+
+        let remote_tick = data[1];
+
+        // TODO set this on per entity basis?
+        let confirmed_tick = data[2];
+        let tick = self.tick;
+        let registry = &self.registry;
+
+        // Mark all entities as dead
+        for (_, entity) in self.entities.iter_mut() {
+            entity.set_alive(false);
+        }
+
+        // Parse received state
+        let mut i = 3;
+        while i + 3 <= data.len() {
+
+            // Entity ID / Type
+            let entity_id = (data[i] as u16) << 8 | (data[i + 1] as u16);
+            let entity_type = data[i + 2];
+            i += 3;
+
+            // Check serialized data length
+            if i + entity::State::encoded_size() <= data.len() {
+
+                // Read serialized entity state data
+                let state = entity::State::from_serialized(&data[i..]);
+                i += entity::State::encoded_size();
+
+                // Create entities which do not yet exist
+                let mut entity = self.entities.entry(entity_id).or_insert_with(|| {
+                    let mut entity = registry.entity_from_type_id(entity_type);
+                    entity.set_id(entity_id);
+                    entity.set_state(state.clone());
+                    entity.event(entity::Event::Created(tick));
+                    entity
+                });
+
+                // Mark entity as alive
+                entity.set_alive(true);
+
+                // Set confirmed state...
+                if entity.local() {
+                    entity.set_confirmed_state(confirmed_tick, state);
+
+                // ...or overwrite local state
+                // (but keep last_state intact for interpolation purposes)
+                } else {
+                    entity.set_remote_state(state);
+                }
+
+            }
+
+        }
+
+        // Destroy dead entities...
+        let mut destroyed_ids = Vec::new();
+        for (_, entity) in self.entities.iter_mut() {
+            if entity.alive() == false {
+                entity.event(entity::Event::Destroyed(tick));
+                destroyed_ids.push(entity.id());
+            }
+        }
+
+        // ...then remove them from the map
+        for id in &destroyed_ids {
+            self.entities.remove(&id);
+        }
+
+    }
+
+}
+

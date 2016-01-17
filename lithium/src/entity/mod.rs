@@ -2,6 +2,7 @@
 mod entity;
 mod event;
 mod input;
+mod manager;
 mod state;
 pub mod traits;
 

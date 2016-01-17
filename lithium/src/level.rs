@@ -15,5 +15,7 @@ pub trait Level {
 
     ) -> entity::State;
 
+    fn draw(&mut self, _: &mut Renderer) {}
+
 }
 

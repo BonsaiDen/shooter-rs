@@ -22,6 +22,8 @@ pub trait Base {
         true
     }
 
+    fn serialize_state(&self, _: &mut entity::State, _: &ConnectionID) {}
+
     fn event(&mut self, _: &entity::Event, _: &entity::State) {}
 
 }
