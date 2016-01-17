@@ -1,11 +1,12 @@
 [package]
-name = "shooter-server"
+name = "lithium"
 version = "0.1.0"
 authors = ["Ivo Wetzel <ivo.wetzel@googlemail.com>"]
 
 [dependencies]
-clap = "1.4.0"
+num = "*"
+rand = "~0.3.13"
 cobalt = { version = "0.7.0", path = "../../cobalt-rs" }
-lithium = { version = "0.1.0", path = "../lithium" }
-shared = { version = "0.1.0", path = "../shared" }
+rustc-serialize = "0.3"
+bincode = "0.4.0"
 

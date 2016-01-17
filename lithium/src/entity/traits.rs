@@ -11,7 +11,7 @@ use renderer::Renderer;
 // Basic Entity Traits --------------------------------------------------------
 pub trait Base {
 
-    fn typ(&self) -> u8;
+    fn type_id(&self) -> u8;
 
     fn apply_input(
         &mut self,

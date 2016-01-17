@@ -1,4 +1,5 @@
 use rand::{SeedableRng, XorShiftRng};
+use std::any::Any;
 
 use allegro;
 use allegro::{
@@ -14,8 +15,9 @@ use allegro::{
 use allegro_font::{FontDrawing, FontAddon, Font, FontAlign};
 use allegro_primitives::PrimitivesAddon;
 
+use lithium::{Renderer, Runnable};
+
 use shared::color::Color;
-use shared::renderer::{Renderer, Runnable};
 use shared::particle::{Particle, ParticleSystem};
 
 
@@ -76,6 +78,59 @@ impl AllegroRenderer {
 
     }
 
+
+    // Window Handling --------------------------------------------------------
+    pub fn set_title(&mut self, title: &str) {
+        self.display.set_window_title(title);
+    }
+
+    pub fn resize(&mut self, width: i32, height: i32) {
+        self.display.resize(width, height).ok();
+    }
+
+
+    // Input ------------------------------------------------------------------
+    pub fn key_down(&mut self, key_code: u8) -> bool {
+        self.key_state[key_code as usize]
+    }
+
+
+    // Drawing Methods --------------------------------------------------------
+    pub fn get<'a>(renderer: &'a mut Renderer) -> &'a mut AllegroRenderer {
+        match renderer.as_any().downcast_mut::<AllegroRenderer>() {
+            Some(r) => r,
+            None => unreachable!()
+        }
+    }
+
+    pub fn clear(&mut self, color: &Color) {
+        self.core.clear_to_color(get_color(color));
+    }
+
+    pub fn triangle(
+        &mut self, color: &Color,
+        ax: f32, ay: f32,
+        bx: f32, by: f32,
+        cx: f32, cy: f32,
+        line_width: f32
+    ) {
+        self.prim.draw_triangle(
+            ax, ay, bx, by, cx, cy, get_color(color), line_width
+        );
+    }
+
+    pub fn text(&mut self, color: &Color, x: f32, y: f32, text: &str) {
+        self.core.draw_text(
+            &self.font, get_color(color), x, y, FontAlign::Left, text
+        );
+    }
+
+    pub fn particle(&mut self) -> Option<&mut Particle> {
+        self.particle_system.get()
+    }
+
+
+    // Private ----------------------------------------------------------------
     fn should_draw(&mut self) -> bool {
         let redraw = self.redraw;
         self.redraw = false;
@@ -116,6 +171,17 @@ impl AllegroRenderer {
 
     fn running(&mut self) -> bool {
         self.is_running
+    }
+
+    fn draw(&mut self) {
+        let prim = &self.prim;
+        self.particle_system.draw(self.dt, |ref color, s, x, y| {
+            prim.draw_filled_rectangle(
+                x - s + 0.5, y - s + 0.5, x + s + 0.5, y + s + 0.5,
+                get_color(color)
+            );
+        });
+        self.core.flip_display();
     }
 
 }
@@ -171,6 +237,7 @@ impl Renderer for AllegroRenderer {
                 );
 
                 runnable.draw(&mut renderer);
+                renderer.draw();
 
                 last_frame_time = frame_time;
                 frames_per_tick -= 1;
@@ -183,6 +250,10 @@ impl Renderer for AllegroRenderer {
 
         runnable.destroy();
 
+    }
+
+    fn as_any(&mut self) -> &mut Any {
+        self
     }
 
     // Time Related -----------------------------------------------------------
@@ -240,12 +311,6 @@ impl Renderer for AllegroRenderer {
     }
 
 
-    // Input ------------------------------------------------------------------
-    fn key_down(&mut self, key_code: u8) -> bool {
-        self.key_state[key_code as usize]
-    }
-
-
     // RNG --------------------------------------------------------------------
     fn reseed_rng(&mut self, seed: [u32; 4]) {
         self.rng.reseed(seed);
@@ -253,55 +318,6 @@ impl Renderer for AllegroRenderer {
 
     fn rng(&mut self) -> &mut XorShiftRng {
         &mut self.rng
-    }
-
-
-    // Window -----------------------------------------------------------------
-    fn set_title(&mut self, title: &str) {
-        self.display.set_window_title(title);
-    }
-
-    fn resize(&mut self, width: i32, height: i32) {
-        self.display.resize(width, height).ok();
-    }
-
-
-    // Drawing ----------------------------------------------------------------
-    fn clear(&mut self, color: &Color) {
-        self.core.clear_to_color(get_color(color));
-    }
-
-    fn draw(&mut self) {
-        let prim = &self.prim;
-        self.particle_system.draw(self.dt, |ref color, s, x, y| {
-            prim.draw_filled_rectangle(
-                x - s + 0.5, y - s + 0.5, x + s + 0.5, y + s + 0.5,
-                get_color(color)
-            );
-        });
-        self.core.flip_display();
-    }
-
-    fn triangle(
-        &mut self, color: &Color,
-        ax: f32, ay: f32,
-        bx: f32, by: f32,
-        cx: f32, cy: f32,
-        line_width: f32
-    ) {
-        self.prim.draw_triangle(
-            ax, ay, bx, by, cx, cy, get_color(color), line_width
-        );
-    }
-
-    fn text(&mut self, color: &Color, x: f32, y: f32, text: &str) {
-        self.core.draw_text(
-            &self.font, get_color(color), x, y, FontAlign::Left, text
-        );
-    }
-
-    fn particle(&mut self) -> Option<&mut Particle> {
-        self.particle_system.get()
     }
 
 }

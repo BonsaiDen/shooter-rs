@@ -4,9 +4,5 @@ version = "0.1.0"
 authors = ["Ivo Wetzel <ivo.wetzel@googlemail.com>"]
 
 [dependencies]
-num = "*"
-rand = "~0.3.13"
-cobalt = { version = "0.7.0", path = "../../cobalt-rs" }
-rustc-serialize = "0.3"
-bincode = "0.4.0"
+lithium = { version = "0.1.0", path = "../lithium" }
 

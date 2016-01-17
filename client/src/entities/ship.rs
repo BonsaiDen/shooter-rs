@@ -4,11 +4,12 @@ use rand::Rng;
 
 
 // Internal Dependencies ------------------------------------------------------
-use shared::entity;
+use lithium::{entity, Renderer, Level};
+
 use shared::entities;
-use shared::level::Level;
 use shared::color::{Color, ColorName};
-use shared::renderer::Renderer;
+
+use allegro_renderer::AllegroRenderer;
 
 
 // Ship Drawable Implementation Dependencies ----------------------------------
@@ -80,7 +81,8 @@ impl entity::traits::Drawable for Ship {
 
                     let ar = renderer.rng().gen::<u8>() as f32;
                     let v = renderer.rng().gen::<u8>() as f32;
-                    if let Some(p) = renderer.particle() {
+
+                    if let Some(p) = AllegroRenderer::get(renderer).particle() {
 
                         // Exhaust angle
                         let w = 0.95;
@@ -108,6 +110,7 @@ impl entity::traits::Drawable for Ship {
                         p.v = ((86.0 + v / 9.0) * 0.5 + dr * 30.0) * 0.5 * self.scale;
                         p.vms = 0.0;
                         p.r = mr - ar * 1.7;
+
                         // Spread out exhaust
                         p.rms = ar * 1.25;
 
@@ -116,6 +119,7 @@ impl entity::traits::Drawable for Ship {
                         p.remaining = p.lifetime;
 
                     }
+
                 }
 
             }
@@ -146,6 +150,8 @@ fn draw_triangle(
     let by = oy + state.y + (state.r + beta).sin() * db * body_scale;
     let cx = ox + state.x + (state.r - beta).cos() * db * body_scale;
     let cy = oy + state.y + (state.r - beta).sin() * db * body_scale;
-    renderer.triangle(color, ax, ay, bx, by, cx, cy, 0.5 * body_scale);
+    AllegroRenderer::get(renderer).triangle(
+        color, ax, ay, bx, by, cx, cy, 0.5 * body_scale
+    );
 }
 

@@ -1,23 +1,18 @@
 // External Dependencies ------------------------------------------------------
 use rand::XorShiftRng;
+use std::any::Any;
 
 
-// Internal Dependencies ------------------------------------------------------
-use color::Color;
-use particle::Particle;
-
-pub trait Runnable {
-    fn init(&mut self, &mut Renderer);
-    fn tick(&mut self, &mut Renderer) -> bool;
-    fn draw(&mut self, &mut Renderer);
-    fn destroy(&mut self);
-}
+// Internal -------------------------------------------------------------------
+use runnable::Runnable;
 
 
 // Renderer Abstraction -------------------------------------------------------
 pub trait Renderer {
 
     fn run<R: Runnable>(runnable: R) where Self: Sized;
+
+    fn as_any(&mut self) -> &mut Any;
 
     // Time Related -----------------------------------------------------------
     fn time(&self) -> f64;
@@ -49,37 +44,9 @@ pub trait Renderer {
     fn set_interpolation_ticks(&mut self, ticks: usize);
 
 
-    // Input ------------------------------------------------------------------
-    fn key_down(&mut self, key_code: u8) -> bool;
-
-
     // RNG --------------------------------------------------------------------
     fn reseed_rng(&mut self, seed: [u32; 4]);
 
     fn rng(&mut self) -> &mut XorShiftRng;
-
-
-    // Window -----------------------------------------------------------------
-    fn set_title(&mut self, title: &str);
-
-    fn resize(&mut self, width: i32, height: i32);
-
-
-    // Drawing ----------------------------------------------------------------
-    fn clear(&mut self, color: &Color);
-
-    fn draw(&mut self);
-
-    fn triangle(
-        &mut self, color: &Color,
-        ax: f32, ay: f32,
-        bx: f32, by: f32,
-        cx: f32, cy: f32,
-        line_width: f32
-    );
-
-    fn text(&mut self, color: &Color, x: f32, y: f32, text: &str);
-
-    fn particle(&mut self) -> Option<&mut Particle>;
 
 }

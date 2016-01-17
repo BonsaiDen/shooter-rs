@@ -320,7 +320,7 @@ impl Entity {
         let mut data = [
             (self.local_id >> 8) as u8,
             self.local_id as u8,
-            self.entity.typ()
+            self.entity.type_id()
 
         ].to_vec();
 

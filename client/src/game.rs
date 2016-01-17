@@ -1,12 +1,18 @@
 use std::collections::HashMap;
 use std::net::SocketAddr;
 
-use net;
-use entities;
-use shared::entity;
+
+use lithium::entity;
+use lithium::renderer::Renderer;
+use lithium::runnable::Runnable;
+
 use shared::color::{Color, ColorName};
 use shared::level::Level;
-use shared::renderer::{Renderer, Runnable};
+
+
+use net;
+use entities;
+use allegro_renderer::AllegroRenderer;
 
 enum GameState {
     Disconnected,
@@ -29,11 +35,13 @@ impl Runnable for Game {
 
     fn init(&mut self, renderer: &mut Renderer) {
 
-        renderer.set_title("Rustgame: Shooter");
         renderer.set_fps(60);
         renderer.set_tick_rate(self.network.get_tick_rate());
         renderer.set_interpolation_ticks(3);
-        renderer.resize(self.level.width() as i32, self.level.height() as i32);
+
+        let ar = AllegroRenderer::get(renderer);
+        ar.set_title("Rustgame: Shooter");
+        ar.resize(self.level.width() as i32, self.level.height() as i32);
 
         // Local Test Play
         if self.network.connected() == false {
@@ -129,7 +137,7 @@ impl Runnable for Game {
 
     fn draw(&mut self, renderer: &mut Renderer) {
 
-        renderer.clear(&self.back_color);
+        AllegroRenderer::get(renderer).clear(&self.back_color);
 
         // Draw all entities
         for (_, entity) in self.entities.iter_mut() {
@@ -149,10 +157,12 @@ impl Runnable for Game {
                 ),
                 false => format!("Connecting to {}...", addr)
             };
-            renderer.text(&self.text_color, 0.0, 0.0, &network_state[..]);
-        }
 
-        renderer.draw();
+            AllegroRenderer::get(renderer).text(
+                &self.text_color, 0.0, 0.0, &network_state[..]
+            );
+
+        }
 
     }
 
@@ -185,16 +195,34 @@ impl Game {
 
     fn tick_entities(&mut self, renderer: &mut Renderer, dt: f32) {
 
+        renderer.reseed_rng([
+            ((self.tick as u32 + 7) * 941) as u32,
+            ((self.tick as u32 + 659) * 461) as u32,
+            ((self.tick as u32 + 13) * 227) as u32,
+            ((self.tick as u32 + 97) * 37) as u32
+        ]);
+
+        let ar = AllegroRenderer::get(renderer);
         for (_, entity) in self.entities.iter_mut() {
 
             if entity.local() {
 
+                let mut buttons = 0;
+                if ar.key_down(1) || ar.key_down(82) {
+                    buttons |= 0x01;
+                }
+
+                if ar.key_down(4) || ar.key_down(83) {
+                    buttons |= 0x02;
+                }
+
+                if ar.key_down(23) || ar.key_down(84) {
+                    buttons |= 0x04;
+                }
+
                 let input = entity::Input {
                     tick: self.tick,
-                    left: renderer.key_down(1) || renderer.key_down(82),
-                    right: renderer.key_down(4) || renderer.key_down(83),
-                    thrust: renderer.key_down(23) || renderer.key_down(84),
-                    fire: false
+                    fields: buttons
                 };
 
                 let pending_input = entity.local_input(input);
@@ -231,13 +259,6 @@ impl Game {
             }
 
         }
-
-        renderer.reseed_rng([
-            ((self.tick as u32 + 7) * 941) as u32,
-            ((self.tick as u32 + 659) * 461) as u32,
-            ((self.tick as u32 + 13) * 227) as u32,
-            ((self.tick as u32 + 97) * 37) as u32
-        ]);
 
     }
 

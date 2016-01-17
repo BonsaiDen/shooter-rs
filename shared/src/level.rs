@@ -3,8 +3,9 @@ use std::f32;
 
 
 // Internal Dependencies ------------------------------------------------------
-use entity;
-use renderer::Renderer;
+use lithium::entity;
+use lithium::Renderer;
+use lithium::Level as BaseLevel;
 
 
 // Level Abstractions ---------------------------------------------------------
@@ -33,9 +34,35 @@ impl Level {
         }
     }
 
+    // Getters ----------------------------------------------------------------
+    pub fn width(&self) -> u32 {
+        self.width
+    }
 
-    // Static Methods ---------------------------------------------------------
-    pub fn limit_state(&self, state: &mut entity::State) {
+    pub fn height(&self) -> u32 {
+        self.height
+    }
+
+    pub fn center(&self) -> (u32, u32) {
+        (self.width / 2 + self.border, self.height / 2 + self.border)
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        [
+            (self.width >> 8) as u8,
+            self.width as u8,
+            (self.height >> 8) as u8,
+            self.height as u8,
+            self.border as u8
+
+        ].to_vec()
+    }
+
+}
+
+impl BaseLevel for Level {
+
+    fn limit_state(&self, state: &mut entity::State) {
 
         let width = (self.height + self.border * 2) as f32;
         if state.x < 0.0 {
@@ -55,7 +82,7 @@ impl Level {
 
     }
 
-    pub fn interpolate_entity_state(
+    fn interpolate_entity_state(
         &self,
         renderer: &mut Renderer,
         current: &entity::State, last: &entity::State
@@ -90,30 +117,6 @@ impl Level {
             flags: current.flags
         }
 
-    }
-
-    // Getters ----------------------------------------------------------------
-    pub fn width(&self) -> u32 {
-        self.width
-    }
-
-    pub fn height(&self) -> u32 {
-        self.height
-    }
-
-    pub fn center(&self) -> (u32, u32) {
-        (self.width / 2 + self.border, self.height / 2 + self.border)
-    }
-
-    pub fn serialize(&self) -> Vec<u8> {
-        [
-            (self.width >> 8) as u8,
-            self.width as u8,
-            (self.height >> 8) as u8,
-            self.height as u8,
-            self.border as u8
-
-        ].to_vec()
     }
 
 }

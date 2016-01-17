@@ -4,11 +4,12 @@ use cobalt::{Connection, ConnectionID, MessageKind, Handler, Server};
 
 
 // Internal Dependencies ------------------------------------------------------
+use lithium::entity;
+use lithium::IdPool;
+
 use shared::level;
 use shared::entities;
-use shared::entity;
 use shared::color::Color;
-use shared::util::IdPool;
 
 
 // Server Side Game Logic -----------------------------------------------------

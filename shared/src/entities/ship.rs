@@ -3,8 +3,8 @@ use std::f32;
 
 
 // Internal Dependencies ------------------------------------------------------
-use entity;
-use level::Level;
+use lithium::entity;
+use lithium::Level as BaseLevel;
 
 
 // Ship Logic Implementation --------------------------------------------------
@@ -37,13 +37,13 @@ impl Ship {
 // Trait Implementations ------------------------------------------------------
 impl entity::traits::Base for Ship {
 
-    fn typ(&self) -> u8 {
+    fn type_id(&self) -> u8 {
         0
     }
 
     fn apply_input(
         &mut self,
-        level: &Level, state: &mut entity::State, input: &entity::Input, dt: f32
+        level: &BaseLevel, state: &mut entity::State, input: &entity::Input, dt: f32
     ) {
 
         let mut steer = 0.0;
@@ -58,7 +58,7 @@ impl entity::traits::Base for Ship {
         // TODO make this constant time rotation
         state.r += f32::consts::PI / 180.0 * self.rotation * dt * steer;
 
-        if input.fields & 0x04 == 0x04{
+        if input.fields & 0x04 == 0x04 {
             // Constant time acceleration
             let m = 60.0 / (1.0 / dt);
             state.mx += state.r.cos() * self.acceleration * dt * m;

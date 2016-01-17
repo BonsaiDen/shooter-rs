@@ -2,7 +2,7 @@
 extern crate clap;
 extern crate rand;
 extern crate cobalt;
-extern crate clock_ticks;
+extern crate lithium;
 extern crate shared;
 
 #[macro_use]
@@ -17,7 +17,8 @@ mod game;
 mod net;
 
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
-use shared::renderer::Renderer;
+
+use lithium::Renderer;
 use allegro_renderer::AllegroRenderer;
 
 allegro_main! {
