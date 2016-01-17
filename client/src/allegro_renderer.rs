@@ -130,6 +130,16 @@ impl AllegroRenderer {
     }
 
 
+    // RNG --------------------------------------------------------------------
+    pub fn reseed_rng(&mut self, seed: [u32; 4]) {
+        self.rng.reseed(seed);
+    }
+
+    pub fn rng(&mut self) -> &mut XorShiftRng {
+        &mut self.rng
+    }
+
+
     // Private ----------------------------------------------------------------
     fn should_draw(&mut self) -> bool {
         let redraw = self.redraw;
@@ -188,6 +198,7 @@ impl AllegroRenderer {
 
 impl Renderer for AllegroRenderer {
 
+    // Statics ----------------------------------------------------------------
     fn run<R: Runnable>(mut runnable: R) where Self: Sized {
 
         // Init Allegro
@@ -252,9 +263,12 @@ impl Renderer for AllegroRenderer {
 
     }
 
+
+    // Downcast ---------------------------------------------------------------
     fn as_any(&mut self) -> &mut Any {
         self
     }
+
 
     // Time Related -----------------------------------------------------------
     fn time(&self) -> f64 {
@@ -308,16 +322,6 @@ impl Renderer for AllegroRenderer {
 
     fn set_interpolation_ticks(&mut self, ticks: usize) {
         self.interpolation_ticks = ticks;
-    }
-
-
-    // RNG --------------------------------------------------------------------
-    fn reseed_rng(&mut self, seed: [u32; 4]) {
-        self.rng.reseed(seed);
-    }
-
-    fn rng(&mut self) -> &mut XorShiftRng {
-        &mut self.rng
     }
 
 }

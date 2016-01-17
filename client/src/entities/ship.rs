@@ -74,15 +74,16 @@ impl entity::traits::Drawable for Ship {
         // Effects
         if state.flags & 0x02 == 0x02 {
 
-            if renderer.rng().gen::<u8>() > 50 || self.particle_count > 1 {
+            let ar = AllegroRenderer::get(renderer);
+            if ar.rng().gen::<u8>() > 50 || self.particle_count > 1 {
 
                 // Exhause more particles initially
                 for _ in 0..self.particle_count {
 
-                    let ar = renderer.rng().gen::<u8>() as f32;
-                    let v = renderer.rng().gen::<u8>() as f32;
+                    let r = ar.rng().gen::<u8>() as f32;
+                    let v = ar.rng().gen::<u8>() as f32;
 
-                    if let Some(p) = AllegroRenderer::get(renderer).particle() {
+                    if let Some(p) = ar.particle() {
 
                         // Exhaust angle
                         let w = 0.95;
@@ -99,7 +100,7 @@ impl entity::traits::Drawable for Ship {
                         let cs = (1.0 - w) * mr.cos() + w * state.r.cos();
                         let sn = (1.0 - w) * mr.sin() + w * state.r.sin();
                         let mr = sn.atan2(cs) + f32::consts::PI;
-                        let ar = (ar / 255.0 - 0.5) * (f32::consts::PI * 0.65);
+                        let ar = (r / 255.0 - 0.5) * (f32::consts::PI * 0.65);
 
                         // Spawn exhaust particles
                         p.color.set_to(&self.color_light);

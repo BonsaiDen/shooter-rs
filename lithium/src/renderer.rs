@@ -1,5 +1,4 @@
 // External Dependencies ------------------------------------------------------
-use rand::XorShiftRng;
 use std::any::Any;
 
 
@@ -10,9 +9,13 @@ use runnable::Runnable;
 // Renderer Abstraction -------------------------------------------------------
 pub trait Renderer {
 
+    // Statics ----------------------------------------------------------------
     fn run<R: Runnable>(runnable: R) where Self: Sized;
 
+
+    // Downcast ---------------------------------------------------------------
     fn as_any(&mut self) -> &mut Any;
+
 
     // Time Related -----------------------------------------------------------
     fn time(&self) -> f64;
@@ -42,11 +45,5 @@ pub trait Renderer {
     fn interpolation_ticks(&self) -> usize;
 
     fn set_interpolation_ticks(&mut self, ticks: usize);
-
-
-    // RNG --------------------------------------------------------------------
-    fn reseed_rng(&mut self, seed: [u32; 4]);
-
-    fn rng(&mut self) -> &mut XorShiftRng;
 
 }

@@ -195,14 +195,15 @@ impl Game {
 
     fn tick_entities(&mut self, renderer: &mut Renderer, dt: f32) {
 
-        renderer.reseed_rng([
+        let ar = AllegroRenderer::get(renderer);
+
+        ar.reseed_rng([
             ((self.tick as u32 + 7) * 941) as u32,
             ((self.tick as u32 + 659) * 461) as u32,
             ((self.tick as u32 + 13) * 227) as u32,
             ((self.tick as u32 + 97) * 37) as u32
         ]);
 
-        let ar = AllegroRenderer::get(renderer);
         for (_, entity) in self.entities.iter_mut() {
 
             if entity.local() {
