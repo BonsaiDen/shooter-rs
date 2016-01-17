@@ -11,23 +11,27 @@ extern crate allegro_sys;
 extern crate allegro_font;
 extern crate allegro_primitives;
 
+
+// External Dependencies ------------------------------------------------------
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+
+
+// Internal Dependencies ------------------------------------------------------
+use lithium::Renderer;
+use renderer::AllegroRenderer;
 mod entities;
 mod game;
 mod net;
 mod renderer;
 
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
-
-use lithium::Renderer;
-use renderer::AllegroRenderer;
 
 // Main -----------------------------------------------------------------------
 allegro_main! {
 
-    let args = clap::App::new("client")
+    let args = clap::App::new("shooter-client")
         .version(&crate_version!())
         .author("Ivo Wetzel <ivo.wetzel@googlemail.com>")
-        .about("Client")
+        .about("Shooter-Client")
         .arg(clap::Arg::with_name("address:port")
             .help("Remote server address to connect to.")
             .index(1)

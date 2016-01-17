@@ -17,10 +17,10 @@ mod game;
 // Main -----------------------------------------------------------------------
 fn main() {
 
-    let args = clap::App::new("server")
+    let args = clap::App::new("shooter-server")
         .version(&crate_version!())
         .author("Ivo Wetzel <ivo.wetzel@googlemail.com>")
-        .about("Server")
+        .about("Shooter Server")
         .arg(clap::Arg::with_name("address:port")
             .help("Local server address to bind to.")
             .index(1)

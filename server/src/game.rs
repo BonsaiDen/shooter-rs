@@ -46,6 +46,7 @@ impl Handler<Server> for Game {
         println!("[Client {}] Connected", conn.peer_addr());
 
         // Send Tick / Level Configuration
+        // TODO send interpolation tick configuration
         let mut config = [0, self.tick_rate as u8].to_vec();
         config.extend(self.level.serialize());
         conn.send(MessageKind::Reliable, config);
@@ -130,6 +131,7 @@ impl Handler<Server> for Game {
         for (id, conn) in connections.iter_mut() {
 
             // Calculate all entity states for the connection
+            // TODO do we need the server tick value?
             let mut states = [1, self.tick as u8, 0].to_vec();
             for entity in self.entities.iter() {
 

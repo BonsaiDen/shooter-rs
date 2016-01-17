@@ -1,13 +1,11 @@
 # Abstraction
 
-- Move drawing logic into something else
-- Generic for Renderer
-- Traits for Input / State
+- Make Entity State Generic
 - Entity Manager for Client / Server
 
-
-
 # Level 
+
+- Clean serialization interface via rustc_serialize
 
 - Split up to support drawable
 - Better serialization 
@@ -26,7 +24,6 @@
 # Entities
 
 - Support state rewinding
-
 
 # General
 

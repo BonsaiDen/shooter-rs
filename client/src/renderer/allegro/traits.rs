@@ -2,10 +2,10 @@
 use std::any::Any;
 use allegro::{
     Core,
-    EventQueue,
     Display,
     DisplayOption,
     DisplayOptionImportance,
+    EventQueue,
     OPENGL
 };
 
