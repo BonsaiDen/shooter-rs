@@ -1,6 +1,8 @@
+// External Dependencies ------------------------------------------------------
 use rand::{SeedableRng, XorShiftRng};
 use std::any::Any;
 
+// Allegro Dependencies -------------------------------------------------------
 use allegro;
 use allegro::{
     Core,
@@ -15,12 +17,14 @@ use allegro::{
 use allegro_font::{FontDrawing, FontAddon, Font, FontAlign};
 use allegro_primitives::PrimitivesAddon;
 
-use lithium::{Renderer, Runnable};
 
+// Internal Dependencies ------------------------------------------------------
 use shared::color::Color;
 use shared::particle::{Particle, ParticleSystem};
+use lithium::{Renderer, Runnable};
 
 
+// Allegro Based Renderer -----------------------------------------------------
 pub struct AllegroRenderer {
     core: Core,
     display: Display,
@@ -78,6 +82,13 @@ impl AllegroRenderer {
 
     }
 
+    pub fn get<'a>(renderer: &'a mut Renderer) -> &'a mut AllegroRenderer {
+        match renderer.as_any().downcast_mut::<AllegroRenderer>() {
+            Some(r) => r,
+            None => unreachable!()
+        }
+    }
+
 
     // Window Handling --------------------------------------------------------
     pub fn set_title(&mut self, title: &str) {
@@ -96,13 +107,6 @@ impl AllegroRenderer {
 
 
     // Drawing Methods --------------------------------------------------------
-    pub fn get<'a>(renderer: &'a mut Renderer) -> &'a mut AllegroRenderer {
-        match renderer.as_any().downcast_mut::<AllegroRenderer>() {
-            Some(r) => r,
-            None => unreachable!()
-        }
-    }
-
     pub fn clear(&mut self, color: &Color) {
         self.core.clear_to_color(get_color(color));
     }

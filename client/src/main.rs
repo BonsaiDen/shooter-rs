@@ -11,15 +11,15 @@ extern crate allegro_sys;
 extern crate allegro_font;
 extern crate allegro_primitives;
 
-mod allegro_renderer;
 mod entities;
 mod game;
 mod net;
+mod renderer;
 
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
 use lithium::Renderer;
-use allegro_renderer::AllegroRenderer;
+use renderer::Allegro;
 
 allegro_main! {
 
@@ -42,7 +42,7 @@ allegro_main! {
     ));
 
     // Renderer
-    AllegroRenderer::run(game::Game::new(server_addr));
+    Allegro::run(game::Game::new(server_addr));
 
 }
 
