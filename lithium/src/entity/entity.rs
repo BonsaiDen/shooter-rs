@@ -84,9 +84,9 @@ impl Entity {
             confirmed_input_tick: 0,
             initial_input: true,
 
-            // Configuration TODO allow external configuration
+            // Configuration
             input_buffer_size: 30,
-            state_buffer_size: 30 // length is tickDT * size
+            state_buffer_size: 30
 
         }
     }
@@ -342,9 +342,9 @@ impl Entity {
 
         // Entity Header
         let mut data = [
-            (self.local_id >> 8) as u8,
-            self.local_id as u8,
-            self.entity.type_id()
+            (self.local_id >> 8) as u8, self.local_id as u8,
+            self.entity.type_id(),
+            self.confirmed_input_tick
 
         ].to_vec();
 

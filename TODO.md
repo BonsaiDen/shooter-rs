@@ -1,6 +1,11 @@
+# Move Events into lithium
+
+- make them macro based 
+
 # Abstraction
 
 - Make Entity State Generic
+- Try a macro based approach
 
 # Level 
 
@@ -23,9 +28,4 @@
 
 # Network
 
-- Events 
-    - type_id
-    - payload
-    - trait based with a registry
-
-- ID Re-usage / Wraparound issues
+- Move Message Type Prefixes into game code and out of lithium

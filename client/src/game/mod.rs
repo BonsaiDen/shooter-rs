@@ -1,6 +1,7 @@
 // External Dependencies ------------------------------------------------------
 use std::net::SocketAddr;
 use lithium::entity;
+use lithium::event;
 use lithium::renderer::Renderer;
 use lithium::runnable::Runnable;
 
@@ -9,7 +10,8 @@ use lithium::runnable::Runnable;
 use net;
 use entities;
 use renderer::AllegroRenderer;
-use shared::event;
+use shared::NetworkMessage;
+use shared::event::Event;
 use shared::level::Level;
 mod runnable;
 
@@ -23,7 +25,7 @@ enum State {
 pub struct Game {
     network: net::Network,
     manager: entity::Manager,
-    event_handler: event::EventHandler,
+    events: event::Handler<Event>,
     remote_states: Vec<(u8, entity::State)>,
     level: Level,
     state: State
@@ -38,7 +40,7 @@ impl Game {
                 false,
                 Box::new(entities::Registry)
             ),
-            event_handler: event::EventHandler::new(),
+            events: event::Handler::new(),
             remote_states: Vec::new(),
             network: net::Network::new(server_addr),
             level: Game::default_level(),
@@ -77,7 +79,7 @@ impl Game {
         self.init(renderer);
     }
 
-    fn event(&mut self, event: event::Event) {
+    fn event(&mut self, event: Event) {
         println!("Event: {:?}", event);
     }
 
@@ -154,7 +156,16 @@ impl Game {
         // Send all unconfirmed inputs to server
         if let Some(inputs) = local_inputs {
             // TODO create a fake local network proxy!
-            self.network.send_message(net::MessageKind::Instant, inputs);
+            let mut data = [NetworkMessage::ClientInput as u8].to_vec();
+            data.extend(inputs);
+            self.network.send_message(net::MessageKind::Instant, data);
+        }
+
+        // Send events
+        if let Some(ref events) = self.events.serialize_events() {
+            let mut data = [NetworkMessage::ClientEvents as u8].to_vec();
+            data.extend(events.clone());
+            self.network.send_message(net::MessageKind::Reliable, data);
         }
 
     }

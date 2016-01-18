@@ -193,17 +193,7 @@ impl EntityManager {
 
     // State Serialization ----------------------------------------------------
     pub fn serialize_config(&self) -> Vec<u8> {
-
-        let mut config = [
-            // Message Type (TODO use enum)
-            0
-
-        ].to_vec();
-
-        config.extend(self.config.serialize());
-
-        config
-
+        self.config.serialize()
     }
 
     pub fn receive_config<'a>(&mut self, renderer: &mut Renderer, data: &'a [u8]) -> &'a [u8] {
@@ -214,30 +204,11 @@ impl EntityManager {
 
     pub fn serialize_state(&self, owner: &ConnectionID) -> Vec<u8> {
 
-        let mut state = [
-
-            // Message Type (TODO use enum)
-            1,
-
-            // Current tick (TODO do we actually need this?)
-            self.tick as u8,
-
-            // Confirmed
-            0
-
-        ].to_vec();
-
+        let mut state = Vec::new();
         for (_, entity) in self.entities.iter() {
 
             // TODO handle visibility with entity.visible_to(owner)
             // TODO still create entity but hide it and do not tranmit state?
-
-            // Set last confirmed entity tick if owned by the current connection
-            // TODO set this on a per entity basis? otherwise we can only control
-            // one entity per connection
-            if entity.owned_by(owner) {
-                state[2] = entity.confirmed_tick();
-            }
 
             // Serialize entity state for the connection
             state.extend(entity.serialize_state(owner));
@@ -250,10 +221,6 @@ impl EntityManager {
 
     pub fn receive_state(&mut self, data: &[u8]) {
 
-        //let remote_tick = data[1];
-
-        // TODO set this on per entity basis?
-        let confirmed_tick = data[1];
         let tick = self.tick;
         let registry = &self.registry;
         let buffer_size = self.config.buffered_ticks as usize;
@@ -264,13 +231,14 @@ impl EntityManager {
         }
 
         // Parse received state
-        let mut i = 2;
-        while i + 3 <= data.len() {
+        let mut i = 0;
+        while i + 4 <= data.len() {
 
             // Entity ID / Type
             let entity_id = (data[i] as u16) << 8 | (data[i + 1] as u16);
             let entity_type = data[i + 2];
-            i += 3;
+            let entity_confirmed_tick = data[i + 3];
+            i += 4;
 
             // Check serialized data length
             if i + entity::State::encoded_size() <= data.len() {
@@ -294,7 +262,7 @@ impl EntityManager {
 
                 // Set confirmed state...
                 if entity.local() {
-                    entity.set_confirmed_state(confirmed_tick, state);
+                    entity.set_confirmed_state(entity_confirmed_tick, state);
 
                 // ...or overwrite local state
                 // (but keep last_state intact for interpolation purposes)

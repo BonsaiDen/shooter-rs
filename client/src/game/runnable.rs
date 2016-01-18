@@ -7,6 +7,7 @@ use lithium::runnable::Runnable;
 // Internal Dependencies ------------------------------------------------------
 use net;
 use game::{Game, State};
+use shared::NetworkMessage;
 use renderer::AllegroRenderer;
 use shared::color::{Color, ColorName};
 
@@ -58,41 +59,26 @@ impl Runnable for Game {
                     self.connect();
                 },
 
-                // TODO clean up
+                // TODO clean up / validate message
                 net::EventType::Message(_, data) =>  {
-                    // TODO validate message length
-                    if data.len() > 0 {
-                        match self.state {
-                            State::Pending => {
-
-                                // Game Configuration
-                                // TODO use enum for type
-                                if data[0] == 0 {
-                                    self.config(renderer, &data[1..]);
-                                }
-
-                            },
-                            State::Connected => {
-                                // Game State
-                                // TODO use enum for type
-                                if data[0] == 1 {
-                                    self.manager.receive_state(&data[1..]);
-                                }
-                            },
-                            _ => {}
-                        }
-
-                        if data[0] == 3 {
-                            self.event_handler.receive_events(&data[1..]);
-                        }
-
+                    match NetworkMessage::from_u8(data[0]) {
+                        NetworkMessage::ServerConfig => {
+                            self.config(renderer, &data[1..]);
+                        },
+                        NetworkMessage::ServerState => {
+                            self.manager.receive_state(&data[1..]);
+                        },
+                        NetworkMessage::ServerEvents => {
+                            self.events.receive_events(self.network.id(), &data[1..]);
+                        },
+                        _=> println!("Unknown Server Message {:?}", data)
                     }
                 },
 
                 net::EventType::Tick(_, _, _) => {
 
-                    if let Some(events) = self.event_handler.received() {
-                        for event in events {
+                    if let Some(events) = self.events.received() {
+                        for (_, event) in events {
                             self.event(event);
                         }
                     }

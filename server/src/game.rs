@@ -1,20 +1,21 @@
 // External Dependencies ------------------------------------------------------
 use std::collections::HashMap;
 use cobalt::{Connection, ConnectionID, MessageKind, Handler, Server};
-use lithium::{entity, Level};
+use lithium::{entity, event, Level};
 
 
 // Internal Dependencies ------------------------------------------------------
-use shared::event;
 use shared::level;
 use shared::entities;
+use shared::NetworkMessage;
+use shared::event::Event;
 use shared::color::Color;
 
 
 // Server Side Game Logic -----------------------------------------------------
 pub struct Game {
     manager: entity::Manager,
-    event_handler: event::EventHandler,
+    events: event::Handler<Event>,
     level: level::Level,
     available_colors: Vec<Color>,
 }
@@ -27,7 +28,7 @@ impl Game {
                 true,
                 Box::new(entities::Registry)
             ),
-            event_handler: event::EventHandler::new(),
+            events: event::Handler::new(),
             level: level::Level::new(width, height, border),
             available_colors: Color::all_colored().into_iter().rev().collect(),
         }
@@ -45,7 +46,8 @@ impl Handler<Server> for Game {
         println!("[Client {}] Connected", conn.peer_addr());
 
         // Send Tick / Level Configuration
-        let mut config = self.manager.serialize_config();
+        let mut config = [NetworkMessage::ServerConfig as u8].to_vec();
+        config.extend(self.manager.serialize_config());
         config.extend(self.level.serialize());
         conn.send(MessageKind::Reliable, config);
 
@@ -67,7 +69,7 @@ impl Handler<Server> for Game {
             // probably send player joined event but add entity via
             // state change detection on client
 
-            self.event_handler.send(event::Event::PlayerJoined);
+            self.events.send(Event::PlayerJoined);
 
         }
 
@@ -80,41 +82,58 @@ impl Handler<Server> for Game {
 
         let tick_dt = 1.0 / self.manager.config().tick_rate as f32;
 
-        self.manager.tick_entities(&self.level, tick_dt, |entity, _, _, _| {
-
-            // Get connect for the entities owner
-            let owner_connection = if let Some(owner) = entity.owner() {
-                connections.get_mut(&*owner)
-
-            } else {
-                None
-            };
-
-            // Receive input messages for controlled clients
-            if let Some(conn) = owner_connection {
-
-                for m in conn.received() {
-
-                    // Extract all unconfirmed inputs the client sent us
-                    for i in m.chunks(entity::Input::encoded_size()) {
-                        entity.remote_input(
-                            entity::Input::from_serialized(i)
-                        );
-                    }
-                }
-
-            }
-
-        }, |_, _, _, _| {});
-
-        // Send entity states to all clients
-        // We don't care about dropped packets
-        let events = self.event_handler.serialize_events();
+        // Receive Data
         for (id, conn) in connections.iter_mut() {
-            conn.send(MessageKind::Instant, self.manager.serialize_state(id));
-            if let Some(ref events) = events {
-                conn.send(MessageKind::Reliable, events.clone());
+            for data in conn.received() {
+                match NetworkMessage::from_u8(data[0]) {
+                    NetworkMessage::ClientInput => {
+
+                        // Extract all unconfirmed inputs the client sent us
+                        if let Some(entity) = self.manager.get_entity_for_owner(id) {
+                            let data = &data[1..];
+                            for i in data.chunks(entity::Input::encoded_size()) {
+                                entity.remote_input(
+                                    entity::Input::from_serialized(i)
+                                );
+                            }
+                        }
+
+                    },
+                    NetworkMessage::ClientEvents => {
+                        self.events.receive_events(*id, &data[1..]);
+                    },
+                    _=> println!("Unknown Client Message {:?}", data)
+                }
             }
+        }
+
+        // Tick Entities
+        self.manager.tick_entities(
+            &self.level,
+            tick_dt,
+            |_, _, _, _| {
+
+            }, |_, _, _, _| {
+
+            }
+        );
+
+        // Send Data
+        let events = self.events.serialize_events();
+        for (id, conn) in connections.iter_mut() {
+
+            // Send entity states to all clients (We don't care about dropped packets)
+            let mut data = [NetworkMessage::ServerState as u8].to_vec();
+            data.extend(self.manager.serialize_state(id));
+            conn.send(MessageKind::Instant, data);
+
+            // Send events to all clients (Make sure the arrive eventually)
+            if let Some(ref events) = events {
+                let mut data = [NetworkMessage::ServerEvents as u8].to_vec();
+                data.extend(events.clone());
+                conn.send(MessageKind::Reliable, data);
+            }
+
         }
 
         // TODO bullets are handled by pre-creating a local object and then

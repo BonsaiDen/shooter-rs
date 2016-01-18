@@ -8,6 +8,7 @@ extern crate rustc_serialize;
 
 // Module Declarations --------------------------------------------------------
 pub mod entity;
+pub mod event;
 pub mod level;
 pub mod renderer;
 pub mod runnable;

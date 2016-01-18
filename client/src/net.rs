@@ -53,6 +53,10 @@ impl Network {
     }
 
     // Getters ----------------------------------------------------------------
+    pub fn id(&self) -> ConnectionID {
+        ConnectionID(0)
+    }
+
     pub fn connected(&self) -> bool {
         self.connected
     }
