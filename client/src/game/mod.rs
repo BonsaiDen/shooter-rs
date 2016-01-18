@@ -11,7 +11,7 @@ use entities;
 use renderer::AllegroRenderer;
 use shared::color::{Color, ColorName};
 use shared::level::Level;
-mod traits;
+mod runnable;
 
 enum State {
     Disconnected,

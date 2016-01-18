@@ -12,15 +12,16 @@ pub struct IdPool<T> {
     next_id: T
 }
 
-impl<T> IdPool<T> where T: Copy
-                         + std::cmp::PartialOrd
-                         + std::cmp::Eq
-                         + std::hash::Hash
-                         + std::ops::Add<T, Output = T>
-                         + std::ops::Sub<T, Output = T>
-                         + One
-                         + Zero
-                         + Bounded
+impl<T> IdPool<T>
+    where T: Copy
+          + std::cmp::PartialOrd
+          + std::cmp::Eq
+          + std::hash::Hash
+          + std::ops::Add<T, Output = T>
+          + std::ops::Sub<T, Output = T>
+          + One
+          + Zero
+          + Bounded
 {
 
     pub fn new() -> IdPool<T> {
@@ -77,7 +78,9 @@ impl<T> IdPool<T> where T: Copy
         // re-use
         if let Some(_) = self.acquired_ids.remove(&id) {
             self.used_ids = self.used_ids - T::one();
-            self.released_ids.push(id);
+            // TODO for now we do not want to instantly re-use the IDs in
+            // order to prevent re-usage network / issues
+            //self.released_ids.push(id);
         }
     }
 

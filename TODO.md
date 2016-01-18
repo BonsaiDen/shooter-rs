@@ -1,7 +1,6 @@
 # Abstraction
 
 - Make Entity State Generic
-- Entity Manager for Client / Server
 
 # Level 
 
@@ -9,12 +8,9 @@
 
 # Client
 
-- Split up game code 
-- Integrate network code into game/net.rs and remove a lot of cruft
+- Rework Game Network Integration
 
 # Server 
-
-
 
 # Entities
 
@@ -24,3 +20,12 @@
 
 - Game and Entity Events
 
+
+# Network
+
+- Events 
+    - type_id
+    - payload
+    - trait based with a registry
+
+- ID Re-usage / Wraparound issues

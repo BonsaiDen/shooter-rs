@@ -9,7 +9,7 @@ pub mod registry;
 
 use entity;
 use level::Level;
-use util::IdPool;
+use idpool::IdPool;
 use renderer::Renderer;
 use self::registry::EntityRegistry;
 use self::config::EntityManagerConfig;
@@ -129,7 +129,6 @@ impl EntityManager {
     ) where B: FnMut(&mut entity::Entity, &Level, u8, f32),
             A: FnMut(&mut entity::Entity, &Level, u8, f32) {
 
-        // TODO set buffered ticks size etc from config
         for (_, entity) in self.entities.iter_mut() {
             before(entity, level, self.tick, dt);
             entity.event(entity::Event::Tick(self.tick, dt)); // TODO useful?
@@ -155,6 +154,7 @@ impl EntityManager {
     pub fn destroy_entity(&mut self, entity_id: u16) -> Option<entity::Entity> {
 
         if let Some(mut entity) = self.entities.remove(&entity_id) {
+            // TODO can be an issue if re-used directly
             self.id_pool.release_id(entity.id());
             entity.set_alive(false);
             entity.event(entity::Event::Destroyed(self.tick));
@@ -319,6 +319,8 @@ impl EntityManager {
         for id in &destroyed_ids {
             self.entities.remove(&id);
         }
+
+        // TODO networked events
 
     }
 
