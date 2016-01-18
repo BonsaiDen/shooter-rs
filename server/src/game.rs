@@ -13,6 +13,7 @@ use shared::color::Color;
 
 // Server Side Game Logic -----------------------------------------------------
 pub struct Game {
+    //manager: entity::Manager,
     id_pool: IdPool<u16>,
     entities: Vec<entity::Entity>,
     level: level::Level,
