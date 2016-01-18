@@ -5,6 +5,7 @@ use lithium::{entity, Level};
 
 
 // Internal Dependencies ------------------------------------------------------
+use shared::event;
 use shared::level;
 use shared::entities;
 use shared::color::Color;
@@ -13,6 +14,7 @@ use shared::color::Color;
 // Server Side Game Logic -----------------------------------------------------
 pub struct Game {
     manager: entity::Manager,
+    event_handler: event::EventHandler,
     level: level::Level,
     available_colors: Vec<Color>,
 }
@@ -20,13 +22,14 @@ pub struct Game {
 impl Game {
     pub fn new(width: u32, height: u32, border: u32, tick_rate: u32) -> Game {
         Game {
-            level: level::Level::new(width, height, border),
-            available_colors: Color::all_colored().into_iter().rev().collect(),
             manager: entity::Manager::new(
                 tick_rate as u8, 1000, 75,
                 true,
                 Box::new(entities::Registry)
-            )
+            ),
+            event_handler: event::EventHandler::new(),
+            level: level::Level::new(width, height, border),
+            available_colors: Color::all_colored().into_iter().rev().collect(),
         }
     }
 }
@@ -63,6 +66,8 @@ impl Handler<Server> for Game {
             // TODO send event? or do this via state updates only?
             // probably send player joined event but add entity via
             // state change detection on client
+
+            self.event_handler.send(event::Event::PlayerJoined);
 
         }
 
@@ -104,8 +109,12 @@ impl Handler<Server> for Game {
 
         // Send entity states to all clients
         // We don't care about dropped packets
+        let events = self.event_handler.serialize_events();
         for (id, conn) in connections.iter_mut() {
             conn.send(MessageKind::Instant, self.manager.serialize_state(id));
+            if let Some(ref events) = events {
+                conn.send(MessageKind::Reliable, events.clone());
+            }
         }
 
         // TODO bullets are handled by pre-creating a local object and then

@@ -58,6 +58,7 @@ impl Runnable for Game {
                     self.connect();
                 },
 
+                // TODO clean up
                 net::EventType::Message(_, data) =>  {
                     // TODO validate message length
                     if data.len() > 0 {
@@ -80,12 +81,25 @@ impl Runnable for Game {
                             },
                             _ => {}
                         }
+
+                        if data[0] == 3 {
+                            self.event_handler.receive_events(&data[1..]);
+                        }
+
                     }
                 },
 
                 net::EventType::Tick(_, _, _) => {
-                    ticked = true;
+
+                    if let Some(events) = self.event_handler.received() {
+                        for event in events {
+                            self.event(event);
+                        }
+                    }
+
                     self.tick_entities(renderer, dt);
+                    ticked = true;
+
                 },
 
                 net::EventType::Close => {
@@ -109,7 +123,7 @@ impl Runnable for Game {
 
     fn draw(&mut self, renderer: &mut Renderer) {
 
-        AllegroRenderer::downcast_mut(renderer).clear(&self.back_color);
+        AllegroRenderer::downcast_mut(renderer).clear(&Color::from_name(ColorName::Black));
 
         self.manager.draw_entities(renderer, &self.level);
 
@@ -127,7 +141,7 @@ impl Runnable for Game {
             };
 
             AllegroRenderer::downcast_mut(renderer).text(
-                &self.text_color, 0.0, 0.0, &network_state[..]
+                &Color::from_name(ColorName::White), 0.0, 0.0, &network_state[..]
             );
 
         }

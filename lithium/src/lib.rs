@@ -15,8 +15,8 @@ mod idpool;
 
 
 // Re-Exports -----------------------------------------------------------------
-pub use idpool::IdPool as IdPool;
 pub use level::Level as Level;
+pub use idpool::IdPool as IdPool;
 pub use renderer::Renderer as Renderer;
 pub use runnable::Runnable as Runnable;
 

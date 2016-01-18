@@ -9,7 +9,7 @@ use lithium::runnable::Runnable;
 use net;
 use entities;
 use renderer::AllegroRenderer;
-use shared::color::{Color, ColorName};
+use shared::event;
 use shared::level::Level;
 mod runnable;
 
@@ -21,10 +21,9 @@ enum State {
 
 // Game -----------------------------------------------------------------------
 pub struct Game {
-    back_color: Color,
-    text_color: Color,
     network: net::Network,
     manager: entity::Manager,
+    event_handler: event::EventHandler,
     remote_states: Vec<(u8, entity::State)>,
     level: Level,
     state: State
@@ -34,13 +33,12 @@ impl Game {
 
     pub fn new(server_addr: SocketAddr) -> Game {
         Game {
-            back_color: Color::from_name(ColorName::Black),
-            text_color: Color::from_name(ColorName::White),
             manager: entity::Manager::new(
                 30, 1000, 75,
                 false,
                 Box::new(entities::Registry)
             ),
+            event_handler: event::EventHandler::new(),
             remote_states: Vec::new(),
             network: net::Network::new(server_addr),
             level: Game::default_level(),
@@ -77,6 +75,10 @@ impl Game {
         self.level = Level::from_serialized(level_data);
         self.state = State::Connected;
         self.init(renderer);
+    }
+
+    fn event(&mut self, event: event::Event) {
+        println!("Event: {:?}", event);
     }
 
     fn tick_entities(&mut self, renderer: &mut Renderer, dt: f32) {
