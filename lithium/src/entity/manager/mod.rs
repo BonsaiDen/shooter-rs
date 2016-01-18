@@ -155,6 +155,7 @@ impl EntityManager {
     pub fn destroy_entity(&mut self, entity_id: u16) -> Option<entity::Entity> {
 
         if let Some(mut entity) = self.entities.remove(&entity_id) {
+            self.id_pool.release_id(entity.id());
             entity.set_alive(false);
             entity.event(entity::Event::Destroyed(self.tick));
             Some(entity)
@@ -172,6 +173,18 @@ impl EntityManager {
         for (_, entity) in self.entities.iter_mut() {
             if entity.owned_by(owner) {
                 return Some(entity);
+            }
+        }
+        None
+    }
+
+    pub fn get_entity_id_for_owner(
+        &mut self, owner: &ConnectionID
+
+    ) -> Option<u16> {
+        for (_, entity) in self.entities.iter_mut() {
+            if entity.owned_by(owner) {
+                return Some(entity.id());
             }
         }
         None

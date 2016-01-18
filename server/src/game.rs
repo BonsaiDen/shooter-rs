@@ -1,11 +1,10 @@
 // External Dependencies ------------------------------------------------------
 use std::collections::HashMap;
 use cobalt::{Connection, ConnectionID, MessageKind, Handler, Server};
+use lithium::{entity, Level};
 
 
 // Internal Dependencies ------------------------------------------------------
-use lithium::{entity, IdPool, Level};
-
 use shared::level;
 use shared::entities;
 use shared::color::Color;
@@ -13,26 +12,21 @@ use shared::color::Color;
 
 // Server Side Game Logic -----------------------------------------------------
 pub struct Game {
-    //manager: entity::Manager,
-    id_pool: IdPool<u16>,
-    entities: Vec<entity::Entity>,
+    manager: entity::Manager,
     level: level::Level,
     available_colors: Vec<Color>,
-    interpolation_ticks: u8,
-    tick_rate: u8,
-    tick: u16
 }
 
 impl Game {
-    pub fn new(width: u32, height: u32, border: u32, tps: u32) -> Game {
+    pub fn new(width: u32, height: u32, border: u32, tick_rate: u32) -> Game {
         Game {
-            id_pool: IdPool::new(),
-            entities: Vec::new(),
             level: level::Level::new(width, height, border),
             available_colors: Color::all_colored().into_iter().rev().collect(),
-            interpolation_ticks: 3,
-            tick_rate: tps as u8,
-            tick: 0
+            manager: entity::Manager::new(
+                tick_rate as u8, 1000, 75,
+                true,
+                Box::new(entities::Registry)
+            )
         }
     }
 }
@@ -48,49 +42,28 @@ impl Handler<Server> for Game {
         println!("[Client {}] Connected", conn.peer_addr());
 
         // Send Tick / Level Configuration
-        let mut config = [
-            0,
-            self.tick_rate,
-            self.interpolation_ticks as u8,
-            30
-
-        ].to_vec();
-
+        let mut config = self.manager.serialize_config();
         config.extend(self.level.serialize());
-
         conn.send(MessageKind::Reliable, config);
 
-        // Create a ship entity from one of the available ids / colors
-        if let Some(id) = self.id_pool.get_id() {
+        // Create a ship entity from one of the available color
+        if let Some(color) = self.available_colors.pop() {
 
-            if let Some(color) = self.available_colors.pop() {
+            let (x, y) = self.level.center();
+            let state = entity::State {
+                x: x as f32,
+                y: y as f32,
+                flags: color.to_flags(),
+                .. entity::State::default()
+            };
 
-                let (x, y) = self.level.center();
+            self.manager.create_entity(0, Some(state), Some(&conn.id()));
 
-                let mut player_ship = entities::Ship::create_entity(1.0);
-                player_ship.set_state(entity::State {
-                    x: x as f32,
-                    y: y as f32,
-                    flags: color.to_flags(),
-                    .. entity::State::default()
-                });
+            // TODO support entity events?
+            // TODO send event? or do this via state updates only?
+            // probably send player joined event but add entity via
+            // state change detection on client
 
-                player_ship.set_id(id);
-                player_ship.set_alive(true);
-                player_ship.set_owner(conn.id());
-                player_ship.event(entity::Event::Created(self.tick as u8));
-
-                self.entities.push(player_ship);
-
-                // TODO support entity events?
-                // TODO send event? or do this via state updates only?
-                // probably send player joined event but add entity via
-                // state change detection on client
-
-            }
-
-        } else {
-            unreachable!();
         }
 
     }
@@ -100,12 +73,11 @@ impl Handler<Server> for Game {
         connections: &mut HashMap<ConnectionID, Connection>
     ) {
 
-        let tick_dt = 1.0 / self.tick_rate as f32;
+        let tick_dt = 1.0 / self.manager.config().tick_rate as f32;
 
-        // Tick entities
-        for entity in self.entities.iter_mut() {
+        self.manager.tick_entities(&self.level, tick_dt, |entity, _, _, _| {
 
-            // Check if the entity is controlled by a client
+            // Get connect for the entities owner
             let owner_connection = if let Some(owner) = entity.owner() {
                 connections.get_mut(&*owner)
 
@@ -128,38 +100,13 @@ impl Handler<Server> for Game {
 
             }
 
-            // Permanently advance entity state
-            entity.server_tick(&self.level, self.tick as u8, tick_dt);
-
-            // TODO perform collision detection based against
-            // last confirmed client tick (aka remote_input_tick)
-
-        }
+        }, |_, _, _, _| {});
 
         // Send entity states to all clients
+        // We don't care about dropped packets
         for (id, conn) in connections.iter_mut() {
-
-            // Calculate all entity states for the connection
-            // TODO do we need the server tick value?
-            let mut states = [1, self.tick as u8, 0].to_vec();
-            for entity in self.entities.iter() {
-
-                // Confirm latest input tick from the client
-                if entity.owned_by(id) {
-                    states[2] = entity.confirmed_tick();
-                }
-
-                states.extend(entity.serialize_state(&conn.id()));
-
-            }
-
-            // We don't care about dropped packets
-            conn.send(MessageKind::Instant, states);
-
+            conn.send(MessageKind::Instant, self.manager.serialize_state(id));
         }
-
-        // Server side tick
-        self.tick = (self.tick + 1) % 256;
 
         // TODO bullets are handled by pre-creating a local object and then
         // syncing it with the remote one, we submit a local ID and the server
@@ -175,25 +122,14 @@ impl Handler<Server> for Game {
 
         println!("[Client {}] Disconnected", conn.peer_addr());
 
-        // Find any associated entity for the connection and destroy it
-        for entity in self.entities.iter_mut() {
-            if entity.owned_by(&conn.id()) {
-
-                entity.set_alive(false);
-                entity.event(entity::Event::Destroyed(self.tick as u8));
-
-                // Release id and color
+        // Find the associated entity for the connection and destroy it
+        if let Some(id) = self.manager.get_entity_id_for_owner(&conn.id()) {
+            if let Some(entity) = self.manager.destroy_entity(id) {
                 let color = Color::from_flags(entity.state().flags);
                 println!("[Client {}] Destroyed entity ({:?})", conn.peer_addr(), color);
-
-                self.id_pool.release_id(entity.id());
                 self.available_colors.push(color);
-
             }
-        }
-
-        // Remove and dead entities from the list
-        self.entities.retain(|ref entity| entity.alive());
+        };
 
     }
 
