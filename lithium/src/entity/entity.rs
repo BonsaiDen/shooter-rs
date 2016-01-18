@@ -113,6 +113,11 @@ impl Entity {
         self.is_alive = alive;
     }
 
+    pub fn set_buffer_size(&mut self, ticks: usize) {
+        self.input_buffer_size = ticks;
+        self.state_buffer_size = ticks;
+    }
+
 
     // Ownership --------------------------------------------------------------
     pub fn owner(&self) -> Option<&ConnectionID> {

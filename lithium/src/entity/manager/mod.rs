@@ -58,7 +58,7 @@ impl EntityManager {
             id_pool: IdPool::new(),
             entities: HashMap::new(),
             config: EntityManagerConfig {
-                buffered_ticks: (buffer_ms as f32 / (1000.0 / tick_rate as f32)).ceil() as u8,
+                buffered_ticks: (buffer_ms as f32 / (1000.0 / tick_rate as f32)).floor() as u8,
                 interpolation_ticks: (interp_ms as f32 / (1000.0 / tick_rate as f32)).ceil() as u8,
                 tick_rate: tick_rate,
             },
@@ -101,6 +101,7 @@ impl EntityManager {
         if let Some(id) = self.id_pool.get_id() {
 
             let mut entity = self.registry.entity_from_type_id(type_id);
+            entity.set_buffer_size(self.config.buffered_ticks as usize);
             entity.set_id(id);
             entity.set_alive(true);
 
@@ -242,6 +243,7 @@ impl EntityManager {
         let confirmed_tick = data[1];
         let tick = self.tick;
         let registry = &self.registry;
+        let buffer_size = self.config.buffered_ticks as usize;
 
         // Mark all entities as dead
         for (_, entity) in self.entities.iter_mut() {
@@ -267,6 +269,7 @@ impl EntityManager {
                 // Create entities which do not yet exist
                 let mut entity = self.entities.entry(entity_id).or_insert_with(|| {
                     let mut entity = registry.entity_from_type_id(entity_type);
+                    entity.set_buffer_size(buffer_size);
                     entity.set_id(entity_id);
                     entity.set_state(state.clone());
                     entity.event(entity::Event::Created(tick));
