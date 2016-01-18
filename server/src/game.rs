@@ -50,7 +50,8 @@ impl Handler<Server> for Game {
         let mut config = [
             0,
             self.tick_rate,
-            self.interpolation_ticks as u8
+            self.interpolation_ticks as u8,
+            30
 
         ].to_vec();
 

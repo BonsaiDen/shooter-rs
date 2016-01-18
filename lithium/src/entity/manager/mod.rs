@@ -4,8 +4,8 @@ use cobalt::ConnectionID;
 
 
 // Internal Dependencies ------------------------------------------------------
-mod config;
-mod registry;
+pub mod config;
+pub mod registry;
 
 use entity;
 use level::Level;
@@ -76,6 +76,13 @@ impl EntityManager {
         &self.config
     }
 
+    pub fn init(&self, renderer: &mut Renderer) {
+        renderer.set_tick_rate(self.config.tick_rate as u32);
+        renderer.set_interpolation_ticks(
+            self.config.interpolation_ticks as usize
+        );
+    }
+
     pub fn reset(&mut self) {
         self.tick = 0;
         self.entities.clear();
@@ -115,15 +122,18 @@ impl EntityManager {
         }
     }
 
-    pub fn tick_entities<F>(
-        &mut self, level: &mut Level, dt: f32, mut callback: F
+    pub fn tick_entities<B, A>(
+        &mut self, level: &Level, dt: f32, mut before: B, mut after: A
 
-    ) where F: FnMut(&mut entity::Entity, &mut Level, u8, f32) {
+    ) where B: FnMut(&mut entity::Entity, &Level, u8, f32),
+            A: FnMut(&mut entity::Entity, &Level, u8, f32) {
 
+        // TODO set buffered ticks size etc from config
         for (_, entity) in self.entities.iter_mut() {
-            callback(entity, level, self.tick, dt);
+            before(entity, level, self.tick, dt);
             entity.event(entity::Event::Tick(self.tick, dt)); // TODO useful?
             entity.tick(level, self.tick, dt, self.server_mode);
+            after(entity, level, self.tick, dt);
         }
 
         if self.tick == 255 {
@@ -154,7 +164,7 @@ impl EntityManager {
 
     }
 
-    pub fn entity_for_owner(
+    pub fn get_entity_for_owner(
         &mut self, owner: &ConnectionID
 
     ) -> Option<&mut entity::Entity> {
@@ -172,7 +182,7 @@ impl EntityManager {
 
         let mut config = [
             // Message Type (TODO use enum)
-            0,
+            0
 
         ].to_vec();
 
@@ -182,8 +192,9 @@ impl EntityManager {
 
     }
 
-    pub fn receive_config<'a>(&mut self, data: &'a [u8]) -> &'a [u8] {
+    pub fn receive_config<'a>(&mut self, renderer: &mut Renderer, data: &'a [u8]) -> &'a [u8] {
         self.config = EntityManagerConfig::from_serialized(data);
+        renderer.set_interpolation_ticks(self.config.interpolation_ticks as usize);
         &data[EntityManagerConfig::encoded_size()..]
     }
 
@@ -225,10 +236,10 @@ impl EntityManager {
 
     pub fn receive_state(&mut self, data: &[u8]) {
 
-        let remote_tick = data[1];
+        //let remote_tick = data[1];
 
         // TODO set this on per entity basis?
-        let confirmed_tick = data[2];
+        let confirmed_tick = data[1];
         let tick = self.tick;
         let registry = &self.registry;
 
@@ -238,7 +249,7 @@ impl EntityManager {
         }
 
         // Parse received state
-        let mut i = 3;
+        let mut i = 2;
         while i + 3 <= data.len() {
 
             // Entity ID / Type

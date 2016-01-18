@@ -2,14 +2,17 @@
 mod entity;
 mod event;
 mod input;
-mod manager;
+pub mod manager;
 mod state;
 pub mod traits;
 
 
 // Re-Exports -----------------------------------------------------------------
-pub use entity::entity::Entity as Entity;
-pub use entity::event::EntityEvent as Event;
-pub use entity::input::EntityInput as Input;
-pub use entity::state::EntityState as State;
+pub use self::entity::Entity as Entity;
+pub use self::event::EntityEvent as Event;
+pub use self::input::EntityInput as Input;
+pub use self::state::EntityState as State;
+pub use self::manager::EntityManager as Manager;
+pub use self::manager::config::EntityManagerConfig as ManagerConfig;
+pub use self::manager::registry::EntityRegistry as Registry;
 

@@ -7,14 +7,14 @@ use bincode::rustc_serialize::{encode, decode};
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct EntityManagerConfig {
 
-    // Number of buffered ticks for client side rendering / server side rewinding
-    pub buffered_ticks: u8,
+    // Ticks per second
+    pub tick_rate: u8,
 
     // Number of interpolation ticks for client side rendering
     pub interpolation_ticks: u8,
 
-    // Ticks per second
-    pub tick_rate: u8
+    // Number of buffered ticks for client side rendering / server side rewinding
+    pub buffered_ticks: u8
 
 }
 

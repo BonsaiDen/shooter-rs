@@ -30,6 +30,7 @@ pub struct Entity {
     input_buffer: VecDeque<entity::Input>,
     confirmed_input_tick: u8,
     initial_input: bool,
+    serialized_inputs: Option<Vec<u8>>,
 
     // Configuration
     input_buffer_size: usize,
@@ -75,6 +76,9 @@ impl Entity {
 
             // Pending inputs (client only)
             input_buffer: VecDeque::new(),
+
+            // Serialized inputs (client only)
+            serialized_inputs: None,
 
             // Last tick for which input was received (server only)
             confirmed_input_tick: 0,
@@ -201,16 +205,26 @@ impl Entity {
         self.confirmed_input_tick
     }
 
-    pub fn local_input(&mut self, input: entity::Input) -> Vec<u8> {
+    pub fn local_input(&mut self, input: entity::Input) {
 
         self.input(input);
 
-        let mut inputs = Vec::new();
+        let mut serialized_inputs = Vec::new();
         for input in self.input_buffer.iter() {
-            inputs.extend(input.serialize());
+            serialized_inputs.extend(input.serialize());
         }
-        inputs
 
+        self.serialized_inputs = Some(serialized_inputs);
+
+    }
+
+    pub fn serialized_inputs(&mut self) -> Option<Vec<u8>> {
+        if let Some(inputs) = self.serialized_inputs.take() {
+            Some(inputs)
+
+        } else {
+            None
+        }
     }
 
     pub fn remote_input(&mut self, input: entity::Input) {
