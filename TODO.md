@@ -1,11 +1,24 @@
-# Move Events into lithium
+# Network
 
-- make them macro based 
+- Built lithium server / client / messaging core
 
 # Abstraction
 
 - Make Entity State Generic
 - Try a macro based approach
+
+# General
+
+- Game / Player and Entity Events
+    - Add (extendable) Player Abstraction
+
+# Server 
+
+### Entities
+
+- Support state rewinding
+
+---------------------------------------------
 
 # Level 
 
@@ -15,17 +28,4 @@
 
 - Rework Game Network Integration
 
-# Server 
 
-# Entities
-
-- Support state rewinding
-
-# General
-
-- Game and Entity Events
-
-
-# Network
-
-- Move Message Type Prefixes into game code and out of lithium

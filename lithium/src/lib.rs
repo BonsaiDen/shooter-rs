@@ -10,14 +10,17 @@ extern crate rustc_serialize;
 pub mod entity;
 pub mod event;
 pub mod level;
+pub mod network;
 pub mod renderer;
 pub mod runnable;
+pub mod server;
 mod idpool;
 
 
 // Re-Exports -----------------------------------------------------------------
 pub use level::Level as Level;
 pub use idpool::IdPool as IdPool;
+pub use server::Server as Server;
 pub use renderer::Renderer as Renderer;
 pub use runnable::Runnable as Runnable;
 

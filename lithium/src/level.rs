@@ -17,5 +17,11 @@ pub trait Level {
 
     fn draw(&mut self, _: &mut Renderer) {}
 
+    fn encoded_size() -> usize where Self: Sized;
+
+    fn from_serialized(data: &[u8]) -> Self where Self: Sized;
+
+    fn serialize(&self) -> Vec<u8>;
+
 }
 

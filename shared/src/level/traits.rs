@@ -1,5 +1,7 @@
-// Internal Dependencies ------------------------------------------------------
+// External Dependencies ------------------------------------------------------
 use std::f32;
+use bincode::SizeLimit;
+use bincode::rustc_serialize::{encode, decode};
 
 
 // Internal Dependencies ------------------------------------------------------
@@ -65,6 +67,18 @@ impl LithiumLevel for Level {
             flags: current.flags
         }
 
+    }
+
+    fn encoded_size() -> usize {
+        12
+    }
+
+    fn from_serialized(data: &[u8]) -> Self {
+        decode::<Self>(data).unwrap()
+    }
+
+    fn serialize(&self) -> Vec<u8> {
+        encode(&self, SizeLimit::Infinite).unwrap()
     }
 
 }

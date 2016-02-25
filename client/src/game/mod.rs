@@ -2,6 +2,7 @@
 use std::net::SocketAddr;
 use lithium::entity;
 use lithium::event;
+use lithium::level::Level as LithiumLevel;
 use lithium::renderer::Renderer;
 use lithium::runnable::Runnable;
 

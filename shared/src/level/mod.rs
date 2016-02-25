@@ -1,8 +1,3 @@
-// External Dependencies ------------------------------------------------------
-use bincode::SizeLimit;
-use bincode::rustc_serialize::{encode, decode};
-
-
 // Internal Dependencies ------------------------------------------------------
 mod traits;
 
@@ -35,23 +30,6 @@ impl Level {
 
     pub fn center(&self) -> (u32, u32) {
         (self.width / 2 + self.border, self.height / 2 + self.border)
-    }
-
-}
-
-// Serialization --------------------------------------------------------------
-impl Level {
-
-    pub fn encoded_size() -> usize {
-        12
-    }
-
-    pub fn from_serialized(data: &[u8]) -> Self {
-        decode::<Self>(data).unwrap()
-    }
-
-    pub fn serialize(&self) -> Vec<u8> {
-        encode(&self, SizeLimit::Infinite).unwrap()
     }
 
 }
