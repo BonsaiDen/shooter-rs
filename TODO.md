@@ -24,8 +24,3 @@
 
 - Split up to support drawable
 
-# Client
-
-- Rework Game Network Integration
-
-

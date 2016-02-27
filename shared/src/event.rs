@@ -1,3 +1,7 @@
+// External Dependencies ------------------------------------------------------
+use lithium;
+
+
 // Game Events ----------------------------------------------------------------
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub enum Event {
@@ -5,6 +9,8 @@ pub enum Event {
     PlayerLeft,
     Unknown
 }
+
+impl lithium::Event for Event {}
 
 impl Default for Event {
     fn default() -> Event {

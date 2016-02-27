@@ -14,14 +14,13 @@ extern crate allegro_primitives;
 
 // External Dependencies ------------------------------------------------------
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+use lithium::Renderer;
 
 
 // Internal Dependencies ------------------------------------------------------
-use lithium::Renderer;
 use renderer::AllegroRenderer;
 mod entities;
 mod game;
-mod net;
 mod renderer;
 
 
@@ -49,7 +48,7 @@ allegro_main! {
 
 
     // Client Setup -----------------------------------------------------------
-    AllegroRenderer::run(game::Game::new(server_addr));
+    AllegroRenderer::run(game::Game::client(server_addr), game::Game::new());
 
 }
 

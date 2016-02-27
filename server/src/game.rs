@@ -53,7 +53,9 @@ impl Handler<Server> for Game {
                 .. entity::State::default()
             };
 
-            self.server.entities().create_entity(0, Some(state), Some(&conn.id()));
+            self.server.entities().create_entity(
+                0, Some(state), Some(&conn.id())
+            );
             self.server.events().send(Event::PlayerJoined);
 
         }
@@ -65,7 +67,7 @@ impl Handler<Server> for Game {
         connections: &mut HashMap<ConnectionID, Connection>
     ) {
 
-        self.server.tick_connections(connections, |_, _, _, _| {
+        self.server.tick(connections, |_, _, _, _| {
 
         }, |_, _, _, _| {
 

@@ -2,34 +2,32 @@
 use lithium::entity;
 use lithium::renderer::Renderer;
 use lithium::runnable::Runnable;
+use lithium::client::ClientProxy;
+use lithium::level::Level as LithiumLevel;
 
 
 // Internal Dependencies ------------------------------------------------------
-use net;
 use game::{Game, State};
-use shared::NetworkMessage;
+use shared::event::Event;
+use shared::level::Level;
 use renderer::AllegroRenderer;
 use shared::color::{Color, ColorName};
 
 
 // Runnable Implementation ----------------------------------------------------
-impl Runnable for Game {
+impl Runnable<Event, Level> for Game {
 
-    fn init(&mut self, renderer: &mut Renderer) {
-
-        // TODO clean up!
-        self.network.set_tick_rate(self.manager.config().tick_rate as u32);
-        self.manager.init(renderer);
-        renderer.set_fps(60);
+    fn init(&mut self, renderer: &mut Renderer, client: ClientProxy<Level>) {
 
         let ar = AllegroRenderer::downcast_mut(renderer);
+        ar.set_fps(60);
         ar.set_title("Rustgame: Shooter");
-        ar.resize(self.level.width() as i32, self.level.height() as i32);
+        ar.resize(client.level.width() as i32, client.level.height() as i32);
 
         // Local Test Play
-        if self.network.connected() == false {
+        if self.state == State::Disconnected {
 
-            let (x, y) = self.level.center();
+            let (x, y) = client.level.center();
             let flags = 0b0000_0001 | Color::from_name(ColorName::Red).to_flags();
             let state = entity::State {
                 x: x as f32,
@@ -38,90 +36,123 @@ impl Runnable for Game {
                 .. entity::State::default()
             };
 
-            self.manager.create_entity(0, Some(state), None);
+            client.entities.create_entity(0, Some(state), None);
 
         }
 
     }
 
-    fn tick(&mut self, renderer: &mut Renderer) -> bool {
+    fn connect(&mut self, _: &mut Renderer, _: ClientProxy<Level>) {
+        self.state = State::Pending;
+    }
 
-        let mut ticked = false;
-        let tick_rate = self.network.get_tick_rate();
-        let dt = 1.0 / tick_rate as f32;
+    fn disconnect(&mut self, renderer: &mut Renderer, client: ClientProxy<Level>) {
+        self.state = State::Disconnected;
+        self.init(renderer, client);
+    }
 
-        self.network.receive();
+    fn level(&mut self, _: &mut Renderer, level_data: &[u8]) -> Level {
+        Level::from_serialized(level_data)
+    }
 
-        while let Ok(event) = self.network.message(renderer.time()) {
-            match event {
+    fn config(&mut self, renderer: &mut Renderer, client: ClientProxy<Level>) {
+        self.state = State::Connected;
+        self.init(renderer, client);
+    }
 
-                net::EventType::Connection(_) => {
-                    self.connect();
-                },
+    fn event(&mut self, _: &mut Renderer, _: ClientProxy<Level>, event: Event) {
+        println!("Event: {:?}", event);
+    }
 
-                // TODO clean up / validate message
-                net::EventType::Message(_, data) =>  {
-                    match NetworkMessage::from_u8(data[0]) {
-                        NetworkMessage::ServerConfig => {
-                            self.config(renderer, &data[1..]);
-                        },
-                        NetworkMessage::ServerState => {
-                            self.manager.receive_state(&data[1..]);
-                        },
-                        NetworkMessage::ServerEvents => {
-                            self.events.receive_events(self.network.id(), &data[1..]);
-                        },
-                        _=> println!("Unknown Server Message {:?}", data)
-                    }
-                },
+    fn tick_before(&mut self, renderer: &mut Renderer, _: ClientProxy<Level>, tick: u8, _: f32) {
 
-                net::EventType::Tick(_, _, _) => {
+        let ar = AllegroRenderer::downcast_mut(renderer);
+        ar.reseed_rng([
+            ((tick as u32 + 7) * 941) as u32,
+            ((tick as u32 + 659) * 461) as u32,
+            ((tick as u32 + 13) * 227) as u32,
+            ((tick as u32 + 97) * 37) as u32
+        ]);
 
-                    if let Some(events) = self.events.received() {
-                        for (_, event) in events {
-                            self.event(event);
-                        }
-                    }
+    }
 
-                    self.tick_entities(renderer, dt);
-                    ticked = true;
+    fn tick_entity_before(
+        &mut self,
+        renderer: &mut Renderer,
+        entity: &mut entity::Entity,
+        _: &Level,
+        tick: u8, _: f32
+    ) {
 
-                },
+        let ar = AllegroRenderer::downcast_mut(renderer);
 
-                net::EventType::Close => {
-                    println!("Connection closed");
-                },
+        if entity.local() {
 
-                net::EventType::ConnectionLost(_) => {
-                    self.disconnect(renderer);
-                },
-
-                _ => {}
-
+            let mut buttons = 0;
+            if ar.key_down(1) || ar.key_down(82) {
+                buttons |= 0x01;
             }
+
+            if ar.key_down(4) || ar.key_down(83) {
+                buttons |= 0x02;
+            }
+
+            if ar.key_down(23) || ar.key_down(84) {
+                buttons |= 0x04;
+            }
+
+            let input = entity::Input {
+                tick: tick,
+                fields: buttons
+            };
+
+            entity.local_input(input);
+
         }
-
-        self.network.send();
-
-        ticked
 
     }
 
-    fn draw(&mut self, renderer: &mut Renderer) {
+    fn tick_entity_after(
+        &mut self,
+        _: &mut Renderer,
+        entity: &mut entity::Entity,
+        _: &Level,
+        _: u8, _: f32
+
+    ) -> entity::ControlState {
+
+        if entity.local() {
+            match self.state {
+                State::Disconnected => entity::ControlState::Local,
+                State::Connected => entity::ControlState::Remote,
+                _ => entity::ControlState::None
+            }
+
+        } else {
+           entity::ControlState::None
+        }
+
+    }
+
+    fn tick_after(&mut self, _: &mut Renderer, _: ClientProxy<Level>, _: u8, _: f32) {
+
+    }
+
+    fn draw(&mut self, renderer: &mut Renderer, client: ClientProxy<Level>) {
 
         AllegroRenderer::downcast_mut(renderer).clear(&Color::from_name(ColorName::Black));
 
-        self.manager.draw_entities(renderer, &self.level);
+        client.entities.draw_entities(renderer, client.level);
 
-        if let Ok(addr) = self.network.server_addr() {
-            let network_state = match self.network.connected() {
+        if let Ok(addr) = client.network.server_addr() {
+            let network_state = match client.network.connected() {
                 true => format!(
                     "{} (Ping: {}ms, Lost: {:.2}%, Bytes: {}/{})",
                     addr,
-                    self.network.rtt() / 2,
-                    self.network.packet_loss(),
-                    self.network.bytes_sent(),
-                    self.network.bytes_received()
+                    client.network.rtt() / 2,
+                    client.network.packet_loss(),
+                    client.network.bytes_sent(),
+                    client.network.bytes_received()
                 ),
                 false => format!("Connecting to {}...", addr)
             };
@@ -134,8 +165,8 @@ impl Runnable for Game {
 
     }
 
-    fn destroy(&mut self) {
-        self.network.destroy();
+    fn destroy(&mut self, _: ClientProxy<Level>) {
+
     }
 
 }

@@ -8,9 +8,11 @@ pub mod config;
 pub mod registry;
 
 use entity;
+use event::Event;
 use level::Level;
 use idpool::IdPool;
 use renderer::Renderer;
+use runnable::Runnable;
 use self::registry::EntityRegistry;
 use self::config::EntityManagerConfig;
 
@@ -123,7 +125,7 @@ impl EntityManager {
         }
     }
 
-    pub fn tick_entities<B, A>(
+    pub fn tick_server_entities<B, A>(
         &mut self, level: &Level, dt: f32, mut before: B, mut after: A
 
     ) where B: FnMut(&mut entity::Entity, &Level, u8, f32),
@@ -144,6 +146,37 @@ impl EntityManager {
         }
 
     }
+
+    pub fn tick_client_entities<E, L, I>(
+        &mut self,
+        renderer: &mut Renderer,
+        runnable: &mut Runnable<E, L>,
+        level: &L, dt: f32,
+        mut input_handler: I
+
+    ) where E: Event,
+            L: Level,
+            I: FnMut(entity::ControlState, &mut entity::Entity, u8)
+    {
+        for (_, entity) in self.entities.iter_mut() {
+            runnable.tick_entity_before(renderer, entity, level, self.tick, dt);
+            entity.event(entity::Event::Tick(self.tick, dt)); // TODO useful?
+            entity.tick(level, self.tick, dt, self.server_mode);
+            match runnable.tick_entity_after(renderer, entity, level, self.tick, dt) {
+                entity::ControlState::None => {},
+                state => input_handler(state, entity, self.tick)
+            }
+        }
+
+        if self.tick == 255 {
+            self.tick = 0;
+
+        } else {
+            self.tick += 1;
+        }
+
+    }
+
 
     pub fn draw_entities(&mut self, renderer: &mut Renderer, level: &Level) {
         for (_, entity) in self.entities.iter_mut() {
@@ -287,8 +320,6 @@ impl EntityManager {
         for id in &destroyed_ids {
             self.entities.remove(&id);
         }
-
-        // TODO networked events
 
     }
 

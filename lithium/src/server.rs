@@ -1,7 +1,6 @@
 // External Dependencies ------------------------------------------------------
 use std::collections::HashMap;
 use cobalt::{Connection, ConnectionID, MessageKind};
-use rustc_serialize::{Encodable, Decodable};
 
 
 // Internal Dependencies ------------------------------------------------------
@@ -12,13 +11,13 @@ use network;
 
 
 // Server Abstraction ---------------------------------------------------------
-pub struct Server<E, L> where E: Encodable + Decodable + Default, L: level::Level {
+pub struct Server<E, L> where E: event::Event, L: level::Level {
     manager: entity::Manager,
     events: event::Handler<E>,
     level: L
 }
 
-impl<E, L> Server<E, L> where E: Encodable + Decodable + Default, L: level::Level {
+impl<E, L> Server<E, L> where E: event::Event, L: level::Level {
 
     pub fn new(
         tick_rate: u32, buffer_ms: u32, interp_ms: u32,
@@ -36,15 +35,7 @@ impl<E, L> Server<E, L> where E: Encodable + Decodable + Default, L: level::Leve
         }
     }
 
-    // Connection Interface ---------------------------------------------------
-    pub fn init_connection(&self, conn: &mut Connection) {
-        let mut config = [network::Message::ServerConfig as u8].to_vec();
-        config.extend(self.manager.serialize_config());
-        config.extend(self.level.serialize());
-        conn.send(MessageKind::Reliable, config);
-    }
-
-    pub fn tick_connections<B, A>(
+    pub fn tick<B, A>(
         &mut self,
         connections: &mut HashMap<ConnectionID, Connection>,
         before: B, after: A
@@ -80,7 +71,7 @@ impl<E, L> Server<E, L> where E: Encodable + Decodable + Default, L: level::Leve
         }
 
         // Tick Entities
-        self.manager.tick_entities(&self.level, tick_dt, before, after);
+        self.manager.tick_server_entities(&self.level, tick_dt, before, after);
 
         // Send Data
         let events = self.events.serialize_events();
@@ -105,6 +96,15 @@ impl<E, L> Server<E, L> where E: Encodable + Decodable + Default, L: level::Leve
 
     }
 
+
+    // Connection Interface ---------------------------------------------------
+    pub fn init_connection(&self, conn: &mut Connection) {
+        let mut config = [network::Message::ServerConfig as u8].to_vec();
+        config.extend(self.manager.serialize_config());
+        config.extend(self.level.serialize());
+        conn.send(MessageKind::Reliable, config);
+    }
+
     pub fn close_connection<N>(
         &mut self,
         conn: &mut Connection,
@@ -118,15 +118,18 @@ impl<E, L> Server<E, L> where E: Encodable + Decodable + Default, L: level::Leve
         }
     }
 
+
     // Level Interface --------------------------------------------------------
     pub fn level(&mut self) -> &mut L {
         &mut self.level
     }
 
+
     // Entity Interface -------------------------------------------------------
     pub fn entities(&mut self) -> &mut entity::Manager {
         &mut self.manager
     }
+
 
     // Event Interface --------------------------------------------------------
     pub fn events(&mut self) -> &mut event::Handler<E> {

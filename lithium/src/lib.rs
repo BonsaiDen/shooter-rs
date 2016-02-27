@@ -7,6 +7,7 @@ extern crate rustc_serialize;
 
 
 // Module Declarations --------------------------------------------------------
+pub mod client;
 pub mod entity;
 pub mod event;
 pub mod level;
@@ -18,6 +19,8 @@ mod idpool;
 
 
 // Re-Exports -----------------------------------------------------------------
+pub use client::Client as Client;
+pub use event::Event as Event;
 pub use level::Level as Level;
 pub use idpool::IdPool as IdPool;
 pub use server::Server as Server;

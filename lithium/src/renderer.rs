@@ -3,6 +3,9 @@ use std::any::Any;
 
 
 // Internal -------------------------------------------------------------------
+use event::Event;
+use level::Level;
+use client::Client;
 use runnable::Runnable;
 
 
@@ -10,7 +13,7 @@ use runnable::Runnable;
 pub trait Renderer {
 
     // Statics ----------------------------------------------------------------
-    fn run<R: Runnable>(runnable: R) where Self: Sized;
+    fn run<R: Runnable<E, L>, E: Event, L: Level>(client: Client<E, L>, runnable: R) where Self: Sized;
 
 
     // Downcast ---------------------------------------------------------------

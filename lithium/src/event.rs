@@ -10,14 +10,20 @@ use bincode::rustc_serialize::{
 use rustc_serialize::{Encodable, Decodable};
 
 
+// Abstract Event -------------------------------------------------------------
+pub trait Event: Encodable + Decodable + Default {
+
+}
+
+
 // Event Handler --------------------------------------------------------------
-pub struct Handler<T> where T: Encodable + Decodable + Default {
+pub struct Handler<T> where T: Event {
     incoming: Option<Vec<(ConnectionID, T)>>,
     outgoing: Vec<T>,
     event_size: usize
 }
 
-impl<T> Handler<T> where T: Encodable + Decodable + Default {
+impl<T> Handler<T> where T: Event {
 
     pub fn new() -> Handler<T> {
         Handler {
