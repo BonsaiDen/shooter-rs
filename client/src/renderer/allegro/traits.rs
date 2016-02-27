@@ -96,7 +96,7 @@ impl lithium::Renderer for Renderer {
 
         }
 
-        client.destroy(&mut runnable);
+        client.destroy(&mut runnable, &mut renderer);
 
     }
 

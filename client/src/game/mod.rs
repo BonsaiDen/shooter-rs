@@ -9,12 +9,6 @@ use shared::event::Event;
 use shared::level::Level;
 mod runnable;
 
-#[derive(PartialEq)]
-enum State {
-    Disconnected,
-    Pending,
-    Connected
-}
 
 // Game -----------------------------------------------------------------------
 pub struct Game {
@@ -41,5 +35,13 @@ impl Game {
         Level::new(384, 384, 16)
     }
 
+}
+
+// Game State -----------------------------------------------------------------
+#[derive(PartialEq)]
+enum State {
+    Disconnected,
+    Pending,
+    Connected
 }
 

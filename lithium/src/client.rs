@@ -41,16 +41,17 @@ impl<E, L> Client<E, L> where E: event::Event, L: level::Level {
     pub fn init(&mut self, runnable: &mut Runnable<E, L>, renderer: &mut Renderer) {
         self.network.set_tick_rate(self.manager.config().tick_rate as u32);
         self.manager.init(renderer);
-        runnable.init(renderer, self.proxy());
+        runnable.init(self.proxy(renderer));
     }
 
-    pub fn destroy(&mut self, runnable: &mut Runnable<E, L>) {
+    pub fn destroy(&mut self, runnable: &mut Runnable<E, L>, renderer: &mut Renderer) {
         self.network.destroy();
-        runnable.destroy(self.proxy());
+        runnable.destroy(self.proxy(renderer));
     }
 
-    fn proxy(&mut self) -> ClientProxy<L> {
+    fn proxy<'a>(&'a mut self, renderer: &'a mut Renderer) -> ClientProxy<L> {
         ClientProxy {
+            renderer: renderer,
             level: &self.level,
             entities: &mut self.manager,
             network: &self.network
@@ -78,7 +79,7 @@ impl<E, L> Client<E, L> where E: event::Event, L: level::Level {
                 network::StreamEvent::Connection(_) => {
                     self.remote_states.clear();
                     self.manager.reset();
-                    runnable.connect(renderer, self.proxy());
+                    runnable.connect(self.proxy(renderer));
                 },
 
                 // TODO clean up / validate message
@@ -87,8 +88,8 @@ impl<E, L> Client<E, L> where E: event::Event, L: level::Level {
                         network::Message::ServerConfig => {
                             let level_data = self.manager.receive_config(renderer, &data[1..]);
                             self.network.set_tick_rate(self.manager.config().tick_rate as u32);
-                            self.level = runnable.level(renderer, level_data);
-                            runnable.config(renderer, self.proxy());
+                            self.level = runnable.level(self.proxy(renderer), level_data);
+                            runnable.config(self.proxy(renderer));
                         },
                         network::Message::ServerState => {
                             self.manager.receive_state(&data[1..]);
@@ -104,28 +105,22 @@ impl<E, L> Client<E, L> where E: event::Event, L: level::Level {
 
                     if let Some(events) = self.events.received() {
                         for (_, event) in events {
-                            runnable.event(renderer, self.proxy(), event);
+                            runnable.event(self.proxy(renderer), event);
                         }
                     }
 
                     let tick = self.manager.tick();
-                    runnable.tick_before(renderer, self.proxy(), tick, dt);
+                    runnable.tick_before(self.proxy(renderer), tick, dt);
                     self.tick_entities(dt, runnable, renderer);
-                    runnable.tick_after(renderer, self.proxy(), tick, dt);
+                    runnable.tick_after(self.proxy(renderer), tick, dt);
                     ticked = true;
 
                 },
 
-                network::StreamEvent::Close => {
-                    // TODO same as connection lost?
-                    // is this used at all?
-                    println!("Connection closed");
-                },
-
-                network::StreamEvent::ConnectionLost(_) => {
+                network::StreamEvent::Close | network::StreamEvent::ConnectionLost(_) => {
                     self.remote_states.clear();
                     self.manager.reset();
-                    runnable.disconnect(renderer, self.proxy());
+                    runnable.disconnect(self.proxy(renderer));
                 },
 
                 _ => {}
@@ -140,7 +135,7 @@ impl<E, L> Client<E, L> where E: event::Event, L: level::Level {
     }
 
     pub fn draw(&mut self, runnable: &mut Runnable<E, L>, renderer: &mut Renderer) {
-        runnable.draw(renderer, self.proxy());
+        runnable.draw(self.proxy(renderer));
     }
 
     pub fn tick_entities(
@@ -203,7 +198,8 @@ impl<E, L> Client<E, L> where E: event::Event, L: level::Level {
 
 
 // Client Proxy for Access from Runnable --------------------------------------
-pub struct ClientProxy<'a, L: 'a> {
+pub struct ClientProxy<'a, 'b, L: 'a, > {
+    pub renderer: &'b mut Renderer,
     pub level: &'a L,
     pub entities: &'a mut entity::Manager,
     pub network: &'a network::Stream

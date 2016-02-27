@@ -17,9 +17,9 @@ use shared::color::{Color, ColorName};
 // Runnable Implementation ----------------------------------------------------
 impl Runnable<Event, Level> for Game {
 
-    fn init(&mut self, renderer: &mut Renderer, client: ClientProxy<Level>) {
+    fn init(&mut self, client: ClientProxy<Level>) {
 
-        let ar = AllegroRenderer::downcast_mut(renderer);
+        let ar = AllegroRenderer::downcast_mut(client.renderer);
         ar.set_fps(60);
         ar.set_title("Rustgame: Shooter");
         ar.resize(client.level.width() as i32, client.level.height() as i32);
@@ -42,31 +42,31 @@ impl Runnable<Event, Level> for Game {
 
     }
 
-    fn connect(&mut self, _: &mut Renderer, _: ClientProxy<Level>) {
+    fn connect(&mut self, _: ClientProxy<Level>) {
         self.state = State::Pending;
     }
 
-    fn disconnect(&mut self, renderer: &mut Renderer, client: ClientProxy<Level>) {
+    fn disconnect(&mut self, client: ClientProxy<Level>) {
         self.state = State::Disconnected;
-        self.init(renderer, client);
+        self.init(client);
     }
 
-    fn level(&mut self, _: &mut Renderer, level_data: &[u8]) -> Level {
+    fn level(&mut self, _: ClientProxy<Level>, level_data: &[u8]) -> Level {
         Level::from_serialized(level_data)
     }
 
-    fn config(&mut self, renderer: &mut Renderer, client: ClientProxy<Level>) {
+    fn config(&mut self, client: ClientProxy<Level>) {
         self.state = State::Connected;
-        self.init(renderer, client);
+        self.init(client);
     }
 
-    fn event(&mut self, _: &mut Renderer, _: ClientProxy<Level>, event: Event) {
+    fn event(&mut self, _: ClientProxy<Level>, event: Event) {
         println!("Event: {:?}", event);
     }
 
-    fn tick_before(&mut self, renderer: &mut Renderer, _: ClientProxy<Level>, tick: u8, _: f32) {
+    fn tick_before(&mut self, client: ClientProxy<Level>, tick: u8, _: f32) {
 
-        let ar = AllegroRenderer::downcast_mut(renderer);
+        let ar = AllegroRenderer::downcast_mut(client.renderer);
         ar.reseed_rng([
             ((tick as u32 + 7) * 941) as u32,
             ((tick as u32 + 659) * 461) as u32,
@@ -122,6 +122,7 @@ impl Runnable<Event, Level> for Game {
     ) -> entity::ControlState {
 
         if entity.local() {
+            // TODO clean up once we have a local network proxy
             match self.state {
                 State::Disconnected => entity::ControlState::Local,
                 State::Connected => entity::ControlState::Remote,
@@ -134,15 +135,14 @@ impl Runnable<Event, Level> for Game {
 
     }
 
-    fn tick_after(&mut self, _: &mut Renderer, _: ClientProxy<Level>, _: u8, _: f32) {
-
+    fn tick_after(&mut self, _: ClientProxy<Level>, _: u8, _: f32) {
     }
 
-    fn draw(&mut self, renderer: &mut Renderer, client: ClientProxy<Level>) {
+    fn draw(&mut self, client: ClientProxy<Level>) {
 
-        AllegroRenderer::downcast_mut(renderer).clear(&Color::from_name(ColorName::Black));
+        AllegroRenderer::downcast_mut(client.renderer).clear(&Color::from_name(ColorName::Black));
 
-        client.entities.draw_entities(renderer, client.level);
+        client.entities.draw_entities(client.renderer, client.level);
 
         if let Ok(addr) = client.network.server_addr() {
             let network_state = match client.network.connected() {
@@ -157,7 +157,7 @@ impl Runnable<Event, Level> for Game {
                 false => format!("Connecting to {}...", addr)
             };
 
-            AllegroRenderer::downcast_mut(renderer).text(
+            AllegroRenderer::downcast_mut(client.renderer).text(
                 &Color::from_name(ColorName::White), 0.0, 0.0, &network_state[..]
             );
 
