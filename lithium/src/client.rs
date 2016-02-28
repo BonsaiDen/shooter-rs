@@ -12,18 +12,18 @@ use renderer::Renderer;
 
 
 // Client Abstraction ---------------------------------------------------------
-pub struct Client<E, L> where E: event::Event, L: level::Level {
+pub struct Client<E, L, S> where E: event::Event, L: level::Level<S>, S: entity::State {
     network: network::Stream,
-    manager: entity::Manager,
+    manager: entity::Manager<S>,
     events: event::Handler<E>,
-    remote_states: Vec<(u8, entity::State)>,
+    remote_states: Vec<(u8, S)>,
     level: L
 }
 
-impl<E, L> Client<E, L> where E: event::Event, L: level::Level {
+impl<E, L, S> Client<E, L, S> where E: event::Event, L: level::Level<S>, S: entity::State {
 
     // Statics ----------------------------------------------------------------
-    pub fn new(server_addr: SocketAddr, level: L, registry: Box<entity::Registry>) -> Client<E, L> {
+    pub fn new(server_addr: SocketAddr, level: L, registry: Box<entity::Registry<S>>) -> Client<E, L, S> {
         Client {
             // TODO make initial address optional?
             network: network::Stream::new(server_addr),
@@ -40,13 +40,13 @@ impl<E, L> Client<E, L> where E: event::Event, L: level::Level {
 
 
     // Public -----------------------------------------------------------------
-    pub fn init(&mut self, handler: &mut Handler<E, L>, renderer: &mut Renderer) {
+    pub fn init(&mut self, handler: &mut Handler<E, L, S>, renderer: &mut Renderer) {
         self.network.set_tick_rate(self.manager.config().tick_rate as u32);
         self.manager.init(renderer);
         handler.init(self.handle(renderer));
     }
 
-    pub fn destroy(&mut self, handler: &mut Handler<E, L>, renderer: &mut Renderer) {
+    pub fn destroy(&mut self, handler: &mut Handler<E, L, S>, renderer: &mut Renderer) {
         self.network.destroy();
         handler.destroy(self.handle(renderer));
     }
@@ -55,7 +55,7 @@ impl<E, L> Client<E, L> where E: event::Event, L: level::Level {
     // Tick Handling ----------------------------------------------------------
     pub fn tick(
         &mut self,
-        handler: &mut Handler<E, L>,
+        handler: &mut Handler<E, L, S>,
         renderer: &mut Renderer
 
     ) -> bool {
@@ -127,13 +127,13 @@ impl<E, L> Client<E, L> where E: event::Event, L: level::Level {
 
     }
 
-    pub fn draw(&mut self, handler: &mut Handler<E, L>, renderer: &mut Renderer) {
+    pub fn draw(&mut self, handler: &mut Handler<E, L, S>, renderer: &mut Renderer) {
         handler.draw(self.handle(renderer));
     }
 
 
     // Internal ---------------------------------------------------------------
-    fn handle<'a>(&'a mut self, renderer: &'a mut Renderer) -> Handle<E, L> {
+    fn handle<'a>(&'a mut self, renderer: &'a mut Renderer) -> Handle<E, L, S> {
         Handle {
             renderer: renderer,
             level: &self.level,
@@ -146,7 +146,7 @@ impl<E, L> Client<E, L> where E: event::Event, L: level::Level {
     fn tick_entities(
         &mut self,
         dt: f32,
-        handler: &mut Handler<E, L>,
+        handler: &mut Handler<E, L, S>,
         renderer: &mut Renderer
     ) {
 
@@ -205,34 +205,39 @@ impl<E, L> Client<E, L> where E: event::Event, L: level::Level {
 
 
 // Client Handle for Access from Handler ------------------------------------
-pub struct Handle<'a, 'b, E: event::Event + 'a, L: level::Level + 'a> {
+pub struct Handle<
+    'a, 'b,
+    E: event::Event + 'a,
+    L: level::Level<S> + 'a,
+    S: entity::State + 'a
+> {
     pub renderer: &'b mut Renderer,
     pub level: &'a L,
     pub events: &'a mut event::Handler<E>,
-    pub entities: &'a mut entity::Manager,
+    pub entities: &'a mut entity::Manager<S>,
     pub network: &'a network::Stream
 }
 
 
 // Client Handler -------------------------------------------------------------
-pub trait Handler<E: event::Event, L: level::Level> {
+pub trait Handler<E: event::Event, L: level::Level<S>, S: entity::State> {
 
-    fn init(&mut self, Handle<E, L>);
-    fn connect(&mut self, Handle<E, L>);
-    fn disconnect(&mut self, Handle<E, L>);
+    fn init(&mut self, Handle<E, L, S>);
+    fn connect(&mut self, Handle<E, L, S>);
+    fn disconnect(&mut self, Handle<E, L, S>);
 
-    fn level(&mut self, Handle<E, L>, &[u8]) -> L;
-    fn config(&mut self, Handle<E, L>);
+    fn level(&mut self, Handle<E, L, S>, &[u8]) -> L;
+    fn config(&mut self, Handle<E, L, S>);
 
-    fn event(&mut self, Handle<E, L>, ConnectionID, E);
-    fn tick_before(&mut self, Handle<E, L>, u8, f32);
-    fn tick_entity_before(&mut self, &mut Renderer, &L, &mut entity::Entity, u8, f32);
-    fn tick_entity_after(&mut self, &mut Renderer, &L, &mut entity::Entity, u8, f32) -> entity::ControlState;
-    fn tick_after(&mut self, Handle<E, L>, u8, f32);
+    fn event(&mut self, Handle<E, L, S>, ConnectionID, E);
+    fn tick_before(&mut self, Handle<E, L, S>, u8, f32);
+    fn tick_entity_before(&mut self, &mut Renderer, &L, &mut entity::Entity<S>, u8, f32);
+    fn tick_entity_after(&mut self, &mut Renderer, &L, &mut entity::Entity<S>, u8, f32) -> entity::ControlState;
+    fn tick_after(&mut self, Handle<E, L, S>, u8, f32);
 
-    fn draw(&mut self, Handle<E, L>);
+    fn draw(&mut self, Handle<E, L, S>);
 
-    fn destroy(&mut self, Handle<E, L>);
+    fn destroy(&mut self, Handle<E, L, S>);
 
 }
 

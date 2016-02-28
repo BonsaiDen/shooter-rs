@@ -1,12 +1,14 @@
 // External Dependencies ------------------------------------------------------
 use std::{cmp, f32};
 use rand::Rng;
+use lithium::{entity, Renderer, Level};
+use lithium::entity::State as LithiumState;
 
 
 // Internal Dependencies ------------------------------------------------------
 use shared::entities;
+use shared::state::State;
 use shared::color::{Color, ColorName};
-use lithium::{entity, Renderer, Level};
 
 use renderer::AllegroRenderer;
 
@@ -17,12 +19,12 @@ pub struct Ship {
     color_mid: Color,
     scale: f32,
     particle_count: u32,
-    last_draw_state: entity::State
+    last_draw_state: State
 }
 
 impl Ship {
 
-    pub fn create_entity(scale: f32) -> entity::Entity {
+    pub fn create_entity(scale: f32) -> entity::Entity<State> {
         entity::Entity::new(
             Box::new(entities::Ship::new(scale)),
             Box::new(Ship::new(scale))
@@ -35,22 +37,22 @@ impl Ship {
             color_mid: Color::from_name(ColorName::Grey).darken(0.5),
             scale: scale,
             particle_count: 5,
-            last_draw_state: entity::State::default()
+            last_draw_state: State::default()
         }
     }
 
 }
 
-impl entity::traits::Drawable for Ship {
+impl entity::traits::Drawable<State> for Ship {
 
-    fn event(&mut self, event: &entity::Event, _: &entity::State) {
+    fn event(&mut self, event: &entity::Event, _: &State) {
         if let &entity::Event::Flags(flags) = event {
             self.color_light = Color::from_flags(flags);
             self.color_mid = self.color_light.darken(0.5);
         }
     }
 
-    fn draw(&mut self, renderer: &mut Renderer, _: &Level, state: entity::State) {
+    fn draw(&mut self, renderer: &mut Renderer, _: &Level<State>, state: State) {
 
         let light = &self.color_light;
         let mid = &self.color_mid;
@@ -140,7 +142,7 @@ impl entity::traits::Drawable for Ship {
 // Helpers --------------------------------------------------------------------
 fn draw_triangle(
     renderer: &mut Renderer,
-    state: &entity::State, color: &Color,
+    state: &State, color: &Color,
     base_scale: f32, body_scale: f32, dr: f32, da: f32, db: f32
 ) {
     let beta = f32::consts::PI / dr;

@@ -1,5 +1,6 @@
 // External Dependencies ------------------------------------------------------
 use cobalt::ConnectionID;
+use rustc_serialize::{Encodable, Decodable};
 
 
 // Internal Dependencies ------------------------------------------------------
@@ -9,30 +10,50 @@ use renderer::Renderer;
 
 
 // Basic Entity Traits --------------------------------------------------------
-pub trait Base {
+pub trait Base<S: State> {
 
     fn type_id(&self) -> u8;
 
     fn apply_input(
         &mut self,
-        level: &Level, state: &mut entity::State, input: &entity::Input, dt: f32
+        level: &Level<S>, state: &mut S, input: &entity::Input, dt: f32
     );
 
     fn visible_to(&self, _: &ConnectionID) -> bool {
         true
     }
 
-    fn serialize_state(&self, _: &mut entity::State, _: &ConnectionID) {}
+    fn serialize_state(&self, _: &mut S, _: &ConnectionID) {}
 
-    fn event(&mut self, _: &entity::Event, _: &entity::State) {}
+    fn event(&mut self, _: &entity::Event, _: &S) {}
 
 }
 
-pub trait Drawable {
+pub trait Drawable<S: State> {
 
-    fn draw(&mut self, _: &mut Renderer, _: &Level, _: entity::State) {}
+    fn draw(&mut self, _: &mut Renderer, _: &Level<S>, _: S) {}
 
-    fn event(&mut self, _: &entity::Event, _: &entity::State) {}
+    fn event(&mut self, _: &entity::Event, _: &S) {}
+
+}
+
+pub trait State: Encodable + Decodable {
+
+    fn encoded_size() -> usize where Self: Sized;
+
+    fn from_serialized(data: &[u8]) -> Self where Self: Sized;
+
+    fn serialize(&self) -> Vec<u8>;
+
+    fn set_to(&mut self, state: &Self);
+
+    fn clone(&self) -> Self;
+
+    fn default() -> Self where Self: Sized;
+
+    fn flags(&self) -> u8;
+
+    fn set_flags(&mut self, u8);
 
 }
 

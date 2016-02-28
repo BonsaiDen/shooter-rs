@@ -1,11 +1,12 @@
 // External Dependencies ------------------------------------------------------
+use lithium::entity;
 use bincode::SizeLimit;
 use bincode::rustc_serialize::{encode, decode};
 
 
 // Entity State ---------------------------------------------------------------
 #[derive(Debug, RustcEncodable, RustcDecodable)]
-pub struct EntityState {
+pub struct State {
     pub x: f32,
     pub y: f32,
     pub r: f32,
@@ -14,21 +15,21 @@ pub struct EntityState {
     pub flags: u8
 }
 
-impl EntityState {
+impl entity::State for State {
 
-    pub fn encoded_size() -> usize {
+    fn encoded_size() -> usize {
         21
     }
 
-    pub fn from_serialized(data: &[u8]) -> EntityState {
-        decode::<EntityState>(data).unwrap()
+    fn from_serialized(data: &[u8]) -> State {
+        decode::<State>(data).unwrap()
     }
 
-    pub fn serialize(&self) -> Vec<u8> {
+    fn serialize(&self) -> Vec<u8> {
         encode(&self, SizeLimit::Infinite).unwrap()
     }
 
-    pub fn set_to(&mut self, state: &EntityState) {
+    fn set_to(&mut self, state: &Self) {
         self.x = state.x;
         self.y = state.y;
         self.r = state.r;
@@ -37,8 +38,8 @@ impl EntityState {
         self.flags = state.flags;
     }
 
-    pub fn clone(&self) -> EntityState {
-        EntityState {
+    fn clone(&self) -> Self {
+        State {
             x: self.x,
             y: self.y,
             r: self.r,
@@ -48,11 +49,8 @@ impl EntityState {
         }
     }
 
-}
-
-impl Default for EntityState {
-    fn default() -> EntityState {
-        EntityState {
+    fn default() -> Self where Self: Sized {
+        State {
             x: 0.0,
             y: 0.0,
             r: 0.0,
@@ -61,5 +59,14 @@ impl Default for EntityState {
             flags: 0
         }
     }
+
+    fn flags(&self) -> u8 {
+        self.flags
+    }
+
+    fn set_flags(&mut self, flags: u8) {
+        self.flags = flags;
+    }
+
 }
 

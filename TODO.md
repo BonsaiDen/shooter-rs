@@ -1,6 +1,6 @@
 # Network
 
-- Built lithium server / client / messaging core
+- Clean up client side network stream
 
 # Abstraction
 
@@ -10,15 +10,13 @@
 # General
 
 - Game / Player and Entity Events
-    - Add (extendable) Player Abstraction
+- Add concept of Players?
 
 # Server 
 
 ### Entities
 
 - Support state rewinding
-
----------------------------------------------
 
 # Level 
 

@@ -6,23 +6,24 @@ use cobalt::{Connection, ConnectionID};
 
 // Internal Dependencies ------------------------------------------------------
 use game::Game;
+use shared::color::Color;
 use shared::event::Event;
 use shared::level::Level;
-use shared::color::Color;
+use shared::state::State;
 
 
 // Handler Implementation -----------------------------------------------------
-impl Handler<Event, Level> for Game {
+impl Handler<Event, Level, State> for Game {
 
-    fn bind(&mut self, _: Handle<Event, Level>) {
+    fn bind(&mut self, _: Handle<Event, Level, State>) {
         println!("[Server] Started");
     }
 
-    fn connect(&mut self, _: Handle<Event, Level>, conn: &mut Connection) {
+    fn connect(&mut self, _: Handle<Event, Level, State>, conn: &mut Connection) {
         println!("[Client {}] Connected", conn.peer_addr());
     }
 
-    fn disconnect(&mut self, server: Handle<Event, Level>, conn: &mut Connection) {
+    fn disconnect(&mut self, server: Handle<Event, Level, State>, conn: &mut Connection) {
 
         println!("[Client {}] Disconnected", conn.peer_addr());
 
@@ -36,7 +37,7 @@ impl Handler<Event, Level> for Game {
 
     }
 
-    fn event(&mut self, server: Handle<Event, Level>, owner: ConnectionID, event: Event) {
+    fn event(&mut self, server: Handle<Event, Level, State>, owner: ConnectionID, event: Event) {
 
         println!("[Client {:?}] Event: {:?}", owner, event);
 
@@ -52,7 +53,7 @@ impl Handler<Event, Level> for Game {
                     if let Some(color) = self.available_colors.pop() {
 
                         let (x, y) = server.level.center();
-                        let state = entity::State {
+                        let state = State {
                             x: x as f32,
                             y: y as f32,
                             flags: color.to_flags(),
@@ -77,7 +78,7 @@ impl Handler<Event, Level> for Game {
 
     }
 
-    fn tick_before(&mut self, _: Handle<Event, Level>, _: u8, _: f32) {
+    fn tick_before(&mut self, _: Handle<Event, Level, State>, _: u8, _: f32) {
 
         // TODO bullets are handled by pre-creating a local object and then
         // syncing it with the remote one, we submit a local ID and the server
@@ -89,19 +90,19 @@ impl Handler<Event, Level> for Game {
 
     }
 
-    fn tick_entity_before(&mut self, _: &Level, _: &mut entity::Entity, _: u8, _: f32) {
+    fn tick_entity_before(&mut self, _: &Level, _: &mut entity::Entity<State>, _: u8, _: f32) {
 
     }
 
-    fn tick_entity_after(&mut self, _: &Level, _: &mut entity::Entity, _: u8, _: f32) {
+    fn tick_entity_after(&mut self, _: &Level, _: &mut entity::Entity<State>, _: u8, _: f32) {
 
     }
 
-    fn tick_after(&mut self, _: Handle<Event, Level>, _: u8, _: f32) {
+    fn tick_after(&mut self, _: Handle<Event, Level, State>, _: u8, _: f32) {
 
     }
 
-    fn shutdown(&mut self, _: Handle<Event, Level>) {
+    fn shutdown(&mut self, _: Handle<Event, Level, State>) {
         println!("[Server] Shutdown");
     }
 

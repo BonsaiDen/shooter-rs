@@ -4,16 +4,16 @@ use renderer::Renderer;
 
 
 // Level Trait ----------------------------------------------------------------
-pub trait Level {
+pub trait Level<S: entity::State> {
 
-    fn limit_state(&self, state: &mut entity::State);
+    fn limit_state(&self, state: &mut S);
 
     fn interpolate_entity_state(
         &self,
         renderer: &mut Renderer,
-        current: &entity::State, last: &entity::State
+        current: &S, last: &S
 
-    ) -> entity::State;
+    ) -> S;
 
     fn draw(&mut self, _: &mut Renderer) {}
 

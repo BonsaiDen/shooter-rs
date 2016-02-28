@@ -4,9 +4,10 @@ use lithium::Server;
 
 // Internal Dependencies ------------------------------------------------------
 use shared::entities;
+use shared::color::Color;
 use shared::event::Event;
 use shared::level::Level;
-use shared::color::Color;
+use shared::state::State;
 mod handler;
 
 
@@ -23,7 +24,7 @@ impl Game {
         }
     }
 
-    pub fn server(tick_rate: u32) -> Server<Event, Level> {
+    pub fn server(tick_rate: u32) -> Server<Event, Level, State> {
         Server::new(
             tick_rate, 1000, 75,
             Game::default_level(),

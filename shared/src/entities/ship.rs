@@ -1,11 +1,11 @@
 // External Dependencies ------------------------------------------------------
 use std::f32;
-
-
-// Internal Dependencies ------------------------------------------------------
 use lithium::entity;
 use lithium::Level as BaseLevel;
 
+
+// Internal Dependencies ------------------------------------------------------
+use state;
 
 // Ship Logic Implementation --------------------------------------------------
 pub struct Ship {
@@ -16,7 +16,7 @@ pub struct Ship {
 
 impl Ship {
 
-    pub fn create_entity(scale: f32) -> entity::Entity {
+    pub fn create_entity(scale: f32) -> entity::Entity<state::State> {
         entity::Entity::new(
             Box::new(Ship::new(scale)),
             Box::new(ZeroDrawable)
@@ -35,7 +35,7 @@ impl Ship {
 
 
 // Trait Implementations ------------------------------------------------------
-impl entity::traits::Base for Ship {
+impl entity::traits::Base<state::State> for Ship {
 
     fn type_id(&self) -> u8 {
         0
@@ -43,8 +43,8 @@ impl entity::traits::Base for Ship {
 
     fn apply_input(
         &mut self,
-        level: &BaseLevel,
-        state: &mut entity::State, input: &entity::Input,
+        level: &BaseLevel<state::State>,
+        state: &mut state::State, input: &entity::Input,
         dt: f32
     ) {
 
@@ -91,14 +91,10 @@ impl entity::traits::Base for Ship {
 
     }
 
-    fn event(&mut self, event: &entity::Event, _: &entity::State) {
-        println!("[Entity] Event {:?}", event);
-    }
-
 }
 
 
 // Noop Drawable --------------------------------------------------------------
 struct ZeroDrawable;
-impl entity::traits::Drawable for ZeroDrawable {}
+impl entity::traits::Drawable<state::State> for ZeroDrawable {}
 

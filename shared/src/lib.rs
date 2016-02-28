@@ -6,4 +6,5 @@ pub mod color;
 pub mod entities;
 pub mod event;
 pub mod level;
+pub mod state;
 

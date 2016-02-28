@@ -19,19 +19,26 @@ use network;
 
 
 // Server Abstraction ---------------------------------------------------------
-pub struct Server<E, L> where E: event::Event, L: level::Level {
-    handler: Box<Handler<E, L>>,
-    manager: entity::Manager,
+pub struct Server<E, L, S> where E: event::Event,
+                                 L: level::Level<S>,
+                                 S: entity::State
+{
+    handler: Box<Handler<E, L, S>>,
+    manager: entity::Manager<S>,
     events: event::Handler<E>,
     level: L
 }
 
-impl<E, L> Server<E, L> where E: event::Event, L: level::Level {
+impl<E, L, S> Server<E, L, S> where E: event::Event,
+                                    L: level::Level<S>,
+                                    S: entity::State
+
+{
 
     // Statics ----------------------------------------------------------------
     pub fn run(
         addr: SocketAddr,
-        mut server: Server<E, L>
+        mut server: Server<E, L, S>
 
     ) where Self: Sized {
 
@@ -46,10 +53,10 @@ impl<E, L> Server<E, L> where E: event::Event, L: level::Level {
     pub fn new(
         tick_rate: u32, buffer_ms: u32, interp_ms: u32,
         level: L,
-        registry: Box<entity::Registry>,
-        handler: Box<Handler<E, L>>
+        registry: Box<entity::Registry<S>>,
+        handler: Box<Handler<E, L, S>>
 
-    ) -> Server<E, L> {
+    ) -> Server<E, L, S> {
         Server {
             handler: handler,
             manager: entity::Manager::new(
@@ -75,7 +82,8 @@ impl<E, L> Server<E, L> where E: event::Event, L: level::Level {
 
 }
 
-impl<E, L> CobaltHandler<CobaltServer> for Server<E, L> where E: event::Event, L: level::Level {
+impl<E, L, S> CobaltHandler<CobaltServer> for Server<E, L, S>
+where E: event::Event, L: level::Level<S>, S: entity::State {
 
     fn bind(&mut self, _: &mut CobaltServer) {
         self.handler.bind(Handle {
@@ -222,29 +230,34 @@ impl<E, L> CobaltHandler<CobaltServer> for Server<E, L> where E: event::Event, L
 
 
 // Server Handle for Access from Handler ------------------------------------
-pub struct Handle<'a, E: event::Event + 'a, L: level::Level + 'a> {
+pub struct Handle<
+    'a,
+    E: event::Event + 'a,
+    L: level::Level<S> + 'a,
+    S: entity::State + 'a
+> {
     pub level: &'a L,
-    pub entities: &'a mut entity::Manager,
+    pub entities: &'a mut entity::Manager<S>,
     pub events: &'a mut event::Handler<E>
 }
 
 
 // Server Handler -------------------------------------------------------------
-pub trait Handler<E: event::Event, L: level::Level> {
+pub trait Handler<E: event::Event, L: level::Level<S>, S: entity::State> {
 
-    fn bind(&mut self, Handle<E, L>);
-    fn connect(&mut self, Handle<E, L>, &mut Connection);
-    fn disconnect(&mut self, Handle<E, L>, &mut Connection);
+    fn bind(&mut self, Handle<E, L, S>);
+    fn connect(&mut self, Handle<E, L, S>, &mut Connection);
+    fn disconnect(&mut self, Handle<E, L, S>, &mut Connection);
 
     // TODO pass in connections mapping for all event / tick handles
-    fn event(&mut self, Handle<E, L>, ConnectionID, E);
+    fn event(&mut self, Handle<E, L, S>, ConnectionID, E);
 
-    fn tick_before(&mut self, Handle<E, L>, u8, f32);
-    fn tick_entity_before(&mut self, &L, &mut entity::Entity, u8, f32);
-    fn tick_entity_after(&mut self, &L, &mut entity::Entity, u8, f32);
-    fn tick_after(&mut self, Handle<E, L>, u8, f32);
+    fn tick_before(&mut self, Handle<E, L, S>, u8, f32);
+    fn tick_entity_before(&mut self, &L, &mut entity::Entity<S>, u8, f32);
+    fn tick_entity_after(&mut self, &L, &mut entity::Entity<S>, u8, f32);
+    fn tick_after(&mut self, Handle<E, L, S>, u8, f32);
 
-    fn shutdown(&mut self, Handle<E, L>);
+    fn shutdown(&mut self, Handle<E, L, S>);
 
 }
 

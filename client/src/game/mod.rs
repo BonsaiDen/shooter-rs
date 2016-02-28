@@ -7,23 +7,24 @@ use lithium::Client;
 use entities;
 use shared::event::Event;
 use shared::level::Level;
+use shared::state::State;
 mod handler;
 
 
 // Game -----------------------------------------------------------------------
 pub struct Game {
-    state: State
+    state: GameState
 }
 
 impl Game {
 
     pub fn new() -> Game {
         Game {
-            state: State::Disconnected
+            state: GameState::Disconnected
         }
     }
 
-    pub fn client(server_addr: SocketAddr) -> Client<Event, Level> {
+    pub fn client(server_addr: SocketAddr) -> Client<Event, Level, State> {
         Client::new(
             server_addr,
             Game::default_level(),
@@ -39,7 +40,7 @@ impl Game {
 
 // Game State -----------------------------------------------------------------
 #[derive(PartialEq)]
-enum State {
+enum GameState {
     Disconnected,
     Pending,
     Connected

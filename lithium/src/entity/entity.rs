@@ -7,25 +7,25 @@ use std::collections::VecDeque;
 use entity;
 use level::Level;
 use renderer::Renderer;
-use entity::traits::{Base, Drawable};
+use entity::traits::{Base, Drawable, State};
 
 
 // Top Level Entity Structure -------------------------------------------------
-pub struct Entity {
+pub struct Entity<S: entity::State> {
 
-    entity: Box<Base>,
-    drawable: Box<Drawable>,
+    entity: Box<Base<S>>,
+    drawable: Box<Drawable<S>>,
     owner: Option<ConnectionID>,
     is_alive: bool,
     is_visible: bool,
     local_id: u16,
 
     // State
-    state: entity::State,
-    base_state: entity::State,
-    last_state: entity::State,
-    confirmed_state: Option<(u8, entity::State)>,
-    state_buffer: VecDeque<(u8, entity::State)>,
+    state: S,
+    base_state: S,
+    last_state: S,
+    confirmed_state: Option<(u8, S)>,
+    state_buffer: VecDeque<(u8, S)>,
 
     // Inputs
     input_buffer: VecDeque<entity::Input>,
@@ -39,9 +39,9 @@ pub struct Entity {
 
 }
 
-impl Entity {
+impl<S> Entity<S> where S: entity::State {
 
-    pub fn new(entity: Box<Base>, drawable: Box<Drawable>) -> Entity {
+    pub fn new(entity: Box<Base<S>>, drawable: Box<Drawable<S>>) -> Entity<S> {
         Entity {
 
             // Entity Behavior
@@ -64,13 +64,13 @@ impl Entity {
             local_id: 0,
 
             // Current - calculated - entity state
-            state: entity::State::default(),
+            state: S::default(),
 
             // Current base state (before apply pending inputs)
-            base_state: entity::State::default(),
+            base_state: S::default(),
 
             // Previously caluclated state for interpolation purposes
-            last_state: entity::State::default(),
+            last_state: S::default(),
 
             // Last confirmed remote state (client only)
             confirmed_state: None,
@@ -107,7 +107,7 @@ impl Entity {
     }
 
     pub fn local(&self) -> bool {
-        self.state.flags & 0x01 == 0x01
+        self.state.flags() & 0x01 == 0x01
     }
 
     pub fn alive(&self) -> bool {
@@ -162,11 +162,11 @@ impl Entity {
 
 
     // State ------------------------------------------------------------------
-    pub fn state(&self) -> &entity::State {
+    pub fn state(&self) -> &S {
         &self.state
     }
 
-    pub fn buffered_state(&self, tick_offset: usize) -> &entity::State {
+    pub fn buffered_state(&self, tick_offset: usize) -> &S {
         let buffer_len = self.state_buffer.len();
         if buffer_len > 0 && tick_offset < buffer_len {
             &self.state_buffer[tick_offset].1
@@ -179,7 +179,7 @@ impl Entity {
     pub fn buffered_states(
         &self, tick_offset: usize
 
-    ) -> (&entity::State, &entity::State) {
+    ) -> (&S, &S) {
         let buffer_len = self.state_buffer.len();
         if buffer_len > 0 && tick_offset + 1 < buffer_len {
             (
@@ -194,21 +194,21 @@ impl Entity {
         }
     }
 
-    pub fn set_state(&mut self, state: entity::State) {
+    pub fn set_state(&mut self, state: S) {
         self.set_entity_state(state, true);
     }
 
-    pub fn set_remote_state(&mut self, state: entity::State) {
+    pub fn set_remote_state(&mut self, state: S) {
         self.set_entity_state(state, false);
     }
 
-    pub fn set_confirmed_state(&mut self, tick: u8, state: entity::State) {
+    pub fn set_confirmed_state(&mut self, tick: u8, state: S) {
         self.confirmed_state = Some((tick, state));
     }
 
-    fn set_entity_state(&mut self, new_state: entity::State, override_last: bool) {
+    fn set_entity_state(&mut self, new_state: S, override_last: bool) {
 
-        let old_flags = self.state.flags;
+        let old_flags = self.state.flags();
         if override_last {
             self.last_state.set_to(&new_state);
 
@@ -219,8 +219,8 @@ impl Entity {
         self.base_state.set_to(&new_state);
         self.state.set_to(&new_state);
 
-        if old_flags != new_state.flags {
-            self.event(entity::Event::Flags(new_state.flags));
+        if old_flags != new_state.flags() {
+            self.event(entity::Event::Flags(new_state.flags()));
         }
 
     }
@@ -279,17 +279,17 @@ impl Entity {
 
 
     // Ticking ----------------------------------------------------------------
-    pub fn client_tick(&mut self, level: &Level, tick: u8, dt: f32) {
+    pub fn client_tick(&mut self, level: &Level<S>, tick: u8, dt: f32) {
         self.event(entity::Event::Tick(tick, dt)); // TODO useful?
         self.tick(level, tick, dt, false);
     }
 
-    pub fn server_tick(&mut self, level: &Level, tick: u8, dt: f32) {
+    pub fn server_tick(&mut self, level: &Level<S>, tick: u8, dt: f32) {
         self.event(entity::Event::Tick(tick, dt)); // TODO useful?
         self.tick(level, tick, dt, true);
     }
 
-    pub fn tick(&mut self, level: &Level, tick: u8, dt: f32, server: bool) {
+    pub fn tick(&mut self, level: &Level<S>, tick: u8, dt: f32, server: bool) {
 
         // Check if we have a remote state
         if let Some((confirmed_tick, confirmed_state)) = self.confirmed_state.take() {
@@ -335,7 +335,7 @@ impl Entity {
 
 
     // Drawing ----------------------------------------------------------------
-    pub fn draw(&mut self, renderer: &mut Renderer, level: &Level) {
+    pub fn draw(&mut self, renderer: &mut Renderer, level: &Level<S>) {
 
         let state = if self.local() {
             level.interpolate_entity_state(renderer, &self.state, &self.last_state)
@@ -371,11 +371,12 @@ impl Entity {
         if is_visible {
 
             // Create a copy of the current state
-            let mut state = self.state.clone();
+            let mut state: S = self.state.clone();
 
             // Set local flag if we're serializing for the owner
             if self.owned_by(owner) {
-                state.flags |= 0x01;
+                let flags = state.flags();
+                state.set_flags(flags | 0x01);
             }
 
             // Invoke type specific serialization handler

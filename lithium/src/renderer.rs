@@ -3,6 +3,7 @@ use std::any::Any;
 
 
 // Internal -------------------------------------------------------------------
+use entity;
 use event::Event;
 use level::Level;
 use client::{Client, Handler};
@@ -12,7 +13,13 @@ use client::{Client, Handler};
 pub trait Renderer {
 
     // Statics ----------------------------------------------------------------
-    fn run<H: Handler<E, L>, E: Event, L: Level>(client: Client<E, L>, Handler: H) where Self: Sized;
+    fn run<
+        H: Handler<E, L, S>,
+        E: Event,
+        L: Level<S>,
+        S: entity::State
+
+    >(client: Client<E, L, S>, Handler: H) where Self: Sized;
 
 
     // Downcast ---------------------------------------------------------------

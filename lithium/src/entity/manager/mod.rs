@@ -25,13 +25,13 @@ use self::registry::EntityRegistry as Registry;
 
 
 // Entity Manager Implementation ----------------------------------------------
-pub struct EntityManager {
+pub struct EntityManager<S: entity::State> {
 
     // Id pool for entities
     id_pool: IdPool<u16>,
 
     // Vector of entities
-    entities: HashMap<u16, entity::Entity>,
+    entities: HashMap<u16, entity::Entity<S>>,
 
     // Configuration
     config: EntityManagerConfig,
@@ -43,20 +43,20 @@ pub struct EntityManager {
     server_mode: bool,
 
     // Entity Registry
-    registry: Box<EntityRegistry>
+    registry: Box<EntityRegistry<S>>
 
 }
 
-impl EntityManager {
+impl<S> EntityManager<S> where S: entity::State {
 
     pub fn new(
         tick_rate: u8,
         buffer_ms: u32,
         interp_ms: u32,
         server_mode: bool,
-        registry: Box<EntityRegistry>
+        registry: Box<EntityRegistry<S>>
 
-    ) -> EntityManager {
+    ) -> EntityManager<S> {
         EntityManager {
             id_pool: IdPool::new(),
             entities: HashMap::new(),
@@ -97,10 +97,10 @@ impl EntityManager {
     pub fn create(
         &mut self,
         type_id: u8,
-        state: Option<entity::State>,
+        state: Option<S>,
         owner: Option<&ConnectionID>
 
-    ) -> Option<&mut entity::Entity> {
+    ) -> Option<&mut entity::Entity<S>> {
         if let Some(id) = self.id_pool.get_id() {
 
             let mut entity = self.registry.entity_from_type_id(type_id);
@@ -129,10 +129,10 @@ impl EntityManager {
     pub fn tick_server<E, L>(
         &mut self,
         level: &L,
-        handler: &mut Box<server::Handler<E, L>>,
+        handler: &mut Box<server::Handler<E, L, S>>,
         dt: f32
 
-    ) where E: Event, L: Level {
+    ) where E: Event, L: Level<S> {
 
         for (_, entity) in self.entities.iter_mut() {
             handler.tick_entity_before(level, entity, self.tick, dt);
@@ -153,13 +153,13 @@ impl EntityManager {
     pub fn tick_client<E, L, I>(
         &mut self,
         renderer: &mut Renderer,
-        handler: &mut client::Handler<E, L>,
+        handler: &mut client::Handler<E, L, S>,
         level: &L, dt: f32,
         mut input_handler: I
 
     ) where E: Event,
-            L: Level,
-            I: FnMut(entity::ControlState, &mut entity::Entity, u8)
+            L: Level<S>,
+            I: FnMut(entity::ControlState, &mut entity::Entity<S>, u8)
     {
         for (_, entity) in self.entities.iter_mut() {
             handler.tick_entity_before(renderer, level, entity, self.tick, dt);
@@ -181,7 +181,7 @@ impl EntityManager {
     }
 
 
-    pub fn draw(&mut self, renderer: &mut Renderer, level: &Level) {
+    pub fn draw(&mut self, renderer: &mut Renderer, level: &Level<S>) {
         for (_, entity) in self.entities.iter_mut() {
             if entity.is_visible() {
                 entity.draw(renderer, level);
@@ -189,7 +189,7 @@ impl EntityManager {
         }
     }
 
-    pub fn destroy(&mut self, entity_id: u16) -> Option<entity::Entity> {
+    pub fn destroy(&mut self, entity_id: u16) -> Option<entity::Entity<S>> {
 
         if let Some(mut entity) = self.entities.remove(&entity_id) {
             // TODO can be an issue if re-used directly
@@ -207,7 +207,7 @@ impl EntityManager {
     pub fn get_entity_for_owner(
         &mut self, owner: &ConnectionID
 
-    ) -> Option<&mut entity::Entity> {
+    ) -> Option<&mut entity::Entity<S>> {
         for (_, entity) in self.entities.iter_mut() {
             if entity.owned_by(owner) {
                 return Some(entity);
@@ -266,19 +266,19 @@ impl EntityManager {
 
         // Parse received state
         let mut i = 0;
-        while i + entity::Entity::header_size() <= data.len() {
+        while i + entity::Entity::<S>::header_size() <= data.len() {
 
             // Entity ID / Type
             let entity_id = (data[i] as u16) << 8 | (data[i + 1] as u16);
             let entity_type = data[i + 2];
             let entity_confirmed_tick = data[i + 3];
             let entity_is_visible = data[i + 4] == 1;
-            i += entity::Entity::header_size();
+            i += entity::Entity::<S>::header_size();
 
             // Read serialized entity state data for visible entities
-            let entity_state = if entity_is_visible && entity::State::encoded_size() <= data.len() {
-                let state = entity::State::from_serialized(&data[i..]);
-                i += entity::State::encoded_size();
+            let entity_state = if entity_is_visible && S::encoded_size() <= data.len() {
+                let state = S::from_serialized(&data[i..]);
+                i += S::encoded_size();
                 Some(state)
 
             } else {
