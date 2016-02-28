@@ -53,7 +53,7 @@ impl Handler<Event, Level> for Game {
 
     fn connect(&mut self, server: Handle<Event, Level>) {
         self.state = State::Pending;
-        server.events.send(Event::JoinGame);
+        server.events.send(None, Event::JoinGame);
     }
 
     fn disconnect(&mut self, client: Handle<Event, Level>) {

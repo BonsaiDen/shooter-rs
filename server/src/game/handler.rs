@@ -65,7 +65,8 @@ impl Handler<Event, Level> for Game {
                             Some(&owner)
                         );
 
-                        server.events.send(Event::PlayerJoined);
+                        server.events.send(Some(owner), Event::GameJoined);
+                        server.events.send(None, Event::PlayerJoined);
 
                     }
 

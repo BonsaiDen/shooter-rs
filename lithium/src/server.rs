@@ -169,7 +169,6 @@ impl<E, L> CobaltHandler<CobaltServer> for Server<E, L> where E: event::Event, L
         }
 
         // Send Data
-        let events = self.events.serialize_events();
         for (id, conn) in connections.iter_mut() {
 
             // Send entity states to all clients (We don't care about dropped packets)
@@ -181,13 +180,16 @@ impl<E, L> CobaltHandler<CobaltServer> for Server<E, L> where E: event::Event, L
             // TODO potential issues with events for entities which
             // do not yet exist or have already been destroyed
             // fix: delay events and drop them eventually (after some specified time)?
-            if let Some(ref events) = events {
+            if let Some(ref events) = self.events.serialize_events(Some(&id)) {
+                // TODO filter events here?
                 let mut data = [network::Message::ServerEvents as u8].to_vec();
                 data.extend(events.clone());
                 conn.send(MessageKind::Reliable, data);
             }
 
         }
+
+        self.events.flush();
 
     }
 

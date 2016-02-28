@@ -191,11 +191,13 @@ impl<E, L> Client<E, L> where E: event::Event, L: level::Level {
         }
 
         // Send events
-        if let Some(ref events) = self.events.serialize_events() {
+        if let Some(ref events) = self.events.serialize_events(None) {
             let mut data = [network::Message::ClientEvents as u8].to_vec();
             data.extend(events.clone());
             self.network.send_message(MessageKind::Reliable, data);
         }
+
+        self.events.flush();
 
     }
 

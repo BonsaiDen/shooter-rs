@@ -91,6 +91,10 @@ impl entity::traits::Base for Ship {
 
     }
 
+    fn event(&mut self, event: &entity::Event, _: &entity::State) {
+        println!("[Entity] Event {:?}", event);
+    }
+
 }
 
 

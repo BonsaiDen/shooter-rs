@@ -19,7 +19,7 @@ pub trait Event: Encodable + Decodable + Default {
 // Event Handler --------------------------------------------------------------
 pub struct Handler<T> where T: Event {
     incoming: Option<Vec<(ConnectionID, T)>>,
-    outgoing: Vec<T>,
+    outgoing: Vec<(Option<ConnectionID>, T)>,
     event_size: usize
 }
 
@@ -33,8 +33,8 @@ impl<T> Handler<T> where T: Event {
         }
     }
 
-    pub fn send(&mut self, event: T) {
-        self.outgoing.push(event);
+    pub fn send(&mut self, receiver: Option<ConnectionID>, event: T) {
+        self.outgoing.push((receiver, event));
     }
 
     pub fn received(&mut self) -> Option<Vec<(ConnectionID, T)>> {
@@ -53,22 +53,37 @@ impl<T> Handler<T> where T: Event {
 
     }
 
-    pub fn serialize_events(&mut self) -> Option<Vec<u8>> {
+    pub fn serialize_events(&mut self, receiver: Option<&ConnectionID>) -> Option<Vec<u8>> {
 
-        if self.outgoing.len() > 0 {
+        let outgoing: Vec<u8> = self.outgoing.iter().filter(|event| {
+            if let Some(r) = receiver {
+                match event.0 {
+                    Some(target) => {
+                        target == *r
+                    }
+                    None => true
+                }
 
-            let mut data = Vec::new();
-            for event in self.outgoing.iter() {
-                data.extend(encode(event, SizeLimit::Infinite).unwrap());
+            } else {
+                true
             }
 
-            self.outgoing.clear();
-            Some(data)
+        }).fold(Vec::new(), |mut data, event| {
+            data.extend(encode(&event.1, SizeLimit::Infinite).unwrap());
+            data
+        });
+
+        if outgoing.len() > 0 {
+            Some(outgoing)
 
         } else {
             None
         }
 
+    }
+
+    pub fn flush(&mut self) {
+        self.outgoing.clear();
     }
 
 }

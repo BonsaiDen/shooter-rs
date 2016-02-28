@@ -183,7 +183,9 @@ impl EntityManager {
 
     pub fn draw(&mut self, renderer: &mut Renderer, level: &Level) {
         for (_, entity) in self.entities.iter_mut() {
-            entity.draw(renderer, level);
+            if entity.is_visible() {
+                entity.draw(renderer, level);
+            }
         }
     }
 
@@ -241,14 +243,10 @@ impl EntityManager {
     pub fn serialize_state(&self, owner: &ConnectionID) -> Vec<u8> {
 
         let mut state = Vec::new();
+
+        // Serialize entity state for the connection
         for (_, entity) in self.entities.iter() {
-
-            // TODO handle visibility with entity.visible_to(owner)
-            // TODO still create entity but hide it and do not tranmit state?
-
-            // Serialize entity state for the connection
             state.extend(entity.serialize_state(owner));
-
         }
 
         state
@@ -268,44 +266,74 @@ impl EntityManager {
 
         // Parse received state
         let mut i = 0;
-        while i + 4 <= data.len() {
+        while i + entity::Entity::header_size() <= data.len() {
 
             // Entity ID / Type
             let entity_id = (data[i] as u16) << 8 | (data[i + 1] as u16);
             let entity_type = data[i + 2];
             let entity_confirmed_tick = data[i + 3];
-            i += 4;
+            let entity_is_visible = data[i + 4] == 1;
+            i += entity::Entity::header_size();
 
-            // Check serialized data length
-            if i + entity::State::encoded_size() <= data.len() {
-
-                // Read serialized entity state data
+            // Read serialized entity state data for visible entities
+            let entity_state = if entity_is_visible && entity::State::encoded_size() <= data.len() {
                 let state = entity::State::from_serialized(&data[i..]);
                 i += entity::State::encoded_size();
+                Some(state)
 
-                // Create entities which do not yet exist
-                let mut entity = self.entities.entry(entity_id).or_insert_with(|| {
-                    let mut entity = registry.entity_from_type_id(entity_type);
-                    entity.set_buffer_size(buffer_size);
-                    entity.set_id(entity_id);
+            } else {
+                None
+            };
+
+            // Create entities which do not yet exist
+            let mut entity = self.entities.entry(entity_id).or_insert_with(|| {
+
+                let mut entity = registry.entity_from_type_id(entity_type);
+                entity.set_buffer_size(buffer_size);
+                entity.set_id(entity_id);
+
+                // Set state if we got any
+                if let Some(ref state) = entity_state {
                     entity.set_state(state.clone());
-                    entity.event(entity::Event::Created(tick));
-                    entity
-                });
+                    entity.show(tick);
 
-                // Mark entity as alive
-                entity.set_alive(true);
+                } else {
+                    entity.hide(tick);
+                }
 
-                // Set confirmed state...
+                entity.event(entity::Event::Created(tick));
+
+                entity
+
+            });
+
+            // Handle entities which get hidden
+            if entity.is_visible() {
+                if entity_is_visible == false {
+                    entity.hide(tick);
+                }
+
+            // Handle entities which get display (only if we got state though)
+            } else if entity_is_visible {
+                if let Some(ref state) = entity_state {
+                    entity.set_state(state.clone());
+                    entity.show(tick);
+                }
+            }
+
+            // Mark entity as alive
+            entity.set_alive(true);
+
+            // Set confirmed state if we got any...
+            if let Some(state) = entity_state {
                 if entity.local() {
                     entity.set_confirmed_state(entity_confirmed_tick, state);
 
                 // ...or overwrite local state
-                // (but keep last_state intact for interpolation purposes)
                 } else {
+                    // But keep last_state intact for interpolation purposes
                     entity.set_remote_state(state);
                 }
-
             }
 
         }

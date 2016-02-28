@@ -19,11 +19,12 @@ use super::Renderer;
 impl lithium::Renderer for Renderer {
 
     // Statics ----------------------------------------------------------------
-    fn run<H: lithium::client::Handler<E, L>, E: lithium::event::Event, L: lithium::Level>(
-        mut client: lithium::Client<E, L>,
-        mut handler: H
+    fn run<
+        H: lithium::client::Handler<E, L>,
+        E: lithium::event::Event,
+        L: lithium::Level
 
-    ) where Self: Sized {
+    >(mut client: lithium::Client<E, L>, mut handler: H) where Self: Sized {
 
         // Init Allegro
         let mut core = Core::init().unwrap();

@@ -17,6 +17,7 @@ pub struct Entity {
     drawable: Box<Drawable>,
     owner: Option<ConnectionID>,
     is_alive: bool,
+    is_visible: bool,
     local_id: u16,
 
     // State
@@ -54,6 +55,10 @@ impl Entity {
 
             // Whether the entity is still alive or should be destroyed
             is_alive: false,
+
+            // Whether the entity is currently visible and receicving state
+            // updates (client only)
+            is_visible: false,
 
             // Locally used Entity ID
             local_id: 0,
@@ -135,8 +140,24 @@ impl Entity {
         }
     }
 
+
+    // Visibility -------------------------------------------------------------
     pub fn visible_to(&self, owner: &ConnectionID) -> bool {
         self.entity.visible_to(owner)
+    }
+
+    pub fn is_visible(&self) -> bool {
+        self.is_visible
+    }
+
+    pub fn show(&mut self, tick: u8) {
+        self.is_visible = true;
+        self.event(entity::Event::Show(tick));
+    }
+
+    pub fn hide(&mut self, tick: u8) {
+        self.is_visible = false;
+        self.event(entity::Event::Hide(tick));
     }
 
 
@@ -273,14 +294,6 @@ impl Entity {
         // Check if we have a remote state
         if let Some((confirmed_tick, confirmed_state)) = self.confirmed_state.take() {
 
-            // TODO remove duplciated code
-            // Set the current state as the last state
-            //self.last_state.set_to(&self.state);
-
-            // Take over the remote state as the new base
-            //self.base_state.set_to(&confirmed_state);
-            //self.state.set_to(&confirmed_state);
-
             // Set the current state as the last state and tkae over the
             // confirmed state as new base state
             self.set_entity_state(confirmed_state, false);
@@ -338,28 +351,39 @@ impl Entity {
 
 
     // Serialization ----------------------------------------------------------
+    pub fn header_size() -> usize {
+        5
+    }
+
     pub fn serialize_state(&self, owner: &ConnectionID) -> Vec<u8> {
 
         // Entity Header
+        let is_visible = self.visible_to(owner);
         let mut data = [
             (self.local_id >> 8) as u8, self.local_id as u8,
             self.entity.type_id(),
-            self.confirmed_input_tick
+            self.confirmed_input_tick,
+            is_visible as u8
 
         ].to_vec();
 
-        // Create a copy of the current state
-        let mut state = self.state.clone();
+        // Serialize state only for visible entities
+        if is_visible {
 
-        // Set local flag if we're serializing for the owner
-        if self.owned_by(owner) {
-            state.flags |= 0x01;
+            // Create a copy of the current state
+            let mut state = self.state.clone();
+
+            // Set local flag if we're serializing for the owner
+            if self.owned_by(owner) {
+                state.flags |= 0x01;
+            }
+
+            // Invoke type specific serialization handler
+            self.entity.serialize_state(&mut state, owner);
+
+            data.extend(state.serialize());
         }
 
-        // Invoke type specific serialization handler
-        self.entity.serialize_state(&mut state, owner);
-
-        data.extend(state.serialize());
         data
 
     }
