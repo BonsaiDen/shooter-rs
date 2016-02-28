@@ -21,12 +21,11 @@ impl lithium::Renderer for Renderer {
 
     // Statics ----------------------------------------------------------------
     fn run<
-        H: lithium::client::Handler<E, L, S>,
+        H: lithium::client::Handler<E, S>,
         E: lithium::event::Event,
-        L: lithium::Level<S>,
         S: lithium::entity::State
 
-    >(mut client: lithium::Client<E, L, S>, mut handler: H) where Self: Sized {
+    >(mut client: lithium::Client<E, S>, mut handler: H) where Self: Sized {
 
         // Init Allegro
         let mut core = Core::init().unwrap();

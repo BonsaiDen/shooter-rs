@@ -126,13 +126,13 @@ impl<S> EntityManager<S> where S: entity::State {
         }
     }
 
-    pub fn tick_server<E, L>(
+    pub fn tick_server<E>(
         &mut self,
-        level: &L,
-        handler: &mut Box<server::Handler<E, L, S>>,
+        level: &Level<S>,
+        handler: &mut Box<server::Handler<E, S>>,
         dt: f32
 
-    ) where E: Event, L: Level<S> {
+    ) where E: Event {
 
         for (_, entity) in self.entities.iter_mut() {
             handler.tick_entity_before(level, entity, self.tick, dt);
@@ -150,15 +150,14 @@ impl<S> EntityManager<S> where S: entity::State {
 
     }
 
-    pub fn tick_client<E, L, I>(
+    pub fn tick_client<E, I>(
         &mut self,
         renderer: &mut Renderer,
-        handler: &mut client::Handler<E, L, S>,
-        level: &L, dt: f32,
+        handler: &mut client::Handler<E, S>,
+        level: &Level<S>, dt: f32,
         mut input_handler: I
 
     ) where E: Event,
-            L: Level<S>,
             I: FnMut(entity::ControlState, &mut entity::Entity<S>, u8)
     {
         for (_, entity) in self.entities.iter_mut() {

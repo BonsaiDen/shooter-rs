@@ -1,12 +1,12 @@
 // External Dependencies ------------------------------------------------------
 use std::net::SocketAddr;
-use lithium::Client;
+use lithium::{Client, Level as LithiumLevel};
 
 
 // Internal Dependencies ------------------------------------------------------
 use entities;
+use level::Level;
 use shared::event::Event;
-use shared::level::Level;
 use shared::state::State;
 mod handler;
 
@@ -24,7 +24,7 @@ impl Game {
         }
     }
 
-    pub fn client(server_addr: SocketAddr) -> Client<Event, Level, State> {
+    pub fn client(server_addr: SocketAddr) -> Client<Event, State> {
         Client::new(
             server_addr,
             Game::default_level(),
@@ -32,8 +32,8 @@ impl Game {
         )
     }
 
-    pub fn default_level() -> Level {
-        Level::new(384, 384, 16)
+    pub fn default_level() -> LithiumLevel<State> {
+        Level::create(384, 384, 16)
     }
 
 }

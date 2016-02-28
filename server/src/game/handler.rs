@@ -1,6 +1,7 @@
 // External Dependencies ------------------------------------------------------
 use std::collections::HashMap;
 use lithium::entity;
+use lithium::level;
 use lithium::server::{Handler, Handle};
 use cobalt::{Connection, ConnectionID};
 
@@ -14,15 +15,15 @@ use shared::state::State;
 
 
 // Handler Implementation -----------------------------------------------------
-impl Handler<Event, Level, State> for Game {
+impl Handler<Event,  State> for Game {
 
-    fn bind(&mut self, _: Handle<Event, Level, State>) {
+    fn bind(&mut self, _: Handle<Event,  State>) {
         println!("[Server] Started");
     }
 
     fn connect(
         &mut self,
-        _: Handle<Event, Level, State>,
+        _: Handle<Event, State>,
         conn: &mut Connection
     ) {
         println!("[Client {}] Connected", conn.peer_addr());
@@ -30,7 +31,7 @@ impl Handler<Event, Level, State> for Game {
 
     fn disconnect(
         &mut self,
-        server: Handle<Event, Level, State>,
+        server: Handle<Event,  State>,
         conn: &mut Connection
     ) {
 
@@ -48,7 +49,7 @@ impl Handler<Event, Level, State> for Game {
 
     fn event(
         &mut self,
-        server: Handle<Event, Level, State>,
+        server: Handle<Event,  State>,
         owner: ConnectionID,
         event: Event
     ) {
@@ -66,7 +67,8 @@ impl Handler<Event, Level, State> for Game {
                     // Create a ship entity from one of the available colors
                     if let Some(color) = self.available_colors.pop() {
 
-                        let (x, y) = server.level.center();
+                        let level = Level::downcast_mut(server.level);
+                        let (x, y) = level.center();
                         let state = State {
                             x: x as f32,
                             y: y as f32,
@@ -94,7 +96,7 @@ impl Handler<Event, Level, State> for Game {
 
     fn tick_before(
         &mut self,
-        _: Handle<Event, Level, State>,
+        _: Handle<Event,  State>,
         _: &mut HashMap<ConnectionID, Connection>,
         _: u8, _: f32
     ) {
@@ -111,7 +113,7 @@ impl Handler<Event, Level, State> for Game {
 
     fn tick_entity_before(
         &mut self,
-        _: &Level,
+        _: &level::Level<State>,
         _: &mut entity::Entity<State>,
         _: u8, _: f32
     ) {
@@ -120,7 +122,7 @@ impl Handler<Event, Level, State> for Game {
 
     fn tick_entity_after(
         &mut self,
-        _: &Level,
+        _: &level::Level<State>,
         _: &mut entity::Entity<State>,
         _: u8, _: f32
     ) {
@@ -129,14 +131,14 @@ impl Handler<Event, Level, State> for Game {
 
     fn tick_after(
         &mut self,
-        _: Handle<Event, Level, State>,
+        _: Handle<Event, State>,
         _: &mut HashMap<ConnectionID, Connection>,
         _: u8, _: f32
     ) {
 
     }
 
-    fn shutdown(&mut self, _: Handle<Event, Level, State>) {
+    fn shutdown(&mut self, _: Handle<Event, State>) {
         println!("[Server] Shutdown");
     }
 

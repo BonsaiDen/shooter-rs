@@ -21,6 +21,7 @@ use lithium::Renderer;
 use renderer::AllegroRenderer;
 mod entities;
 mod game;
+mod level;
 mod renderer;
 
 

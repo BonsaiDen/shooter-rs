@@ -1,5 +1,6 @@
 // External Dependencies ------------------------------------------------------
 use lithium::Server;
+use lithium::level::Level as LithiumLevel;
 
 
 // Internal Dependencies ------------------------------------------------------
@@ -24,7 +25,7 @@ impl Game {
         }
     }
 
-    pub fn server(tick_rate: u32) -> Server<Event, Level, State> {
+    pub fn server(tick_rate: u32) -> Server<Event, State> {
         Server::new(
             tick_rate, 1000, 75,
             Game::default_level(),
@@ -33,8 +34,8 @@ impl Game {
         )
     }
 
-    pub fn default_level() -> Level {
-        Level::new(384, 384, 16)
+    pub fn default_level() -> LithiumLevel<State> {
+        Level::create(384, 384, 16)
     }
 
 }

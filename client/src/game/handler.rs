@@ -4,11 +4,13 @@ use lithium::entity;
 use lithium::renderer::Renderer;
 use lithium::client::{Handle, Handler};
 use lithium::level::Level as LithiumLevel;
+use lithium::level::Base as LithiumLevelBase;
 use lithium::entity::State as LithiumState;
 
 
 // Internal Dependencies ------------------------------------------------------
 use game::{Game, GameState};
+use level::Level as DrawableLevel;
 use shared::color::{Color, ColorName};
 use shared::event::Event;
 use shared::level::Level;
@@ -18,19 +20,20 @@ use renderer::AllegroRenderer;
 
 
 // Handler Implementation -----------------------------------------------------
-impl Handler<Event, Level, State> for Game {
+impl Handler<Event, State> for Game {
 
-    fn init(&mut self, client: Handle<Event, Level, State>) {
+    fn init(&mut self, client: Handle<Event, State>) {
 
+        let level = Level::downcast_mut(client.level);
         let ar = AllegroRenderer::downcast_mut(client.renderer);
         ar.set_fps(60);
         ar.set_title("Rustgame: Shooter");
-        ar.resize(client.level.width() as i32, client.level.height() as i32);
+        ar.resize(level.width() as i32, level.height() as i32);
 
         // Local Test Play
         if self.state == GameState::Disconnected {
 
-            let (x, y) = client.level.center();
+            let (x, y) = level.center();
             let flags = 0b0000_0001 | Color::from_name(ColorName::Red).to_flags();
             let state = State {
                 x: x as f32,
@@ -45,30 +48,30 @@ impl Handler<Event, Level, State> for Game {
 
     }
 
-    fn level(&mut self, _: Handle<Event, Level, State>, level_data: &[u8]) -> Level {
-        Level::from_serialized(level_data)
+    fn level(&mut self, _: Handle<Event, State>, level_data: &[u8]) -> LithiumLevel<State> {
+        DrawableLevel::from_serialized(level_data)
     }
 
-    fn config(&mut self, client: Handle<Event, Level, State>) {
+    fn config(&mut self, client: Handle<Event, State>) {
         self.state = GameState::Connected;
         self.init(client);
     }
 
-    fn connect(&mut self, server: Handle<Event, Level, State>) {
+    fn connect(&mut self, server: Handle<Event, State>) {
         self.state = GameState::Pending;
         server.events.send(None, Event::JoinGame);
     }
 
-    fn disconnect(&mut self, client: Handle<Event, Level, State>) {
+    fn disconnect(&mut self, client: Handle<Event, State>) {
         self.state = GameState::Disconnected;
         self.init(client);
     }
 
-    fn event(&mut self, _: Handle<Event, Level, State>, owner: ConnectionID, event: Event) {
+    fn event(&mut self, _: Handle<Event, State>, owner: ConnectionID, event: Event) {
         println!("Event: {:?} {:?}", owner, event);
     }
 
-    fn tick_before(&mut self, client: Handle<Event, Level, State>, tick: u8, _: f32) {
+    fn tick_before(&mut self, client: Handle<Event, State>, tick: u8, _: f32) {
 
         let ar = AllegroRenderer::downcast_mut(client.renderer);
         ar.reseed_rng([
@@ -83,7 +86,7 @@ impl Handler<Event, Level, State> for Game {
     fn tick_entity_before(
         &mut self,
         renderer: &mut Renderer,
-        _: &Level,
+        _: &LithiumLevel<State>,
         entity: &mut entity::Entity<State>,
         tick: u8, _: f32
     ) {
@@ -119,7 +122,7 @@ impl Handler<Event, Level, State> for Game {
     fn tick_entity_after(
         &mut self,
         _: &mut Renderer,
-        _: &Level,
+        _: &LithiumLevel<State>,
         entity: &mut entity::Entity<State>,
         _: u8, _: f32
 
@@ -139,10 +142,10 @@ impl Handler<Event, Level, State> for Game {
 
     }
 
-    fn tick_after(&mut self, _: Handle<Event, Level, State>, _: u8, _: f32) {
+    fn tick_after(&mut self, _: Handle<Event, State>, _: u8, _: f32) {
     }
 
-    fn draw(&mut self, client: Handle<Event, Level, State>) {
+    fn draw(&mut self, client: Handle<Event, State>) {
 
         AllegroRenderer::downcast_mut(client.renderer).clear(&Color::from_name(ColorName::Black));
 
@@ -170,7 +173,7 @@ impl Handler<Event, Level, State> for Game {
 
     }
 
-    fn destroy(&mut self, _: Handle<Event, Level, State>) {
+    fn destroy(&mut self, _: Handle<Event, State>) {
 
     }
 

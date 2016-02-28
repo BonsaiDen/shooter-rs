@@ -1,8 +1,9 @@
 // External Dependencies ------------------------------------------------------
 use std::f32;
+use std::any::Any;
 use bincode::SizeLimit;
 use bincode::rustc_serialize::{encode, decode};
-use lithium::{Renderer, Level as LithiumLevel};
+use lithium;
 
 
 // Internal Dependencies ------------------------------------------------------
@@ -11,7 +12,11 @@ use super::Level;
 
 
 // Level Trait Implementation -------------------------------------------------
-impl LithiumLevel<state::State> for Level {
+impl lithium::level::Base<state::State> for Level {
+
+    fn as_any(&mut self) -> &mut Any {
+        self
+    }
 
     fn limit_state(&self, state: &mut state::State) {
 
@@ -35,7 +40,7 @@ impl LithiumLevel<state::State> for Level {
 
     fn interpolate_entity_state(
         &self,
-        renderer: &mut Renderer,
+        renderer: &mut lithium::Renderer,
         current: &state::State, last: &state::State
 
     ) -> state::State {

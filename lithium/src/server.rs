@@ -19,28 +19,17 @@ use network;
 
 
 // Server Abstraction ---------------------------------------------------------
-pub struct Server<E, L, S> where E: event::Event,
-                                 L: level::Level<S>,
-                                 S: entity::State
-{
-    handler: Box<Handler<E, L, S>>,
+pub struct Server<E, S> where E: event::Event, S: entity::State {
+    handler: Box<Handler<E, S>>,
     manager: entity::Manager<S>,
     events: event::Handler<E>,
-    level: L
+    level: level::Level<S>
 }
 
-impl<E, L, S> Server<E, L, S> where E: event::Event,
-                                    L: level::Level<S>,
-                                    S: entity::State
-
-{
+impl<E, S> Server<E, S> where E: event::Event, S: entity::State {
 
     // Statics ----------------------------------------------------------------
-    pub fn run(
-        addr: SocketAddr,
-        mut server: Server<E, L, S>
-
-    ) where Self: Sized {
+    pub fn run(addr: SocketAddr, mut server: Server<E, S>) where Self: Sized {
 
         let mut cobalt_server = CobaltServer::new(Config {
             send_rate: server.config().tick_rate as u32,
@@ -52,11 +41,11 @@ impl<E, L, S> Server<E, L, S> where E: event::Event,
 
     pub fn new(
         tick_rate: u32, buffer_ms: u32, interp_ms: u32,
-        level: L,
+        level: level::Level<S>,
         registry: Box<entity::Registry<S>>,
-        handler: Box<Handler<E, L, S>>
+        handler: Box<Handler<E, S>>
 
-    ) -> Server<E, L, S> {
+    ) -> Server<E, S> {
         Server {
             handler: handler,
             manager: entity::Manager::new(
@@ -77,12 +66,11 @@ impl<E, L, S> Server<E, L, S> where E: event::Event,
 
 }
 
-impl<E, L, S> CobaltHandler<CobaltServer> for Server<E, L, S>
-where E: event::Event, L: level::Level<S>, S: entity::State {
+impl<E, S> CobaltHandler<CobaltServer> for Server<E, S> where E: event::Event, S: entity::State {
 
     fn bind(&mut self, _: &mut CobaltServer) {
         self.handler.bind(Handle {
-            level: &self.level,
+            level: &mut self.level,
             entities: &mut self.manager,
             events: &mut self.events
         });
@@ -96,7 +84,7 @@ where E: event::Event, L: level::Level<S>, S: entity::State {
         conn.send(MessageKind::Reliable, config);
 
         self.handler.connect(Handle {
-            level: &self.level,
+            level: &mut self.level,
             entities: &mut self.manager,
             events: &mut self.events
 
@@ -140,7 +128,7 @@ where E: event::Event, L: level::Level<S>, S: entity::State {
         if let Some(events) = self.events.received() {
             for (owner, event) in events {
                 self.handler.event(Handle {
-                    level: &self.level,
+                    level: &mut self.level,
                     entities: &mut self.manager,
                     events: &mut self.events
 
@@ -153,7 +141,7 @@ where E: event::Event, L: level::Level<S>, S: entity::State {
 
         {
             self.handler.tick_before(Handle {
-                level: &self.level,
+                level: &mut self.level,
                 entities: &mut self.manager,
                 events: &mut self.events
 
@@ -164,7 +152,7 @@ where E: event::Event, L: level::Level<S>, S: entity::State {
 
         {
             self.handler.tick_after(Handle {
-                level: &self.level,
+                level: &mut self.level,
                 entities: &mut self.manager,
                 events: &mut self.events
 
@@ -198,7 +186,7 @@ where E: event::Event, L: level::Level<S>, S: entity::State {
 
     fn connection_lost(&mut self, _: &mut CobaltServer, conn: &mut Connection) {
         self.handler.disconnect(Handle {
-            level: &self.level,
+            level: &mut self.level,
             entities: &mut self.manager,
             events: &mut self.events
 
@@ -217,7 +205,7 @@ where E: event::Event, L: level::Level<S>, S: entity::State {
 
     fn shutdown(&mut self, _: &mut CobaltServer) {
         self.handler.shutdown(Handle {
-            level: &self.level,
+            level: &mut self.level,
             entities: &mut self.manager,
             events: &mut self.events
         });
@@ -230,43 +218,42 @@ where E: event::Event, L: level::Level<S>, S: entity::State {
 pub struct Handle<
     'a,
     E: event::Event + 'a,
-    L: level::Level<S> + 'a,
     S: entity::State + 'a
 > {
-    pub level: &'a L,
+    pub level: &'a mut level::Level<S>,
     pub entities: &'a mut entity::Manager<S>,
     pub events: &'a mut event::Handler<E>
 }
 
 
 // Server Handler -------------------------------------------------------------
-pub trait Handler<E: event::Event, L: level::Level<S>, S: entity::State> {
+pub trait Handler<E: event::Event, S: entity::State> {
 
-    fn bind(&mut self, Handle<E, L, S>);
-    fn connect(&mut self, Handle<E, L, S>, &mut Connection);
-    fn disconnect(&mut self, Handle<E, L, S>, &mut Connection);
+    fn bind(&mut self, Handle<E, S>);
+    fn connect(&mut self, Handle<E, S>, &mut Connection);
+    fn disconnect(&mut self, Handle<E, S>, &mut Connection);
 
     // TODO pass in connections mapping for all event / tick handles
-    fn event(&mut self, Handle<E, L, S>, ConnectionID, E);
+    fn event(&mut self, Handle<E, S>, ConnectionID, E);
 
     fn tick_before(
         &mut self,
-        Handle<E, L, S>,
+        Handle<E, S>,
         &mut HashMap<ConnectionID, Connection>,
         u8, f32
     );
 
-    fn tick_entity_before(&mut self, &L, &mut entity::Entity<S>, u8, f32);
-    fn tick_entity_after(&mut self, &L, &mut entity::Entity<S>, u8, f32);
+    fn tick_entity_before(&mut self, &level::Level<S>, &mut entity::Entity<S>, u8, f32);
+    fn tick_entity_after(&mut self, &level::Level<S>, &mut entity::Entity<S>, u8, f32);
 
     fn tick_after(
         &mut self,
-        Handle<E, L, S>,
+        Handle<E, S>,
         &mut HashMap<ConnectionID, Connection>,
         u8, f32
     );
 
-    fn shutdown(&mut self, Handle<E, L, S>);
+    fn shutdown(&mut self, Handle<E, S>);
 
 }
 
