@@ -1,6 +1,14 @@
 // External Dependencies ------------------------------------------------------
 use std::collections::HashMap;
-use cobalt::{Connection, ConnectionID, MessageKind};
+use std::net::SocketAddr;
+use cobalt::{
+    Config,
+    Connection,
+    ConnectionID,
+    MessageKind,
+    Handler as CobaltHandler,
+    Server as CobaltServer
+};
 
 
 // Internal Dependencies ------------------------------------------------------
@@ -12,6 +20,7 @@ use network;
 
 // Server Abstraction ---------------------------------------------------------
 pub struct Server<E, L> where E: event::Event, L: level::Level {
+    handler: Box<Handler<E, L>>,
     manager: entity::Manager,
     events: event::Handler<E>,
     level: L
@@ -19,12 +28,30 @@ pub struct Server<E, L> where E: event::Event, L: level::Level {
 
 impl<E, L> Server<E, L> where E: event::Event, L: level::Level {
 
+    // Statics ----------------------------------------------------------------
+    pub fn run(
+        addr: SocketAddr,
+        mut server: Server<E, L>
+
+    ) where Self: Sized {
+
+        let mut cobalt_server = CobaltServer::new(Config {
+            send_rate: server.config().tick_rate as u32,
+            .. Config::default()
+        });
+        cobalt_server.bind(&mut server, addr).unwrap();
+
+    }
+
     pub fn new(
         tick_rate: u32, buffer_ms: u32, interp_ms: u32,
-        level: L, registry: Box<entity::Registry>
+        level: L,
+        registry: Box<entity::Registry>,
+        handler: Box<Handler<E, L>>
 
     ) -> Server<E, L> {
         Server {
+            handler: handler,
             manager: entity::Manager::new(
                 tick_rate as u8, buffer_ms, interp_ms,
                 true,
@@ -35,13 +62,49 @@ impl<E, L> Server<E, L> where E: event::Event, L: level::Level {
         }
     }
 
-    pub fn tick<B, A>(
-        &mut self,
-        connections: &mut HashMap<ConnectionID, Connection>,
-        before: B, after: A
 
-    ) where B: FnMut(&mut entity::Entity, &level::Level, u8, f32),
-            A: FnMut(&mut entity::Entity, &level::Level, u8, f32) {
+    // Public -----------------------------------------------------------------
+    pub fn config(&self) -> &entity::ManagerConfig {
+        self.manager.config()
+    }
+
+    // TODO support entity events?
+    // TODO send event? or do this via state updates only?
+    // probably send player joined event but add entity via
+    // state change detection on client
+
+}
+
+impl<E, L> CobaltHandler<CobaltServer> for Server<E, L> where E: event::Event, L: level::Level {
+
+    fn bind(&mut self, _: &mut CobaltServer) {
+        self.handler.bind(Handle {
+            level: &self.level,
+            entities: &mut self.manager,
+            events: &mut self.events
+        });
+    }
+
+    fn connection(&mut self, _: &mut CobaltServer, conn: &mut Connection) {
+
+        let mut config = [network::Message::ServerConfig as u8].to_vec();
+        config.extend(self.manager.serialize_config());
+        config.extend(self.level.serialize());
+        conn.send(MessageKind::Reliable, config);
+
+        self.handler.connect(Handle {
+            level: &self.level,
+            entities: &mut self.manager,
+            events: &mut self.events
+
+        }, conn);
+
+    }
+
+    fn tick_connections(
+        &mut self, _: &mut CobaltServer,
+        connections: &mut HashMap<ConnectionID, Connection>
+    ) {
 
         let tick_dt = 1.0 / self.manager.config().tick_rate as f32;
 
@@ -70,8 +133,40 @@ impl<E, L> Server<E, L> where E: event::Event, L: level::Level {
             }
         }
 
+        // Handle events
+        if let Some(events) = self.events.received() {
+            for (owner, event) in events {
+                self.handler.event(Handle {
+                    level: &self.level,
+                    entities: &mut self.manager,
+                    events: &mut self.events
+
+                }, owner, event);
+            }
+        }
+
         // Tick Entities
-        self.manager.tick_server_entities(&self.level, tick_dt, before, after);
+        let tick = self.manager.tick();
+
+        {
+            self.handler.tick_before(Handle {
+                level: &self.level,
+                entities: &mut self.manager,
+                events: &mut self.events
+
+            }, tick, tick_dt);
+        }
+
+        self.manager.tick_server(&self.level, &mut self.handler, tick_dt);
+
+        {
+            self.handler.tick_after(Handle {
+                level: &self.level,
+                entities: &mut self.manager,
+                events: &mut self.events
+
+            }, tick, tick_dt);
+        }
 
         // Send Data
         let events = self.events.serialize_events();
@@ -83,9 +178,9 @@ impl<E, L> Server<E, L> where E: event::Event, L: level::Level {
             conn.send(MessageKind::Instant, data);
 
             // Send events to all clients (Make sure the arrive eventually)
-            // TODO potential issues with events for entities when entities
+            // TODO potential issues with events for entities which
             // do not yet exist or have already been destroyed
-            // delay events and drop them eventually (after some specified time)?
+            // fix: delay events and drop them eventually (after some specified time)?
             if let Some(ref events) = events {
                 let mut data = [network::Message::ServerEvents as u8].to_vec();
                 data.extend(events.clone());
@@ -96,50 +191,58 @@ impl<E, L> Server<E, L> where E: event::Event, L: level::Level {
 
     }
 
+    fn connection_lost(&mut self, _: &mut CobaltServer, conn: &mut Connection) {
+        self.handler.disconnect(Handle {
+            level: &self.level,
+            entities: &mut self.manager,
+            events: &mut self.events
 
-    // Connection Interface ---------------------------------------------------
-    pub fn init_connection(&self, conn: &mut Connection) {
-        let mut config = [network::Message::ServerConfig as u8].to_vec();
-        config.extend(self.manager.serialize_config());
-        config.extend(self.level.serialize());
-        conn.send(MessageKind::Reliable, config);
+        }, conn);
     }
 
-    pub fn close_connection<N>(
-        &mut self,
-        conn: &mut Connection,
-        mut destroy_entity: N
-
-    ) where N: FnMut(&mut Connection, entity::Entity) {
-        while let Some(id) = self.manager.get_entity_id_for_owner(&conn.id()) {
-            if let Some(entity) = self.manager.destroy_entity(id) {
-                destroy_entity(conn, entity);
-            }
-        }
+    fn connection_packet_lost(
+        &mut self, _: &mut CobaltServer, _: &mut Connection, _: &[u8]
+    ) {
     }
 
-
-    // Level Interface --------------------------------------------------------
-    pub fn level(&mut self) -> &mut L {
-        &mut self.level
+    fn connection_congestion_state(&mut self, _: &mut CobaltServer, _: &mut Connection, _: bool) {
     }
 
-
-    // Entity Interface -------------------------------------------------------
-    pub fn entities(&mut self) -> &mut entity::Manager {
-        &mut self.manager
+    fn shutdown(&mut self, _: &mut CobaltServer) {
+        self.handler.shutdown(Handle {
+            level: &self.level,
+            entities: &mut self.manager,
+            events: &mut self.events
+        });
     }
 
+}
 
-    // Event Interface --------------------------------------------------------
-    pub fn events(&mut self) -> &mut event::Handler<E> {
-        &mut self.events
-    }
 
-    // TODO support entity events?
-    // TODO send event? or do this via state updates only?
-    // probably send player joined event but add entity via
-    // state change detection on client
+// Server Handle for Access from Handler ------------------------------------
+pub struct Handle<'a, E: event::Event + 'a, L: level::Level + 'a> {
+    pub level: &'a L,
+    pub entities: &'a mut entity::Manager,
+    pub events: &'a mut event::Handler<E>
+}
+
+
+// Server Handler -------------------------------------------------------------
+pub trait Handler<E: event::Event, L: level::Level> {
+
+    fn bind(&mut self, Handle<E, L>);
+    fn connect(&mut self, Handle<E, L>, &mut Connection);
+    fn disconnect(&mut self, Handle<E, L>, &mut Connection);
+
+    // TODO pass in connections mapping for all event / tick handles
+    fn event(&mut self, Handle<E, L>, ConnectionID, E);
+
+    fn tick_before(&mut self, Handle<E, L>, u8, f32);
+    fn tick_entity_before(&mut self, &L, &mut entity::Entity, u8, f32);
+    fn tick_entity_after(&mut self, &L, &mut entity::Entity, u8, f32);
+    fn tick_after(&mut self, Handle<E, L>, u8, f32);
+
+    fn shutdown(&mut self, Handle<E, L>);
 
 }
 

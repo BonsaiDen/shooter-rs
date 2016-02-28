@@ -5,6 +5,7 @@ use lithium;
 // Game Events ----------------------------------------------------------------
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub enum Event {
+    JoinGame,
     PlayerJoined,
     PlayerLeft,
     Unknown

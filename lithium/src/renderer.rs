@@ -5,15 +5,14 @@ use std::any::Any;
 // Internal -------------------------------------------------------------------
 use event::Event;
 use level::Level;
-use client::Client;
-use runnable::Runnable;
+use client::{Client, Handler};
 
 
 // Renderer Abstraction -------------------------------------------------------
 pub trait Renderer {
 
     // Statics ----------------------------------------------------------------
-    fn run<R: Runnable<E, L>, E: Event, L: Level>(client: Client<E, L>, runnable: R) where Self: Sized;
+    fn run<H: Handler<E, L>, E: Event, L: Level>(client: Client<E, L>, Handler: H) where Self: Sized;
 
 
     // Downcast ---------------------------------------------------------------
@@ -50,3 +49,4 @@ pub trait Renderer {
     fn set_interpolation_ticks(&mut self, ticks: usize);
 
 }
+

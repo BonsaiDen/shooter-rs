@@ -1,6 +1,6 @@
 // External Dependencies ------------------------------------------------------
 use std::net::SocketAddr;
-use cobalt::MessageKind;
+use cobalt::{MessageKind, ConnectionID};
 
 
 // Internal Dependencies ------------------------------------------------------
@@ -9,7 +9,6 @@ use event;
 use level;
 use network;
 use renderer::Renderer;
-use runnable::Runnable;
 
 
 // Client Abstraction ---------------------------------------------------------
@@ -23,6 +22,7 @@ pub struct Client<E, L> where E: event::Event, L: level::Level {
 
 impl<E, L> Client<E, L> where E: event::Event, L: level::Level {
 
+    // Statics ----------------------------------------------------------------
     pub fn new(server_addr: SocketAddr, level: L, registry: Box<entity::Registry>) -> Client<E, L> {
         Client {
             // TODO make initial address optional?
@@ -38,31 +38,24 @@ impl<E, L> Client<E, L> where E: event::Event, L: level::Level {
         }
     }
 
-    pub fn init(&mut self, runnable: &mut Runnable<E, L>, renderer: &mut Renderer) {
+
+    // Public -----------------------------------------------------------------
+    pub fn init(&mut self, handler: &mut Handler<E, L>, renderer: &mut Renderer) {
         self.network.set_tick_rate(self.manager.config().tick_rate as u32);
         self.manager.init(renderer);
-        runnable.init(self.proxy(renderer));
+        handler.init(self.handle(renderer));
     }
 
-    pub fn destroy(&mut self, runnable: &mut Runnable<E, L>, renderer: &mut Renderer) {
+    pub fn destroy(&mut self, handler: &mut Handler<E, L>, renderer: &mut Renderer) {
         self.network.destroy();
-        runnable.destroy(self.proxy(renderer));
-    }
-
-    fn proxy<'a>(&'a mut self, renderer: &'a mut Renderer) -> ClientProxy<L> {
-        ClientProxy {
-            renderer: renderer,
-            level: &self.level,
-            entities: &mut self.manager,
-            network: &self.network
-        }
+        handler.destroy(self.handle(renderer));
     }
 
 
     // Tick Handling ----------------------------------------------------------
     pub fn tick(
         &mut self,
-        runnable: &mut Runnable<E, L>,
+        handler: &mut Handler<E, L>,
         renderer: &mut Renderer
 
     ) -> bool {
@@ -79,7 +72,7 @@ impl<E, L> Client<E, L> where E: event::Event, L: level::Level {
                 network::StreamEvent::Connection(_) => {
                     self.remote_states.clear();
                     self.manager.reset();
-                    runnable.connect(self.proxy(renderer));
+                    handler.connect(self.handle(renderer));
                 },
 
                 // TODO clean up / validate message
@@ -88,8 +81,8 @@ impl<E, L> Client<E, L> where E: event::Event, L: level::Level {
                         network::Message::ServerConfig => {
                             let level_data = self.manager.receive_config(renderer, &data[1..]);
                             self.network.set_tick_rate(self.manager.config().tick_rate as u32);
-                            self.level = runnable.level(self.proxy(renderer), level_data);
-                            runnable.config(self.proxy(renderer));
+                            self.level = handler.level(self.handle(renderer), level_data);
+                            handler.config(self.handle(renderer));
                         },
                         network::Message::ServerState => {
                             self.manager.receive_state(&data[1..]);
@@ -104,15 +97,15 @@ impl<E, L> Client<E, L> where E: event::Event, L: level::Level {
                 network::StreamEvent::Tick(_, _, _) => {
 
                     if let Some(events) = self.events.received() {
-                        for (_, event) in events {
-                            runnable.event(self.proxy(renderer), event);
+                        for (owner, event) in events {
+                            handler.event(self.handle(renderer), owner, event);
                         }
                     }
 
                     let tick = self.manager.tick();
-                    runnable.tick_before(self.proxy(renderer), tick, dt);
-                    self.tick_entities(dt, runnable, renderer);
-                    runnable.tick_after(self.proxy(renderer), tick, dt);
+                    handler.tick_before(self.handle(renderer), tick, dt);
+                    self.tick_entities(dt, handler, renderer);
+                    handler.tick_after(self.handle(renderer), tick, dt);
                     ticked = true;
 
                 },
@@ -120,7 +113,7 @@ impl<E, L> Client<E, L> where E: event::Event, L: level::Level {
                 network::StreamEvent::Close | network::StreamEvent::ConnectionLost(_) => {
                     self.remote_states.clear();
                     self.manager.reset();
-                    runnable.disconnect(self.proxy(renderer));
+                    handler.disconnect(self.handle(renderer));
                 },
 
                 _ => {}
@@ -134,14 +127,26 @@ impl<E, L> Client<E, L> where E: event::Event, L: level::Level {
 
     }
 
-    pub fn draw(&mut self, runnable: &mut Runnable<E, L>, renderer: &mut Renderer) {
-        runnable.draw(self.proxy(renderer));
+    pub fn draw(&mut self, handler: &mut Handler<E, L>, renderer: &mut Renderer) {
+        handler.draw(self.handle(renderer));
     }
 
-    pub fn tick_entities(
+
+    // Internal ---------------------------------------------------------------
+    fn handle<'a>(&'a mut self, renderer: &'a mut Renderer) -> Handle<E, L> {
+        Handle {
+            renderer: renderer,
+            level: &self.level,
+            events: &mut self.events,
+            entities: &mut self.manager,
+            network: &self.network
+        }
+    }
+
+    fn tick_entities(
         &mut self,
         dt: f32,
-        runnable: &mut Runnable<E, L>,
+        handler: &mut Handler<E, L>,
         renderer: &mut Renderer
     ) {
 
@@ -149,8 +154,8 @@ impl<E, L> Client<E, L> where E: event::Event, L: level::Level {
         let remote_states = &mut self.remote_states;
 
         // Tick entities
-        self.manager.tick_client_entities(
-            renderer, runnable,
+        self.manager.tick_client(
+            renderer, handler,
             &self.level, dt,
             |state, entity, tick| {
                 match state {
@@ -197,11 +202,35 @@ impl<E, L> Client<E, L> where E: event::Event, L: level::Level {
 }
 
 
-// Client Proxy for Access from Runnable --------------------------------------
-pub struct ClientProxy<'a, 'b, L: 'a, > {
+// Client Handle for Access from Handler ------------------------------------
+pub struct Handle<'a, 'b, E: event::Event + 'a, L: level::Level + 'a> {
     pub renderer: &'b mut Renderer,
     pub level: &'a L,
+    pub events: &'a mut event::Handler<E>,
     pub entities: &'a mut entity::Manager,
     pub network: &'a network::Stream
+}
+
+
+// Client Handler -------------------------------------------------------------
+pub trait Handler<E: event::Event, L: level::Level> {
+
+    fn init(&mut self, Handle<E, L>);
+    fn connect(&mut self, Handle<E, L>);
+    fn disconnect(&mut self, Handle<E, L>);
+
+    fn level(&mut self, Handle<E, L>, &[u8]) -> L;
+    fn config(&mut self, Handle<E, L>);
+
+    fn event(&mut self, Handle<E, L>, ConnectionID, E);
+    fn tick_before(&mut self, Handle<E, L>, u8, f32);
+    fn tick_entity_before(&mut self, &mut Renderer, &L, &mut entity::Entity, u8, f32);
+    fn tick_entity_after(&mut self, &mut Renderer, &L, &mut entity::Entity, u8, f32) -> entity::ControlState;
+    fn tick_after(&mut self, Handle<E, L>, u8, f32);
+
+    fn draw(&mut self, Handle<E, L>);
+
+    fn destroy(&mut self, Handle<E, L>);
+
 }
 

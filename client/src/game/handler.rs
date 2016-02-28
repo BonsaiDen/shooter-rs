@@ -1,9 +1,9 @@
 // External Dependencies ------------------------------------------------------
 use lithium::entity;
 use lithium::renderer::Renderer;
-use lithium::runnable::Runnable;
-use lithium::client::ClientProxy;
+use lithium::client::{Handle, Handler};
 use lithium::level::Level as LithiumLevel;
+use cobalt::ConnectionID;
 
 
 // Internal Dependencies ------------------------------------------------------
@@ -14,10 +14,10 @@ use renderer::AllegroRenderer;
 use shared::color::{Color, ColorName};
 
 
-// Runnable Implementation ----------------------------------------------------
-impl Runnable<Event, Level> for Game {
+// Handler Implementation -----------------------------------------------------
+impl Handler<Event, Level> for Game {
 
-    fn init(&mut self, client: ClientProxy<Level>) {
+    fn init(&mut self, client: Handle<Event, Level>) {
 
         let ar = AllegroRenderer::downcast_mut(client.renderer);
         ar.set_fps(60);
@@ -36,35 +36,36 @@ impl Runnable<Event, Level> for Game {
                 .. entity::State::default()
             };
 
-            client.entities.create_entity(0, Some(state), None);
+            client.entities.create(0, Some(state), None);
 
         }
 
     }
 
-    fn connect(&mut self, _: ClientProxy<Level>) {
-        self.state = State::Pending;
-    }
-
-    fn disconnect(&mut self, client: ClientProxy<Level>) {
-        self.state = State::Disconnected;
-        self.init(client);
-    }
-
-    fn level(&mut self, _: ClientProxy<Level>, level_data: &[u8]) -> Level {
+    fn level(&mut self, _: Handle<Event, Level>, level_data: &[u8]) -> Level {
         Level::from_serialized(level_data)
     }
 
-    fn config(&mut self, client: ClientProxy<Level>) {
+    fn config(&mut self, client: Handle<Event, Level>) {
         self.state = State::Connected;
         self.init(client);
     }
 
-    fn event(&mut self, _: ClientProxy<Level>, event: Event) {
-        println!("Event: {:?}", event);
+    fn connect(&mut self, server: Handle<Event, Level>) {
+        self.state = State::Pending;
+        server.events.send(Event::JoinGame);
     }
 
-    fn tick_before(&mut self, client: ClientProxy<Level>, tick: u8, _: f32) {
+    fn disconnect(&mut self, client: Handle<Event, Level>) {
+        self.state = State::Disconnected;
+        self.init(client);
+    }
+
+    fn event(&mut self, _: Handle<Event, Level>, owner: ConnectionID, event: Event) {
+        println!("Event: {:?} {:?}", owner, event);
+    }
+
+    fn tick_before(&mut self, client: Handle<Event, Level>, tick: u8, _: f32) {
 
         let ar = AllegroRenderer::downcast_mut(client.renderer);
         ar.reseed_rng([
@@ -79,8 +80,8 @@ impl Runnable<Event, Level> for Game {
     fn tick_entity_before(
         &mut self,
         renderer: &mut Renderer,
-        entity: &mut entity::Entity,
         _: &Level,
+        entity: &mut entity::Entity,
         tick: u8, _: f32
     ) {
 
@@ -115,8 +116,8 @@ impl Runnable<Event, Level> for Game {
     fn tick_entity_after(
         &mut self,
         _: &mut Renderer,
-        entity: &mut entity::Entity,
         _: &Level,
+        entity: &mut entity::Entity,
         _: u8, _: f32
 
     ) -> entity::ControlState {
@@ -135,14 +136,14 @@ impl Runnable<Event, Level> for Game {
 
     }
 
-    fn tick_after(&mut self, _: ClientProxy<Level>, _: u8, _: f32) {
+    fn tick_after(&mut self, _: Handle<Event, Level>, _: u8, _: f32) {
     }
 
-    fn draw(&mut self, client: ClientProxy<Level>) {
+    fn draw(&mut self, client: Handle<Event, Level>) {
 
         AllegroRenderer::downcast_mut(client.renderer).clear(&Color::from_name(ColorName::Black));
 
-        client.entities.draw_entities(client.renderer, client.level);
+        client.entities.draw(client.renderer, client.level);
 
         if let Ok(addr) = client.network.server_addr() {
             let network_state = match client.network.connected() {
@@ -165,7 +166,7 @@ impl Runnable<Event, Level> for Game {
 
     }
 
-    fn destroy(&mut self, _: ClientProxy<Level>) {
+    fn destroy(&mut self, _: Handle<Event, Level>) {
 
     }
 

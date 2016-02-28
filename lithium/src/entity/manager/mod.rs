@@ -8,11 +8,12 @@ pub mod config;
 pub mod registry;
 
 use entity;
+use client;
+use server;
 use event::Event;
 use level::Level;
 use idpool::IdPool;
 use renderer::Renderer;
-use runnable::Runnable;
 use self::registry::EntityRegistry;
 use self::config::EntityManagerConfig;
 
@@ -93,7 +94,7 @@ impl EntityManager {
 
 
     // Entities ---------------------------------------------------------------
-    pub fn create_entity(
+    pub fn create(
         &mut self,
         type_id: u8,
         state: Option<entity::State>,
@@ -125,17 +126,19 @@ impl EntityManager {
         }
     }
 
-    pub fn tick_server_entities<B, A>(
-        &mut self, level: &Level, dt: f32, mut before: B, mut after: A
+    pub fn tick_server<E, L>(
+        &mut self,
+        level: &L,
+        handler: &mut Box<server::Handler<E, L>>,
+        dt: f32
 
-    ) where B: FnMut(&mut entity::Entity, &Level, u8, f32),
-            A: FnMut(&mut entity::Entity, &Level, u8, f32) {
+    ) where E: Event, L: Level {
 
         for (_, entity) in self.entities.iter_mut() {
-            before(entity, level, self.tick, dt);
+            handler.tick_entity_before(level, entity, self.tick, dt);
             entity.event(entity::Event::Tick(self.tick, dt)); // TODO useful?
             entity.tick(level, self.tick, dt, self.server_mode);
-            after(entity, level, self.tick, dt);
+            handler.tick_entity_after(level, entity, self.tick, dt);
         }
 
         if self.tick == 255 {
@@ -147,10 +150,10 @@ impl EntityManager {
 
     }
 
-    pub fn tick_client_entities<E, L, I>(
+    pub fn tick_client<E, L, I>(
         &mut self,
         renderer: &mut Renderer,
-        runnable: &mut Runnable<E, L>,
+        handler: &mut client::Handler<E, L>,
         level: &L, dt: f32,
         mut input_handler: I
 
@@ -159,10 +162,10 @@ impl EntityManager {
             I: FnMut(entity::ControlState, &mut entity::Entity, u8)
     {
         for (_, entity) in self.entities.iter_mut() {
-            runnable.tick_entity_before(renderer, entity, level, self.tick, dt);
+            handler.tick_entity_before(renderer, level, entity, self.tick, dt);
             entity.event(entity::Event::Tick(self.tick, dt)); // TODO useful?
             entity.tick(level, self.tick, dt, self.server_mode);
-            match runnable.tick_entity_after(renderer, entity, level, self.tick, dt) {
+            match handler.tick_entity_after(renderer, level, entity, self.tick, dt) {
                 entity::ControlState::None => {},
                 state => input_handler(state, entity, self.tick)
             }
@@ -178,13 +181,13 @@ impl EntityManager {
     }
 
 
-    pub fn draw_entities(&mut self, renderer: &mut Renderer, level: &Level) {
+    pub fn draw(&mut self, renderer: &mut Renderer, level: &Level) {
         for (_, entity) in self.entities.iter_mut() {
             entity.draw(renderer, level);
         }
     }
 
-    pub fn destroy_entity(&mut self, entity_id: u16) -> Option<entity::Entity> {
+    pub fn destroy(&mut self, entity_id: u16) -> Option<entity::Entity> {
 
         if let Some(mut entity) = self.entities.remove(&entity_id) {
             // TODO can be an issue if re-used directly

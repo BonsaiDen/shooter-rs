@@ -19,9 +19,9 @@ use super::Renderer;
 impl lithium::Renderer for Renderer {
 
     // Statics ----------------------------------------------------------------
-    fn run<R: lithium::Runnable<E, L>, E: lithium::event::Event, L: lithium::Level>(
+    fn run<H: lithium::client::Handler<E, L>, E: lithium::event::Event, L: lithium::Level>(
         mut client: lithium::Client<E, L>,
-        mut runnable: R
+        mut handler: H
 
     ) where Self: Sized {
 
@@ -58,7 +58,7 @@ impl lithium::Renderer for Renderer {
         let mut renderer = Renderer::new(core, disp, q);
 
         // Init callback
-        client.init(&mut runnable, &mut renderer);
+        client.init(&mut handler, &mut renderer);
 
         // Mainloop
         let mut last_tick_time = 0.0;
@@ -73,7 +73,7 @@ impl lithium::Renderer for Renderer {
                 let tick_rate = renderer.tick_rate();
 
                 if frames_per_tick == 0 {
-                    if client.tick(&mut runnable, &mut renderer) {
+                    if client.tick(&mut handler, &mut renderer) {
                         frames_per_tick = renderer.fps() / tick_rate;
                         last_tick_time = frame_time;
                     }
@@ -84,7 +84,7 @@ impl lithium::Renderer for Renderer {
                     1.0 / (1.0 / tick_rate as f32) * (frame_time - last_tick_time) as f32
                 );
 
-                client.draw(&mut runnable, &mut renderer);
+                client.draw(&mut handler, &mut renderer);
                 renderer.draw();
 
                 last_frame_time = frame_time;
@@ -96,7 +96,7 @@ impl lithium::Renderer for Renderer {
 
         }
 
-        client.destroy(&mut runnable, &mut renderer);
+        client.destroy(&mut handler, &mut renderer);
 
     }
 

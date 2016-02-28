@@ -7,7 +7,7 @@ extern crate shared;
 
 // External Dependencies ------------------------------------------------------
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
-use cobalt::{Config, Handler, Server};
+use lithium::Server;
 
 
 // Internal Dependencies ------------------------------------------------------
@@ -38,13 +38,7 @@ fn main() {
 
 
     // Server Setup -----------------------------------------------------------
-    let tick_rate = 30;
-    let mut game = game::Game::new(384, 384, 16, tick_rate);
-    let mut server = Server::new(Config {
-        send_rate: tick_rate,
-        .. Config::default()
-    });
-    server.bind(&mut game, server_addr).unwrap();
+    Server::run(server_addr, game::Game::server(30));
 
 }
 

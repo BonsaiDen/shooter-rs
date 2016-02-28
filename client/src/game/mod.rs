@@ -7,7 +7,7 @@ use lithium::Client;
 use entities;
 use shared::event::Event;
 use shared::level::Level;
-mod runnable;
+mod handler;
 
 
 // Game -----------------------------------------------------------------------
