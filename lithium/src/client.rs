@@ -23,11 +23,19 @@ pub struct Client<E, S> where E: event::Event, S: entity::State {
 impl<E, S> Client<E, S> where E: event::Event, S: entity::State {
 
     // Statics ----------------------------------------------------------------
-    pub fn new(server_addr: SocketAddr, level: level::Level<S>, registry: Box<entity::Registry<S>>) -> Client<E, S> {
+    pub fn new(
+        server_addr: SocketAddr,
+        tick_rate: u8,
+        level: level::Level<S>,
+        registry: Box<entity::Registry<S>>
+
+    ) -> Client<E, S> {
+        let mut network = network::Stream::new(server_addr);
+        network.set_tick_rate(tick_rate as u32);
         Client {
-            network: network::Stream::new(server_addr),
+            network: network,
             manager: entity::Manager::new(
-                30, 1000, 75,
+                tick_rate, 1000, 75,
                 false,
                 registry
             ),
@@ -41,6 +49,7 @@ impl<E, S> Client<E, S> where E: event::Event, S: entity::State {
     // Public -----------------------------------------------------------------
     pub fn init(&mut self, handler: &mut Handler<E, S>, renderer: &mut Renderer) {
         self.network.set_tick_rate(self.manager.config().tick_rate as u32);
+        renderer.set_tick_rate(self.manager.config().tick_rate as u32);
         self.manager.init(renderer);
         handler.init(self.handle(renderer));
     }
@@ -79,8 +88,9 @@ impl<E, S> Client<E, S> where E: event::Event, S: entity::State {
                     match network::Message::from_u8(data[0]) {
                         network::Message::ServerConfig => {
                             let level_data = self.manager.receive_config(renderer, &data[1..]);
-                            self.network.set_tick_rate(self.manager.config().tick_rate as u32);
                             self.level = handler.level(self.handle(renderer), level_data);
+                            self.network.set_tick_rate(self.manager.config().tick_rate as u32);
+                            renderer.set_tick_rate(self.manager.config().tick_rate as u32);
                             handler.config(self.handle(renderer));
                         },
                         network::Message::ServerState => {
@@ -173,7 +183,9 @@ impl<E, S> Client<E, S> where E: event::Event, S: entity::State {
                         // Emulate remote server state stuff with a 20 frames delay
                         remote_states.push((tick, entity.state().clone()));
 
-                        if remote_states.len() > 20 {
+                        // TODO scale delay with tick rate or configure it
+                        // TODO or increase state buffer size?
+                        if remote_states.len() > 10 {
                             let first = remote_states.remove(0);
                             entity.set_confirmed_state(first.0, first.1);
                         }

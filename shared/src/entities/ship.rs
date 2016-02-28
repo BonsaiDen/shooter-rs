@@ -27,7 +27,7 @@ impl Ship {
         Ship {
             max_speed: 90.0 * scale,
             acceleration: 2.0 * scale,
-            rotation: 120.0,
+            rotation: 120.0
         }
     }
 
@@ -57,8 +57,7 @@ impl entity::traits::Base<state::State> for Ship {
             steer += 1.0;
         }
 
-        // TODO make this constant time rotation
-        state.r += f32::consts::PI / 180.0 * self.rotation * dt * steer;
+        state.r += f32::consts::PI / 180.0 * self.rotation * (steer / (1.0 / dt));
 
         if input.fields & 0x04 == 0x04 {
             // Constant time acceleration

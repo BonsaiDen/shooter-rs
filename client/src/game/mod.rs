@@ -27,6 +27,7 @@ impl Game {
     pub fn client(server_addr: SocketAddr) -> Client<Event, State> {
         Client::new(
             server_addr,
+            30,
             Game::default_level(),
             Box::new(entities::Registry)
         )
