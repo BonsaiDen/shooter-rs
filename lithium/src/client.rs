@@ -25,7 +25,6 @@ impl<E, L, S> Client<E, L, S> where E: event::Event, L: level::Level<S>, S: enti
     // Statics ----------------------------------------------------------------
     pub fn new(server_addr: SocketAddr, level: L, registry: Box<entity::Registry<S>>) -> Client<E, L, S> {
         Client {
-            // TODO make initial address optional?
             network: network::Stream::new(server_addr),
             manager: entity::Manager::new(
                 30, 1000, 75,
@@ -127,7 +126,9 @@ impl<E, L, S> Client<E, L, S> where E: event::Event, L: level::Level<S>, S: enti
 
     }
 
-    pub fn draw(&mut self, handler: &mut Handler<E, L, S>, renderer: &mut Renderer) {
+    pub fn draw(
+        &mut self, handler: &mut Handler<E, L, S>, renderer: &mut Renderer
+    ) {
         handler.draw(self.handle(renderer));
     }
 
@@ -136,7 +137,7 @@ impl<E, L, S> Client<E, L, S> where E: event::Event, L: level::Level<S>, S: enti
     fn handle<'a>(&'a mut self, renderer: &'a mut Renderer) -> Handle<E, L, S> {
         Handle {
             renderer: renderer,
-            level: &self.level,
+            level: &mut self.level,
             events: &mut self.events,
             entities: &mut self.manager,
             network: &self.network
@@ -212,7 +213,7 @@ pub struct Handle<
     S: entity::State + 'a
 > {
     pub renderer: &'b mut Renderer,
-    pub level: &'a L,
+    pub level: &'a mut L,
     pub events: &'a mut event::Handler<E>,
     pub entities: &'a mut entity::Manager<S>,
     pub network: &'a network::Stream
@@ -231,8 +232,15 @@ pub trait Handler<E: event::Event, L: level::Level<S>, S: entity::State> {
 
     fn event(&mut self, Handle<E, L, S>, ConnectionID, E);
     fn tick_before(&mut self, Handle<E, L, S>, u8, f32);
-    fn tick_entity_before(&mut self, &mut Renderer, &L, &mut entity::Entity<S>, u8, f32);
-    fn tick_entity_after(&mut self, &mut Renderer, &L, &mut entity::Entity<S>, u8, f32) -> entity::ControlState;
+
+    fn tick_entity_before(
+        &mut self, &mut Renderer, &L, &mut entity::Entity<S>, u8, f32
+    );
+
+    fn tick_entity_after(
+        &mut self, &mut Renderer, &L, &mut entity::Entity<S>, u8, f32
+    ) -> entity::ControlState;
+
     fn tick_after(&mut self, Handle<E, L, S>, u8, f32);
 
     fn draw(&mut self, Handle<E, L, S>);

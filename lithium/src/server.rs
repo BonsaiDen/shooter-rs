@@ -75,11 +75,6 @@ impl<E, L, S> Server<E, L, S> where E: event::Event,
         self.manager.config()
     }
 
-    // TODO support entity events?
-    // TODO send event? or do this via state updates only?
-    // probably send player joined event but add entity via
-    // state change detection on client
-
 }
 
 impl<E, L, S> CobaltHandler<CobaltServer> for Server<E, L, S>
@@ -162,7 +157,7 @@ where E: event::Event, L: level::Level<S>, S: entity::State {
                 entities: &mut self.manager,
                 events: &mut self.events
 
-            }, tick, tick_dt);
+            }, connections, tick, tick_dt);
         }
 
         self.manager.tick_server(&self.level, &mut self.handler, tick_dt);
@@ -173,7 +168,7 @@ where E: event::Event, L: level::Level<S>, S: entity::State {
                 entities: &mut self.manager,
                 events: &mut self.events
 
-            }, tick, tick_dt);
+            }, connections, tick, tick_dt);
         }
 
         // Send Data
@@ -215,7 +210,9 @@ where E: event::Event, L: level::Level<S>, S: entity::State {
     ) {
     }
 
-    fn connection_congestion_state(&mut self, _: &mut CobaltServer, _: &mut Connection, _: bool) {
+    fn connection_congestion_state(
+        &mut self, _: &mut CobaltServer, _: &mut Connection, _: bool
+    ) {
     }
 
     fn shutdown(&mut self, _: &mut CobaltServer) {
@@ -252,10 +249,22 @@ pub trait Handler<E: event::Event, L: level::Level<S>, S: entity::State> {
     // TODO pass in connections mapping for all event / tick handles
     fn event(&mut self, Handle<E, L, S>, ConnectionID, E);
 
-    fn tick_before(&mut self, Handle<E, L, S>, u8, f32);
+    fn tick_before(
+        &mut self,
+        Handle<E, L, S>,
+        &mut HashMap<ConnectionID, Connection>,
+        u8, f32
+    );
+
     fn tick_entity_before(&mut self, &L, &mut entity::Entity<S>, u8, f32);
     fn tick_entity_after(&mut self, &L, &mut entity::Entity<S>, u8, f32);
-    fn tick_after(&mut self, Handle<E, L, S>, u8, f32);
+
+    fn tick_after(
+        &mut self,
+        Handle<E, L, S>,
+        &mut HashMap<ConnectionID, Connection>,
+        u8, f32
+    );
 
     fn shutdown(&mut self, Handle<E, L, S>);
 

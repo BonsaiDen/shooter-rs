@@ -146,6 +146,7 @@ impl Handler<Event, Level, State> for Game {
 
         AllegroRenderer::downcast_mut(client.renderer).clear(&Color::from_name(ColorName::Black));
 
+        client.level.draw(client.renderer);
         client.entities.draw(client.renderer, client.level);
 
         if let Ok(addr) = client.network.server_addr() {

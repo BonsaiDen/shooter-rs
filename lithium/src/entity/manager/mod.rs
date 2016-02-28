@@ -1,4 +1,5 @@
 // External Dependencies ------------------------------------------------------
+use std::cmp;
 use std::collections::HashMap;
 use cobalt::ConnectionID;
 
@@ -21,7 +22,6 @@ use self::config::EntityManagerConfig;
 // Re-Exports -----------------------------------------------------------------
 use self::config::EntityManagerConfig as Config;
 use self::registry::EntityRegistry as Registry;
-
 
 
 // Entity Manager Implementation ----------------------------------------------
@@ -354,5 +354,38 @@ impl<S> EntityManager<S> where S: entity::State {
 
     }
 
+
+    // State Rewinding --------------------------------------------------------
+    pub fn rewind<'a>(&'a mut self, tick: u8) -> StateRewinder<'a, S> {
+
+        let tick_offset = cmp::max(0, self.tick - tick) as usize;
+        for (_, entity) in self.entities.iter_mut() {
+            entity.rewind_state(tick_offset);
+        }
+
+        StateRewinder {
+            manager: self
+        }
+
+    }
+
+    fn forward(&mut self) {
+        for (_, entity) in self.entities.iter_mut() {
+            entity.forward_state();
+        }
+    }
+
+}
+
+
+// Handle for rewinded entity state -------------------------------------------
+pub struct StateRewinder<'a, S: entity::State + 'a> {
+    manager: &'a mut EntityManager<S>
+}
+
+impl<'a, S> Drop for StateRewinder<'a, S> where S: entity::State {
+    fn drop(&mut self) {
+        self.manager.forward();
+    }
 }
 

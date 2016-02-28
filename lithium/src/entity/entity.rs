@@ -166,7 +166,8 @@ impl<S> Entity<S> where S: entity::State {
         &self.state
     }
 
-    pub fn buffered_state(&self, tick_offset: usize) -> &S {
+    /*
+    fn buffered_state(&self, tick_offset: usize) -> &S {
         let buffer_len = self.state_buffer.len();
         if buffer_len > 0 && tick_offset < buffer_len {
             &self.state_buffer[tick_offset].1
@@ -175,8 +176,9 @@ impl<S> Entity<S> where S: entity::State {
             &self.state
         }
     }
+    */
 
-    pub fn buffered_states(
+    fn buffered_states(
         &self, tick_offset: usize
 
     ) -> (&S, &S) {
@@ -192,6 +194,21 @@ impl<S> Entity<S> where S: entity::State {
                 &self.last_state
             )
         }
+    }
+
+    pub fn rewind_state(&mut self, tick_offset: usize) {
+        // TODO clean up
+        let (state, last_state) = {
+            let states = self.buffered_states(tick_offset);
+            (states.0.clone(), states.1.clone())
+        };
+        self.state.set_to(&state);
+        self.base_state.set_to(&state);
+        self.last_state.set_to(&last_state);
+    }
+
+    pub fn forward_state(&mut self) {
+        self.rewind_state(0);
     }
 
     pub fn set_state(&mut self, state: S) {

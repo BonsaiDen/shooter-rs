@@ -1,4 +1,5 @@
 // External Dependencies ------------------------------------------------------
+use std::collections::HashMap;
 use lithium::entity;
 use lithium::server::{Handler, Handle};
 use cobalt::{Connection, ConnectionID};
@@ -19,11 +20,19 @@ impl Handler<Event, Level, State> for Game {
         println!("[Server] Started");
     }
 
-    fn connect(&mut self, _: Handle<Event, Level, State>, conn: &mut Connection) {
+    fn connect(
+        &mut self,
+        _: Handle<Event, Level, State>,
+        conn: &mut Connection
+    ) {
         println!("[Client {}] Connected", conn.peer_addr());
     }
 
-    fn disconnect(&mut self, server: Handle<Event, Level, State>, conn: &mut Connection) {
+    fn disconnect(
+        &mut self,
+        server: Handle<Event, Level, State>,
+        conn: &mut Connection
+    ) {
 
         println!("[Client {}] Disconnected", conn.peer_addr());
 
@@ -37,14 +46,19 @@ impl Handler<Event, Level, State> for Game {
 
     }
 
-    fn event(&mut self, server: Handle<Event, Level, State>, owner: ConnectionID, event: Event) {
+    fn event(
+        &mut self,
+        server: Handle<Event, Level, State>,
+        owner: ConnectionID,
+        event: Event
+    ) {
 
         println!("[Client {:?}] Event: {:?}", owner, event);
 
         match event {
             Event::JoinGame => {
 
-                if let Some(_) = server.entities.get_entity_id_for_owner(&owner) {
+                if let Some(_) = server.entities.get_entity_for_owner(&owner) {
                     println!("[Client {:?}] Already has a entity.", owner);
 
                 } else {
@@ -78,7 +92,12 @@ impl Handler<Event, Level, State> for Game {
 
     }
 
-    fn tick_before(&mut self, _: Handle<Event, Level, State>, _: u8, _: f32) {
+    fn tick_before(
+        &mut self,
+        _: Handle<Event, Level, State>,
+        _: &mut HashMap<ConnectionID, Connection>,
+        _: u8, _: f32
+    ) {
 
         // TODO bullets are handled by pre-creating a local object and then
         // syncing it with the remote one, we submit a local ID and the server
@@ -90,15 +109,30 @@ impl Handler<Event, Level, State> for Game {
 
     }
 
-    fn tick_entity_before(&mut self, _: &Level, _: &mut entity::Entity<State>, _: u8, _: f32) {
+    fn tick_entity_before(
+        &mut self,
+        _: &Level,
+        _: &mut entity::Entity<State>,
+        _: u8, _: f32
+    ) {
 
     }
 
-    fn tick_entity_after(&mut self, _: &Level, _: &mut entity::Entity<State>, _: u8, _: f32) {
+    fn tick_entity_after(
+        &mut self,
+        _: &Level,
+        _: &mut entity::Entity<State>,
+        _: u8, _: f32
+    ) {
 
     }
 
-    fn tick_after(&mut self, _: Handle<Event, Level, State>, _: u8, _: f32) {
+    fn tick_after(
+        &mut self,
+        _: Handle<Event, Level, State>,
+        _: &mut HashMap<ConnectionID, Connection>,
+        _: u8, _: f32
+    ) {
 
     }
 
