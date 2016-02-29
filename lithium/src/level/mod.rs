@@ -3,7 +3,7 @@ use std::any::Any;
 
 
 // Internal Dependencies ------------------------------------------------------
-use entity;
+use entity::State;
 use renderer::Renderer;
 
 mod traits;
@@ -12,12 +12,12 @@ pub use level::traits::Drawable as Drawable;
 
 
 // Level Wrapper Structure ----------------------------------------------------
-pub struct Level<S: entity::State> {
+pub struct Level<S: State> {
     level: Box<Base<S>>,
     drawable: Box<Drawable<S>>,
 }
 
-impl<S> Level<S> where S: entity::State {
+impl<S: State> Level<S> {
 
     pub fn new(level: Box<Base<S>>, drawable: Box<Drawable<S>>) -> Level<S> {
         Level {

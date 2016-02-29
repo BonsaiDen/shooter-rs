@@ -12,21 +12,28 @@ use cobalt::{
 
 
 // Internal Dependencies ------------------------------------------------------
-use entity;
-use event;
-use level;
 use network;
+use entity::{
+    Entity,
+    State,
+    Input,
+    Manager as EntityManager,
+    ManagerConfig as EntityManagerConfig,
+    Registry as EntityRegistry
+};
+use level::Level;
+use event::{Event, Handler as EventHandler};
 
 
 // Server Abstraction ---------------------------------------------------------
-pub struct Server<E, S> where E: event::Event, S: entity::State {
+pub struct Server<E: Event, S: State> {
     handler: Box<Handler<E, S>>,
-    manager: entity::Manager<S>,
-    events: event::Handler<E>,
-    level: level::Level<S>
+    manager: EntityManager<S>,
+    events: EventHandler<E>,
+    level: Level<S>
 }
 
-impl<E, S> Server<E, S> where E: event::Event, S: entity::State {
+impl<E: Event, S: State> Server<E, S> {
 
     // Statics ----------------------------------------------------------------
     pub fn run(addr: SocketAddr, mut server: Server<E, S>) where Self: Sized {
@@ -41,32 +48,32 @@ impl<E, S> Server<E, S> where E: event::Event, S: entity::State {
 
     pub fn new(
         tick_rate: u32, buffer_ms: u32, interp_ms: u32,
-        level: level::Level<S>,
-        registry: Box<entity::Registry<S>>,
+        level: Level<S>,
+        registry: Box<EntityRegistry<S>>,
         handler: Box<Handler<E, S>>
 
     ) -> Server<E, S> {
         Server {
             handler: handler,
-            manager: entity::Manager::new(
+            manager: EntityManager::new(
                 tick_rate as u8, buffer_ms, interp_ms,
                 true,
                 registry
             ),
-            events: event::Handler::new(),
+            events: EventHandler::new(),
             level: level
         }
     }
 
 
     // Public -----------------------------------------------------------------
-    pub fn config(&self) -> &entity::ManagerConfig {
+    pub fn config(&self) -> &EntityManagerConfig {
         self.manager.config()
     }
 
 }
 
-impl<E, S> CobaltHandler<CobaltServer> for Server<E, S> where E: event::Event, S: entity::State {
+impl<E: Event, S: State> CobaltHandler<CobaltServer> for Server<E, S> {
 
     fn bind(&mut self, _: &mut CobaltServer) {
         self.handler.bind(Handle {
@@ -108,9 +115,9 @@ impl<E, S> CobaltHandler<CobaltServer> for Server<E, S> where E: event::Event, S
                         // Extract all unconfirmed inputs the client sent us
                         if let Some(entity) = self.manager.get_entity_for_owner(id) {
                             let data = &data[1..];
-                            for i in data.chunks(entity::Input::encoded_size()) {
+                            for i in data.chunks(Input::encoded_size()) {
                                 entity.remote_input(
-                                    entity::Input::from_serialized(i)
+                                    Input::from_serialized(i)
                                 );
                             }
                         }
@@ -217,17 +224,17 @@ impl<E, S> CobaltHandler<CobaltServer> for Server<E, S> where E: event::Event, S
 // Server Handle for Access from Handler ------------------------------------
 pub struct Handle<
     'a,
-    E: event::Event + 'a,
-    S: entity::State + 'a
+    E: Event + 'a,
+    S: State + 'a
 > {
-    pub level: &'a mut level::Level<S>,
-    pub entities: &'a mut entity::Manager<S>,
-    pub events: &'a mut event::Handler<E>
+    pub level: &'a mut Level<S>,
+    pub entities: &'a mut EntityManager<S>,
+    pub events: &'a mut EventHandler<E>
 }
 
 
 // Server Handler -------------------------------------------------------------
-pub trait Handler<E: event::Event, S: entity::State> {
+pub trait Handler<E: Event, S: State> {
 
     fn bind(&mut self, Handle<E, S>);
     fn connect(&mut self, Handle<E, S>, &mut Connection);
@@ -243,8 +250,8 @@ pub trait Handler<E: event::Event, S: entity::State> {
         u8, f32
     );
 
-    fn tick_entity_before(&mut self, &level::Level<S>, &mut entity::Entity<S>, u8, f32);
-    fn tick_entity_after(&mut self, &level::Level<S>, &mut entity::Entity<S>, u8, f32);
+    fn tick_entity_before(&mut self, &Level<S>, &mut Entity<S>, u8, f32);
+    fn tick_entity_after(&mut self, &Level<S>, &mut Entity<S>, u8, f32);
 
     fn tick_after(
         &mut self,

@@ -8,9 +8,9 @@ use cobalt::ConnectionID;
 pub mod config;
 pub mod registry;
 
-use entity;
 use client;
 use server;
+use entity::{Entity, State, Event as EntityEvent};
 use event::Event;
 use level::Level;
 use idpool::IdPool;
@@ -25,13 +25,13 @@ use self::registry::EntityRegistry as Registry;
 
 
 // Entity Manager Implementation ----------------------------------------------
-pub struct EntityManager<S: entity::State> {
+pub struct EntityManager<S: State> {
 
     // Id pool for entities
     id_pool: IdPool<u16>,
 
     // Vector of entities
-    entities: HashMap<u16, entity::Entity<S>>,
+    entities: HashMap<u16, Entity<S>>,
 
     // Configuration
     config: EntityManagerConfig,
@@ -47,7 +47,7 @@ pub struct EntityManager<S: entity::State> {
 
 }
 
-impl<S> EntityManager<S> where S: entity::State {
+impl<S: State> EntityManager<S> {
 
     pub fn new(
         tick_rate: u8,
@@ -79,13 +79,6 @@ impl<S> EntityManager<S> where S: entity::State {
         &self.config
     }
 
-    pub fn init(&self, renderer: &mut Renderer) {
-        renderer.set_tick_rate(self.config.tick_rate as u32);
-        renderer.set_interpolation_ticks(
-            self.config.interpolation_ticks as usize
-        );
-    }
-
     pub fn reset(&mut self) {
         self.tick = 0;
         self.entities.clear();
@@ -100,7 +93,7 @@ impl<S> EntityManager<S> where S: entity::State {
         state: Option<S>,
         owner: Option<&ConnectionID>
 
-    ) -> Option<&mut entity::Entity<S>> {
+    ) -> Option<&mut Entity<S>> {
         if let Some(id) = self.id_pool.get_id() {
 
             let mut entity = self.registry.entity_from_type_id(type_id);
@@ -116,7 +109,7 @@ impl<S> EntityManager<S> where S: entity::State {
                 entity.set_state(state);
             }
 
-            entity.event(entity::Event::Created(self.tick));
+            entity.event(EntityEvent::Created(self.tick));
 
             self.entities.insert(id, entity);
             self.entities.get_mut(&id)
@@ -126,17 +119,17 @@ impl<S> EntityManager<S> where S: entity::State {
         }
     }
 
-    pub fn tick_server<E>(
+    pub fn tick_server<E: Event>(
         &mut self,
         level: &Level<S>,
         handler: &mut Box<server::Handler<E, S>>,
         dt: f32
 
-    ) where E: Event {
+    ) {
 
         for (_, entity) in self.entities.iter_mut() {
             handler.tick_entity_before(level, entity, self.tick, dt);
-            entity.event(entity::Event::Tick(self.tick, dt)); // TODO useful?
+            entity.event(EntityEvent::Tick(self.tick, dt)); // TODO useful?
             entity.tick(level, self.tick, dt, self.server_mode);
             handler.tick_entity_after(level, entity, self.tick, dt);
         }
@@ -150,22 +143,22 @@ impl<S> EntityManager<S> where S: entity::State {
 
     }
 
-    pub fn tick_client<E, I>(
+    pub fn tick_client<
+        E: Event,
+        I: FnMut(ControlState, &mut Entity<S>, u8)
+    >(
         &mut self,
         renderer: &mut Renderer,
         handler: &mut client::Handler<E, S>,
         level: &Level<S>, dt: f32,
         mut input_handler: I
-
-    ) where E: Event,
-            I: FnMut(entity::ControlState, &mut entity::Entity<S>, u8)
-    {
+    ) {
         for (_, entity) in self.entities.iter_mut() {
             handler.tick_entity_before(renderer, level, entity, self.tick, dt);
-            entity.event(entity::Event::Tick(self.tick, dt)); // TODO useful?
+            entity.event(EntityEvent::Tick(self.tick, dt)); // TODO useful?
             entity.tick(level, self.tick, dt, self.server_mode);
             match handler.tick_entity_after(renderer, level, entity, self.tick, dt) {
-                entity::ControlState::None => {},
+                ControlState::None => {},
                 state => input_handler(state, entity, self.tick)
             }
         }
@@ -179,8 +172,8 @@ impl<S> EntityManager<S> where S: entity::State {
 
     }
 
-
     pub fn draw(&mut self, renderer: &mut Renderer, level: &Level<S>) {
+        // TODO move out of here?
         for (_, entity) in self.entities.iter_mut() {
             if entity.is_visible() {
                 entity.draw(renderer, level);
@@ -188,13 +181,13 @@ impl<S> EntityManager<S> where S: entity::State {
         }
     }
 
-    pub fn destroy(&mut self, entity_id: u16) -> Option<entity::Entity<S>> {
+    pub fn destroy(&mut self, entity_id: u16) -> Option<Entity<S>> {
 
         if let Some(mut entity) = self.entities.remove(&entity_id) {
             // TODO can be an issue if re-used directly
             self.id_pool.release_id(entity.id());
             entity.set_alive(false);
-            entity.event(entity::Event::Destroyed(self.tick));
+            entity.event(EntityEvent::Destroyed(self.tick));
             Some(entity)
 
         } else {
@@ -206,7 +199,7 @@ impl<S> EntityManager<S> where S: entity::State {
     pub fn get_entity_for_owner(
         &mut self, owner: &ConnectionID
 
-    ) -> Option<&mut entity::Entity<S>> {
+    ) -> Option<&mut Entity<S>> {
         for (_, entity) in self.entities.iter_mut() {
             if entity.owned_by(owner) {
                 return Some(entity);
@@ -233,9 +226,8 @@ impl<S> EntityManager<S> where S: entity::State {
         self.config.serialize()
     }
 
-    pub fn receive_config<'a>(&mut self, renderer: &mut Renderer, data: &'a [u8]) -> &'a [u8] {
+    pub fn receive_config<'a>(&mut self, data: &'a [u8]) -> &'a [u8] {
         self.config = EntityManagerConfig::from_serialized(data);
-        renderer.set_interpolation_ticks(self.config.interpolation_ticks as usize);
         &data[EntityManagerConfig::encoded_size()..]
     }
 
@@ -265,14 +257,14 @@ impl<S> EntityManager<S> where S: entity::State {
 
         // Parse received state
         let mut i = 0;
-        while i + entity::Entity::<S>::header_size() <= data.len() {
+        while i + Entity::<S>::header_size() <= data.len() {
 
             // Entity ID / Type
             let entity_id = (data[i] as u16) << 8 | (data[i + 1] as u16);
             let entity_type = data[i + 2];
             let entity_confirmed_tick = data[i + 3];
             let entity_is_visible = data[i + 4] == 1;
-            i += entity::Entity::<S>::header_size();
+            i += Entity::<S>::header_size();
 
             // Read serialized entity state data for visible entities
             let entity_state = if entity_is_visible && S::encoded_size() <= data.len() {
@@ -300,7 +292,7 @@ impl<S> EntityManager<S> where S: entity::State {
                     entity.hide(tick);
                 }
 
-                entity.event(entity::Event::Created(tick));
+                entity.event(EntityEvent::Created(tick));
 
                 entity
 
@@ -341,7 +333,7 @@ impl<S> EntityManager<S> where S: entity::State {
         let mut destroyed_ids = Vec::new();
         for (_, entity) in self.entities.iter_mut() {
             if entity.alive() == false {
-                entity.event(entity::Event::Destroyed(tick));
+                entity.event(EntityEvent::Destroyed(tick));
                 destroyed_ids.push(entity.id());
             }
         }
@@ -378,13 +370,21 @@ impl<S> EntityManager<S> where S: entity::State {
 
 
 // Handle for rewinded entity state -------------------------------------------
-pub struct StateRewinder<'a, S: entity::State + 'a> {
+pub struct StateRewinder<'a, S: State + 'a> {
     manager: &'a mut EntityManager<S>
 }
 
-impl<'a, S> Drop for StateRewinder<'a, S> where S: entity::State {
+impl<'a, S: State> Drop for StateRewinder<'a, S> {
     fn drop(&mut self) {
         self.manager.forward();
     }
+}
+
+
+// Client Entity Control State ------------------------------------------------
+pub enum ControlState {
+    Local,
+    Remote,
+    None
 }
 

@@ -4,17 +4,16 @@ use std::collections::VecDeque;
 
 
 // Internal Dependencies ------------------------------------------------------
-use entity;
 use level::Level;
+use entity::{Event, Input, State, traits};
 use renderer::Renderer;
-use entity::traits::{Base, Drawable, State};
 
 
-// Top Level Entity Structure -------------------------------------------------
-pub struct Entity<S: entity::State> {
+// Entity Wrapper Structure ---------------------------------------------------
+pub struct Entity<S: State> {
 
-    entity: Box<Base<S>>,
-    drawable: Box<Drawable<S>>,
+    entity: Box<traits::Base<S>>,
+    drawable: Box<traits::Drawable<S>>,
     owner: Option<ConnectionID>,
     is_alive: bool,
     is_visible: bool,
@@ -28,7 +27,7 @@ pub struct Entity<S: entity::State> {
     state_buffer: VecDeque<(u8, S)>,
 
     // Inputs
-    input_buffer: VecDeque<entity::Input>,
+    input_buffer: VecDeque<Input>,
     confirmed_input_tick: u8,
     initial_input: bool,
     serialized_inputs: Option<Vec<u8>>,
@@ -39,9 +38,9 @@ pub struct Entity<S: entity::State> {
 
 }
 
-impl<S> Entity<S> where S: entity::State {
+impl<S: State> Entity<S> {
 
-    pub fn new(entity: Box<Base<S>>, drawable: Box<Drawable<S>>) -> Entity<S> {
+    pub fn new(entity: Box<traits::Base<S>>, drawable: Box<traits::Drawable<S>>) -> Entity<S> {
         Entity {
 
             // Entity Behavior
@@ -152,12 +151,12 @@ impl<S> Entity<S> where S: entity::State {
 
     pub fn show(&mut self, tick: u8) {
         self.is_visible = true;
-        self.event(entity::Event::Show(tick));
+        self.event(Event::Show(tick));
     }
 
     pub fn hide(&mut self, tick: u8) {
         self.is_visible = false;
-        self.event(entity::Event::Hide(tick));
+        self.event(Event::Hide(tick));
     }
 
 
@@ -237,7 +236,7 @@ impl<S> Entity<S> where S: entity::State {
         self.state.set_to(&new_state);
 
         if old_flags != new_state.flags() {
-            self.event(entity::Event::Flags(new_state.flags()));
+            self.event(Event::Flags(new_state.flags()));
         }
 
     }
@@ -248,7 +247,7 @@ impl<S> Entity<S> where S: entity::State {
         self.confirmed_input_tick
     }
 
-    pub fn local_input(&mut self, input: entity::Input) {
+    pub fn local_input(&mut self, input: Input) {
 
         self.input(input);
 
@@ -270,7 +269,7 @@ impl<S> Entity<S> where S: entity::State {
         }
     }
 
-    pub fn remote_input(&mut self, input: entity::Input) {
+    pub fn remote_input(&mut self, input: Input) {
 
         if self.initial_input ||  tick_is_more_recent(
             input.tick,
@@ -283,7 +282,7 @@ impl<S> Entity<S> where S: entity::State {
 
     }
 
-    fn input(&mut self, input: entity::Input) {
+    fn input(&mut self, input: Input) {
 
         self.input_buffer.push_back(input);
 
@@ -297,12 +296,12 @@ impl<S> Entity<S> where S: entity::State {
 
     // Ticking ----------------------------------------------------------------
     pub fn client_tick(&mut self, level: &Level<S>, tick: u8, dt: f32) {
-        self.event(entity::Event::Tick(tick, dt)); // TODO useful?
+        self.event(Event::Tick(tick, dt)); // TODO useful?
         self.tick(level, tick, dt, false);
     }
 
     pub fn server_tick(&mut self, level: &Level<S>, tick: u8, dt: f32) {
-        self.event(entity::Event::Tick(tick, dt)); // TODO useful?
+        self.event(Event::Tick(tick, dt)); // TODO useful?
         self.tick(level, tick, dt, true);
     }
 
@@ -408,7 +407,7 @@ impl<S> Entity<S> where S: entity::State {
 
 
     // Events -----------------------------------------------------------------
-    pub fn event(&mut self, event: entity::Event) {
+    pub fn event(&mut self, event: Event) {
         self.entity.event(&event, &self.state);
         self.drawable.event(&event, &self.state);
     }

@@ -4,45 +4,54 @@ use cobalt::{MessageKind, ConnectionID};
 
 
 // Internal Dependencies ------------------------------------------------------
-use entity;
-use event;
-use level;
 use network;
+use entity::{
+    Entity,
+    State,
+    Manager as EntityManager,
+    Registry as EntityRegistry,
+    ControlState as EntityControlState
+};
+use level::Level;
+use event::{Event, Handler as EventHandler};
 use renderer::Renderer;
 
 
 // Client Abstraction ---------------------------------------------------------
-pub struct Client<E, S> where E: event::Event, S: entity::State {
+pub struct Client<E: Event, S: State> {
     network: network::Stream,
-    manager: entity::Manager<S>,
-    events: event::Handler<E>,
+    manager: EntityManager<S>,
+    events: EventHandler<E>,
     remote_states: Vec<(u8, S)>,
-    level: level::Level<S>
+    level: Level<S>
 }
 
-impl<E, S> Client<E, S> where E: event::Event, S: entity::State {
+impl<E: Event, S: State> Client<E, S> {
 
     // Statics ----------------------------------------------------------------
     pub fn new(
         server_addr: SocketAddr,
         tick_rate: u8,
-        level: level::Level<S>,
-        registry: Box<entity::Registry<S>>
+        level: Level<S>,
+        registry: Box<EntityRegistry<S>>
 
     ) -> Client<E, S> {
+
         let mut network = network::Stream::new(server_addr);
         network.set_tick_rate(tick_rate as u32);
+
         Client {
             network: network,
-            manager: entity::Manager::new(
+            manager: EntityManager::new(
                 tick_rate, 1000, 75,
                 false,
                 registry
             ),
-            events: event::Handler::new(),
+            events: EventHandler::new(),
             remote_states: Vec::new(),
             level: level
         }
+
     }
 
 
@@ -50,7 +59,9 @@ impl<E, S> Client<E, S> where E: event::Event, S: entity::State {
     pub fn init(&mut self, handler: &mut Handler<E, S>, renderer: &mut Renderer) {
         self.network.set_tick_rate(self.manager.config().tick_rate as u32);
         renderer.set_tick_rate(self.manager.config().tick_rate as u32);
-        self.manager.init(renderer);
+        renderer.set_interpolation_ticks(
+            self.manager.config().interpolation_ticks as usize
+        );
         handler.init(self.handle(renderer));
     }
 
@@ -87,10 +98,11 @@ impl<E, S> Client<E, S> where E: event::Event, S: entity::State {
                 network::StreamEvent::Message(_, data) =>  {
                     match network::Message::from_u8(data[0]) {
                         network::Message::ServerConfig => {
-                            let level_data = self.manager.receive_config(renderer, &data[1..]);
+                            let level_data = self.manager.receive_config(&data[1..]);
                             self.level = handler.level(self.handle(renderer), level_data);
                             self.network.set_tick_rate(self.manager.config().tick_rate as u32);
                             renderer.set_tick_rate(self.manager.config().tick_rate as u32);
+                            renderer.set_interpolation_ticks(self.manager.config().interpolation_ticks as usize);
                             handler.config(self.handle(renderer));
                         },
                         network::Message::ServerState => {
@@ -173,12 +185,12 @@ impl<E, S> Client<E, S> where E: event::Event, S: entity::State {
 
                     // TODO this will no longer be needed once we have a local
                     // network proxy
-                    entity::ControlState::Remote => {
+                    EntityControlState::Remote => {
                         local_inputs = entity.serialized_inputs();
                     },
 
                     // TODO solve this via a local network proxy which has a delay
-                    entity::ControlState::Local => {
+                    EntityControlState::Local => {
 
                         // Emulate remote server state stuff with a 20 frames delay
                         remote_states.push((tick, entity.state().clone()));
@@ -220,37 +232,38 @@ impl<E, S> Client<E, S> where E: event::Event, S: entity::State {
 // Client Handle for Access from Handler ------------------------------------
 pub struct Handle<
     'a, 'b,
-    E: event::Event + 'a,
-    S: entity::State + 'a
+    E: Event + 'a,
+    S: State + 'a
 > {
     pub renderer: &'b mut Renderer,
-    pub level: &'a mut level::Level<S>,
-    pub events: &'a mut event::Handler<E>,
-    pub entities: &'a mut entity::Manager<S>,
+    pub level: &'a mut Level<S>,
+    pub events: &'a mut EventHandler<E>,
+    pub entities: &'a mut EntityManager<S>,
     pub network: &'a network::Stream
 }
 
 
 // Client Handler -------------------------------------------------------------
-pub trait Handler<E: event::Event, S: entity::State> {
+pub trait Handler<E: Event, S: State> {
 
     fn init(&mut self, Handle<E, S>);
     fn connect(&mut self, Handle<E, S>);
     fn disconnect(&mut self, Handle<E, S>);
 
-    fn level(&mut self, Handle<E, S>, &[u8]) -> level::Level<S>;
+    fn level(&mut self, Handle<E, S>, &[u8]) -> Level<S>;
     fn config(&mut self, Handle<E, S>);
 
     fn event(&mut self, Handle<E, S>, ConnectionID, E);
     fn tick_before(&mut self, Handle<E, S>, u8, f32);
 
     fn tick_entity_before(
-        &mut self, &mut Renderer, &level::Level<S>, &mut entity::Entity<S>, u8, f32
+        &mut self, &mut Renderer, &Level<S>, &mut Entity<S>, u8, f32
     );
 
     fn tick_entity_after(
-        &mut self, &mut Renderer, &level::Level<S>, &mut entity::Entity<S>, u8, f32
-    ) -> entity::ControlState;
+        &mut self, &mut Renderer, &Level<S>, &mut Entity<S>, u8, f32
+
+    ) -> EntityControlState;
 
     fn tick_after(&mut self, Handle<E, S>, u8, f32);
 

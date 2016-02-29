@@ -14,13 +14,13 @@ pub trait Event: Encodable + Decodable + Default {}
 
 
 // Event Handler --------------------------------------------------------------
-pub struct Handler<T> where T: Event {
+pub struct Handler<T: Event> {
     incoming: Option<Vec<(ConnectionID, T)>>,
     outgoing: Vec<(Option<ConnectionID>, T)>,
     event_size: usize
 }
 
-impl<T> Handler<T> where T: Event {
+impl<T: Event> Handler<T> {
 
     pub fn new() -> Handler<T> {
         Handler {
