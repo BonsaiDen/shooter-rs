@@ -3,12 +3,12 @@ use std::any::Any;
 
 
 // Internal Dependencies ------------------------------------------------------
-use entity;
+use entity::State;
 use renderer::Renderer;
 
 
 // Bassic Level Traits --------------------------------------------------------
-pub trait Base<S: entity::State> {
+pub trait Base<S: State> {
 
     fn as_any(&mut self) -> &mut Any;
 
@@ -24,7 +24,7 @@ pub trait Base<S: entity::State> {
 
 }
 
-pub trait Drawable<S: entity::State> {
+pub trait Drawable<S: State> {
     fn draw(&mut self, _: &mut Renderer, _: &Base<S>) {}
 }
 

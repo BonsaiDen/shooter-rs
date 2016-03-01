@@ -1,9 +1,9 @@
 // Internal Dependencies ------------------------------------------------------
-use entity;
+use entity::{Entity, State};
 
 
 // Entity Registry Trait ------------------------------------------------------
-pub trait EntityRegistry<S: entity::State> {
-    fn entity_from_type_id(&self, type_id: u8) -> entity::Entity<S>;
+pub trait EntityRegistry<S: State> {
+    fn entity_from_type_id(&self, type_id: u8) -> Entity<S>;
 }
 
