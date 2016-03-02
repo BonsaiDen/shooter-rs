@@ -56,7 +56,11 @@ impl<E: Event, S: State> Client<E, S> {
 
 
     // Public -----------------------------------------------------------------
-    pub fn init(&mut self, handler: &mut Handler<E, S>, renderer: &mut Renderer) {
+    pub fn init<R: Renderer>(
+        &mut self,
+        handler: &mut Handler<E, S, R>,
+        renderer: &mut R
+    ) {
         self.network.set_tick_rate(self.manager.config().tick_rate as u32);
         renderer.set_tick_rate(self.manager.config().tick_rate as u32);
         renderer.set_interpolation_ticks(
@@ -65,17 +69,21 @@ impl<E: Event, S: State> Client<E, S> {
         handler.init(self.handle(renderer));
     }
 
-    pub fn destroy(&mut self, handler: &mut Handler<E, S>, renderer: &mut Renderer) {
+    pub fn destroy<R: Renderer>(
+        &mut self,
+        handler: &mut Handler<E, S, R>,
+        renderer: &mut R
+    ) {
         self.network.destroy();
         handler.destroy(self.handle(renderer));
     }
 
 
     // Tick Handling ----------------------------------------------------------
-    pub fn tick(
+    pub fn tick<R: Renderer>(
         &mut self,
-        handler: &mut Handler<E, S>,
-        renderer: &mut Renderer
+        handler: &mut Handler<E, S, R>,
+        renderer: &mut R
 
     ) -> bool {
 
@@ -148,15 +156,15 @@ impl<E: Event, S: State> Client<E, S> {
 
     }
 
-    pub fn draw(
-        &mut self, handler: &mut Handler<E, S>, renderer: &mut Renderer
+    pub fn draw<R: Renderer>(
+        &mut self, handler: &mut Handler<E, S, R>, renderer: &mut R
     ) {
         handler.draw(self.handle(renderer));
     }
 
 
     // Internal ---------------------------------------------------------------
-    fn handle<'a>(&'a mut self, renderer: &'a mut Renderer) -> Handle<E, S> {
+    fn handle<'a, R: Renderer>(&'a mut self, renderer: &'a mut R) -> Handle<E, S, R> {
         Handle {
             renderer: renderer,
             level: &mut self.level,
@@ -166,11 +174,11 @@ impl<E: Event, S: State> Client<E, S> {
         }
     }
 
-    fn tick_entities(
+    fn tick_entities<R: Renderer>(
         &mut self,
         dt: f32,
-        handler: &mut Handler<E, S>,
-        renderer: &mut Renderer
+        handler: &mut Handler<E, S, R>,
+        renderer: &mut R
     ) {
 
         let mut local_inputs: Option<Vec<u8>> = None;
@@ -231,11 +239,12 @@ impl<E: Event, S: State> Client<E, S> {
 
 // Client Handle for Access from Handler ------------------------------------
 pub struct Handle<
-    'a, 'b,
+    'a,
     E: Event + 'a,
-    S: State + 'a
+    S: State + 'a,
+    R: Renderer + 'a
 > {
-    pub renderer: &'b mut Renderer,
+    pub renderer: &'a mut R,
     pub level: &'a mut Level<S>,
     pub events: &'a mut EventHandler<E>,
     pub entities: &'a mut EntityManager<S>,
@@ -244,32 +253,32 @@ pub struct Handle<
 
 
 // Client Handler -------------------------------------------------------------
-pub trait Handler<E: Event, S: State> {
+pub trait Handler<E: Event, S: State, R: Renderer> {
 
-    fn init(&mut self, Handle<E, S>);
-    fn connect(&mut self, Handle<E, S>);
-    fn disconnect(&mut self, Handle<E, S>);
+    fn init(&mut self, Handle<E, S, R>);
+    fn connect(&mut self, Handle<E, S, R>);
+    fn disconnect(&mut self, Handle<E, S, R>);
 
-    fn level(&mut self, Handle<E, S>, &[u8]) -> Level<S>;
-    fn config(&mut self, Handle<E, S>);
+    fn level(&mut self, Handle<E, S, R>, &[u8]) -> Level<S>;
+    fn config(&mut self, Handle<E, S, R>);
 
-    fn event(&mut self, Handle<E, S>, ConnectionID, E);
-    fn tick_before(&mut self, Handle<E, S>, u8, f32);
+    fn event(&mut self, Handle<E, S, R>, ConnectionID, E);
+    fn tick_before(&mut self, Handle<E, S, R>, u8, f32);
 
     fn tick_entity_before(
-        &mut self, &mut Renderer, &Level<S>, &mut Entity<S>, u8, f32
+        &mut self, &mut R, &Level<S>, &mut Entity<S>, u8, f32
     );
 
     fn tick_entity_after(
-        &mut self, &mut Renderer, &Level<S>, &mut Entity<S>, u8, f32
+        &mut self, &mut R, &Level<S>, &mut Entity<S>, u8, f32
 
     ) -> EntityControlState;
 
-    fn tick_after(&mut self, Handle<E, S>, u8, f32);
+    fn tick_after(&mut self, Handle<E, S, R>, u8, f32);
 
-    fn draw(&mut self, Handle<E, S>);
+    fn draw(&mut self, Handle<E, S, R>);
 
-    fn destroy(&mut self, Handle<E, S>);
+    fn destroy(&mut self, Handle<E, S, R>);
 
 }
 

@@ -40,7 +40,11 @@ pub struct Entity<S: State> {
 
 impl<S: State> Entity<S> {
 
-    pub fn new(entity: Box<traits::Base<S>>, drawable: Box<traits::Drawable<S>>) -> Entity<S> {
+    pub fn new(
+        entity: Box<traits::Base<S>>,
+        drawable: Box<traits::Drawable<S>>
+
+    ) -> Entity<S> {
         Entity {
 
             // Entity Behavior
@@ -351,7 +355,7 @@ impl<S: State> Entity<S> {
 
 
     // Drawing ----------------------------------------------------------------
-    pub fn draw(&mut self, renderer: &mut Renderer, level: &Level<S>) {
+    pub fn draw<R: Renderer>(&mut self, renderer: &mut R, level: &Level<S>) {
 
         let state = if self.local() {
             level.interpolate_entity_state(renderer, &self.state, &self.last_state)

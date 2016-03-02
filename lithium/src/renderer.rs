@@ -3,7 +3,7 @@ use std::any::Any;
 
 
 // Internal -------------------------------------------------------------------
-use entity;
+use entity::State;
 use event::Event;
 use client::{Client, Handler};
 
@@ -13,9 +13,9 @@ pub trait Renderer {
 
     // Statics ----------------------------------------------------------------
     fn run<
-        H: Handler<E, S>,
+        H: Handler<E, S, Self>,
         E: Event,
-        S: entity::State
+        S: State
 
     >(client: Client<E, S>, Handler: H) where Self: Sized;
 

@@ -21,7 +21,7 @@ impl lithium::Renderer for Renderer {
 
     // Statics ----------------------------------------------------------------
     fn run<
-        H: lithium::client::Handler<E, S>,
+        H: lithium::client::Handler<E, S, Self>,
         E: lithium::event::Event,
         S: lithium::entity::State
 

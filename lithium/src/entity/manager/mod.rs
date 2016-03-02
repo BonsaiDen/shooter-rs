@@ -124,7 +124,6 @@ impl<S: State> EntityManager<S> {
         level: &Level<S>,
         handler: &mut Box<server::Handler<E, S>>,
         dt: f32
-
     ) {
 
         for (_, entity) in self.entities.iter_mut() {
@@ -145,22 +144,27 @@ impl<S: State> EntityManager<S> {
 
     pub fn tick_client<
         E: Event,
-        I: FnMut(ControlState, &mut Entity<S>, u8)
+        I: FnMut(ControlState, &mut Entity<S>, u8),
+        R: Renderer
     >(
         &mut self,
-        renderer: &mut Renderer,
-        handler: &mut client::Handler<E, S>,
+        renderer: &mut R,
+        handler: &mut client::Handler<E, S, R>,
         level: &Level<S>, dt: f32,
         mut input_handler: I
     ) {
+
         for (_, entity) in self.entities.iter_mut() {
+
             handler.tick_entity_before(renderer, level, entity, self.tick, dt);
             entity.event(EntityEvent::Tick(self.tick, dt)); // TODO useful?
             entity.tick(level, self.tick, dt, self.server_mode);
+
             match handler.tick_entity_after(renderer, level, entity, self.tick, dt) {
                 ControlState::None => {},
                 state => input_handler(state, entity, self.tick)
             }
+
         }
 
         if self.tick == 255 {
@@ -172,8 +176,7 @@ impl<S: State> EntityManager<S> {
 
     }
 
-    pub fn draw(&mut self, renderer: &mut Renderer, level: &Level<S>) {
-        // TODO move out of here?
+    pub fn draw<R: Renderer>(&mut self, renderer: &mut R, level: &Level<S>) {
         for (_, entity) in self.entities.iter_mut() {
             if entity.is_visible() {
                 entity.draw(renderer, level);
