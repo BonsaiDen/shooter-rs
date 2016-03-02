@@ -1,6 +1,6 @@
 # TODOs
 
-- Split up Level into Logic and Drawable Part
+- Completely remove downcasts for BaseLevel and Renderer
 - Clean up client side network stream
 
 # General

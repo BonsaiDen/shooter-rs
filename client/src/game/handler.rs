@@ -11,18 +11,21 @@ use lithium::entity::State as LithiumState;
 // Internal Dependencies ------------------------------------------------------
 use game::{Game, GameState};
 use level::Level as DrawableLevel;
+use renderer::AllegroRenderer;
 use shared::color::{Color, ColorName};
 use shared::event::Event;
 use shared::level::Level;
 use shared::state::State;
 
-use renderer::AllegroRenderer;
+
+// Type Aliases ---------------------------------------------------------------
+type ClientHandle<'a> = Handle<'a, Event, State, AllegroRenderer>;
 
 
 // Handler Implementation -----------------------------------------------------
 impl Handler<Event, State, AllegroRenderer> for Game {
 
-    fn init(&mut self, client: Handle<Event, State, AllegroRenderer>) {
+    fn init(&mut self, client: ClientHandle) {
 
         let level = Level::downcast_mut(client.level);
         client.renderer.set_fps(60);
@@ -47,30 +50,30 @@ impl Handler<Event, State, AllegroRenderer> for Game {
 
     }
 
-    fn level(&mut self, _: Handle<Event, State, AllegroRenderer>, level_data: &[u8]) -> LithiumLevel<State> {
+    fn level(&mut self, _: ClientHandle, level_data: &[u8]) -> LithiumLevel<State> {
         DrawableLevel::from_serialized(level_data)
     }
 
-    fn config(&mut self, client: Handle<Event, State, AllegroRenderer>) {
+    fn config(&mut self, client: ClientHandle) {
         self.state = GameState::Connected;
         self.init(client);
     }
 
-    fn connect(&mut self, server: Handle<Event, State, AllegroRenderer>) {
+    fn connect(&mut self, server: ClientHandle) {
         self.state = GameState::Pending;
         server.events.send(None, Event::JoinGame);
     }
 
-    fn disconnect(&mut self, client: Handle<Event, State, AllegroRenderer>) {
+    fn disconnect(&mut self, client: ClientHandle) {
         self.state = GameState::Disconnected;
         self.init(client);
     }
 
-    fn event(&mut self, _: Handle<Event, State, AllegroRenderer>, owner: ConnectionID, event: Event) {
+    fn event(&mut self, _: ClientHandle, owner: ConnectionID, event: Event) {
         println!("Event: {:?} {:?}", owner, event);
     }
 
-    fn tick_before(&mut self, client: Handle<Event, State, AllegroRenderer>, tick: u8, _: f32) {
+    fn tick_before(&mut self, client: ClientHandle, tick: u8, _: f32) {
 
         client.renderer.reseed_rng([
             ((tick as u32 + 7) * 941) as u32,
@@ -138,10 +141,10 @@ impl Handler<Event, State, AllegroRenderer> for Game {
 
     }
 
-    fn tick_after(&mut self, _: Handle<Event, State, AllegroRenderer>, _: u8, _: f32) {
+    fn tick_after(&mut self, _: ClientHandle, _: u8, _: f32) {
     }
 
-    fn draw(&mut self, client: Handle<Event, State, AllegroRenderer>) {
+    fn draw(&mut self, client: ClientHandle) {
 
         client.renderer.clear(&Color::from_name(ColorName::Black));
 
@@ -170,7 +173,7 @@ impl Handler<Event, State, AllegroRenderer> for Game {
 
     }
 
-    fn destroy(&mut self, _: Handle<Event, State, AllegroRenderer>) {
+    fn destroy(&mut self, _: ClientHandle) {
 
     }
 

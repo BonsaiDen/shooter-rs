@@ -4,8 +4,8 @@ use rustc_serialize::{Encodable, Decodable};
 
 
 // Internal Dependencies ------------------------------------------------------
-use entity;
 use level::Level;
+use entity::{Event, Input};
 use renderer::Renderer;
 
 
@@ -15,8 +15,7 @@ pub trait Base<S: State> {
     fn type_id(&self) -> u8;
 
     fn apply_input(
-        &mut self,
-        level: &Level<S>, state: &mut S, input: &entity::Input, dt: f32
+        &mut self, level: &Level<S>, state: &mut S, input: &Input, dt: f32
     );
 
     fn visible_to(&self, _: &ConnectionID) -> bool {
@@ -25,7 +24,7 @@ pub trait Base<S: State> {
 
     fn serialize_state(&self, _: &mut S, _: &ConnectionID) {}
 
-    fn event(&mut self, _: &entity::Event, _: &S) {}
+    fn event(&mut self, _: &Event, _: &S) {}
 
 }
 
@@ -33,7 +32,7 @@ pub trait Drawable<S: State> {
 
     fn draw(&mut self, _: &mut Renderer, _: &Level<S>, _: S) {}
 
-    fn event(&mut self, _: &entity::Event, _: &S) {}
+    fn event(&mut self, _: &Event, _: &S) {}
 
 }
 

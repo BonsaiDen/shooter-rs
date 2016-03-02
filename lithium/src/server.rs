@@ -25,6 +25,10 @@ use level::Level;
 use event::{Event, Handler as EventHandler};
 
 
+// Type Aliases ---------------------------------------------------------------
+pub type ConnectionMap = HashMap<ConnectionID, Connection>; // TODO move to cobalt?
+
+
 // Server Abstraction ---------------------------------------------------------
 pub struct Server<E: Event, S: State> {
     handler: Box<Handler<E, S>>,
@@ -100,8 +104,7 @@ impl<E: Event, S: State> CobaltHandler<CobaltServer> for Server<E, S> {
     }
 
     fn tick_connections(
-        &mut self, _: &mut CobaltServer,
-        connections: &mut HashMap<ConnectionID, Connection>
+        &mut self, _: &mut CobaltServer, connections: &mut ConnectionMap
     ) {
 
         let tick_dt = 1.0 / self.manager.config().tick_rate as f32;
@@ -222,11 +225,7 @@ impl<E: Event, S: State> CobaltHandler<CobaltServer> for Server<E, S> {
 
 
 // Server Handle for Access from Handler ------------------------------------
-pub struct Handle<
-    'a,
-    E: Event + 'a,
-    S: State + 'a
-> {
+pub struct Handle<'a, E: Event + 'a, S: State + 'a> {
     pub level: &'a mut Level<S>,
     pub entities: &'a mut EntityManager<S>,
     pub events: &'a mut EventHandler<E>
@@ -243,22 +242,12 @@ pub trait Handler<E: Event, S: State> {
     // TODO pass in connections mapping for all event / tick handles
     fn event(&mut self, Handle<E, S>, ConnectionID, E);
 
-    fn tick_before(
-        &mut self,
-        Handle<E, S>,
-        &mut HashMap<ConnectionID, Connection>,
-        u8, f32
-    );
+    fn tick_before(&mut self, Handle<E, S>, &mut ConnectionMap, u8, f32);
 
     fn tick_entity_before(&mut self, &Level<S>, &mut Entity<S>, u8, f32);
     fn tick_entity_after(&mut self, &Level<S>, &mut Entity<S>, u8, f32);
 
-    fn tick_after(
-        &mut self,
-        Handle<E, S>,
-        &mut HashMap<ConnectionID, Connection>,
-        u8, f32
-    );
+    fn tick_after(&mut self, Handle<E, S>, &mut ConnectionMap, u8, f32);
 
     fn shutdown(&mut self, Handle<E, S>);
 

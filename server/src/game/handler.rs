@@ -1,8 +1,7 @@
 // External Dependencies ------------------------------------------------------
-use std::collections::HashMap;
 use lithium::entity;
 use lithium::level;
-use lithium::server::{Handler, Handle};
+use lithium::server::{Handler, Handle, ConnectionMap};
 use cobalt::{Connection, ConnectionID};
 
 
@@ -14,26 +13,22 @@ use shared::level::Level;
 use shared::state::State;
 
 
-// Handler Implementation -----------------------------------------------------
-impl Handler<Event,  State> for Game {
+// Type Aliases ---------------------------------------------------------------
+type ServerHandle<'a> = Handle<'a, Event, State>;
 
-    fn bind(&mut self, _: Handle<Event,  State>) {
+
+// Handler Implementation -----------------------------------------------------
+impl Handler<Event, State> for Game {
+
+    fn bind(&mut self, _: ServerHandle) {
         println!("[Server] Started");
     }
 
-    fn connect(
-        &mut self,
-        _: Handle<Event, State>,
-        conn: &mut Connection
-    ) {
+    fn connect(&mut self, _: ServerHandle, conn: &mut Connection) {
         println!("[Client {}] Connected", conn.peer_addr());
     }
 
-    fn disconnect(
-        &mut self,
-        server: Handle<Event,  State>,
-        conn: &mut Connection
-    ) {
+    fn disconnect(&mut self, server: ServerHandle, conn: &mut Connection) {
 
         println!("[Client {}] Disconnected", conn.peer_addr());
 
@@ -48,10 +43,7 @@ impl Handler<Event,  State> for Game {
     }
 
     fn event(
-        &mut self,
-        server: Handle<Event,  State>,
-        owner: ConnectionID,
-        event: Event
+        &mut self, server: ServerHandle, owner: ConnectionID, event: Event
     ) {
 
         println!("[Client {:?}] Event: {:?}", owner, event);
@@ -95,10 +87,7 @@ impl Handler<Event,  State> for Game {
     }
 
     fn tick_before(
-        &mut self,
-        _: Handle<Event,  State>,
-        _: &mut HashMap<ConnectionID, Connection>,
-        _: u8, _: f32
+        &mut self, _: ServerHandle, _: &mut ConnectionMap, _: u8, _: f32
     ) {
 
         // TODO bullets are handled by pre-creating a local object and then
@@ -130,15 +119,12 @@ impl Handler<Event,  State> for Game {
     }
 
     fn tick_after(
-        &mut self,
-        _: Handle<Event, State>,
-        _: &mut HashMap<ConnectionID, Connection>,
-        _: u8, _: f32
+        &mut self, _: ServerHandle, _: &mut ConnectionMap, _: u8, _: f32
     ) {
 
     }
 
-    fn shutdown(&mut self, _: Handle<Event, State>) {
+    fn shutdown(&mut self, _: ServerHandle) {
         println!("[Server] Shutdown");
     }
 
