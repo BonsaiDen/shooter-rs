@@ -1,5 +1,5 @@
 // External Dependencies ------------------------------------------------------
-use lithium;
+use lithium::{level, renderer};
 use lithium::level::Base as LithiumLevelBase;
 
 
@@ -12,15 +12,8 @@ use shared::state::State;
 pub struct DrawableLevel;
 impl DrawableLevel {
 
-    //pub fn create(width: u32, height: u32, border: u32) -> lithium::level::Level<State, level::Level> {
-    //    lithium::level::Level::new(
-    //        level::Level::new(width, height, border),
-    //        Box::new(Level)
-    //    )
-    //}
-
-    pub fn from_serialized(data: &[u8]) -> lithium::level::Level<State, Level> {
-        lithium::level::Level::new(
+    pub fn from_serialized(data: &[u8]) -> level::Level<State, Level> {
+        level::Level::new(
             Level::from_serialized(data),
             Box::new(DrawableLevel)
         )
@@ -28,9 +21,9 @@ impl DrawableLevel {
 
 }
 
-impl lithium::level::Drawable<State> for DrawableLevel {
+impl level::Drawable<State> for DrawableLevel {
 
-    fn draw(&mut self, _: &mut lithium::renderer::Renderer, _: &lithium::level::Base<State>) {
+    fn draw(&mut self, _: &mut renderer::Renderer, _: &level::Base<State>) {
 
     }
 

@@ -126,6 +126,7 @@ impl Handler<Event, State, Level, AllegroRenderer> for Game {
 
     ) -> ControlState {
 
+        // TODO have a method on the entity?
         if entity.local() {
             // TODO clean up once we have a local network proxy
             match self.state {

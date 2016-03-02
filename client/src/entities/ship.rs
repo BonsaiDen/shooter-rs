@@ -10,7 +10,6 @@ use shared::entities;
 use shared::state::State;
 use shared::level::Level;
 use shared::color::{Color, ColorName};
-
 use renderer::AllegroRenderer;
 
 

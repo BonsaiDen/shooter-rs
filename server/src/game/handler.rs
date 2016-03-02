@@ -48,6 +48,7 @@ impl Handler<Event, State, Level, DefaultRenderer> for Game {
 
     fn event(
         &mut self, server: ServerHandle, owner: ConnectionID, event: Event
+        // TODO pass in connection map?
     ) {
 
         println!("[Client {:?}] Event: {:?}", owner, event);
