@@ -1,6 +1,8 @@
 // External Dependencies ------------------------------------------------------
-use lithium::entity;
-use lithium::level;
+use lithium::entity::Entity;
+use lithium::entity::traits::State as EntityState;
+use lithium::level::{Level as LithiumLevel};
+use lithium::renderer::DefaultRenderer;
 use lithium::server::{Handler, Handle, ConnectionMap};
 use cobalt::{Connection, ConnectionID};
 
@@ -14,11 +16,13 @@ use shared::state::State;
 
 
 // Type Aliases ---------------------------------------------------------------
-type ServerHandle<'a> = Handle<'a, Event, State>;
+type ServerHandle<'a> = Handle<'a, Event, State, Level, DefaultRenderer>;
+type ServerLevel = LithiumLevel<State, Level>;
+type ServerEntity = Entity<State, Level, DefaultRenderer>;
 
 
 // Handler Implementation -----------------------------------------------------
-impl Handler<Event, State> for Game {
+impl Handler<Event, State, Level, DefaultRenderer> for Game {
 
     fn bind(&mut self, _: ServerHandle) {
         println!("[Server] Started");
@@ -59,13 +63,12 @@ impl Handler<Event, State> for Game {
                     // Create a ship entity from one of the available colors
                     if let Some(color) = self.available_colors.pop() {
 
-                        let level = Level::downcast_mut(server.level);
-                        let (x, y) = level.center();
+                        let (x, y) = server.level.center();
                         let state = State {
                             x: x as f32,
                             y: y as f32,
                             flags: color.to_flags(),
-                            .. entity::State::default()
+                            .. State::default()
                         };
 
                         server.entities.create(
@@ -101,19 +104,13 @@ impl Handler<Event, State> for Game {
     }
 
     fn tick_entity_before(
-        &mut self,
-        _: &level::Level<State>,
-        _: &mut entity::Entity<State>,
-        _: u8, _: f32
+        &mut self, _: &ServerLevel, _: &mut ServerEntity, _: u8, _: f32
     ) {
 
     }
 
     fn tick_entity_after(
-        &mut self,
-        _: &level::Level<State>,
-        _: &mut entity::Entity<State>,
-        _: u8, _: f32
+        &mut self, _: &ServerLevel, _: &mut ServerEntity, _: u8, _: f32
     ) {
 
     }

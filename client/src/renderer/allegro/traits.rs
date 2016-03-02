@@ -1,5 +1,5 @@
 // External Dependencies ------------------------------------------------------
-use std::any::Any;
+use lithium;
 use allegro::{
     Core,
     Display,
@@ -8,7 +8,6 @@ use allegro::{
     EventQueue,
     OPENGL
 };
-use lithium;
 
 
 // Internal Dependencies ------------------------------------------------------
@@ -21,11 +20,12 @@ impl lithium::Renderer for Renderer {
 
     // Statics ----------------------------------------------------------------
     fn run<
-        H: lithium::client::Handler<E, S, Self>,
+        H: lithium::client::Handler<E, S, L, Self>,
         E: lithium::event::Event,
-        S: lithium::entity::State
+        S: lithium::entity::State,
+        L: lithium::level::Base<S>
 
-    >(mut client: lithium::Client<E, S>, mut handler: H) where Self: Sized {
+    >(mut client: lithium::Client<E, S, L, Self>, mut handler: H) where Self: Sized {
 
         // Init Allegro
         let mut core = Core::init().unwrap();
@@ -100,12 +100,6 @@ impl lithium::Renderer for Renderer {
 
         client.destroy(&mut handler, &mut renderer);
 
-    }
-
-
-    // Downcast ---------------------------------------------------------------
-    fn as_any(&mut self) -> &mut Any {
-        self
     }
 
 

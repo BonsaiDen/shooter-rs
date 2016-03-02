@@ -5,9 +5,10 @@ use lithium::{Client, Level as LithiumLevel};
 
 // Internal Dependencies ------------------------------------------------------
 use entities;
-use level::Level;
+use shared::level::Level;
 use shared::event::Event;
 use shared::state::State;
+use renderer::AllegroRenderer;
 mod handler;
 
 
@@ -24,7 +25,7 @@ impl Game {
         }
     }
 
-    pub fn client(server_addr: SocketAddr) -> Client<Event, State> {
+    pub fn client(server_addr: SocketAddr) -> Client<Event, State, Level, AllegroRenderer> {
         Client::new(
             server_addr,
             30,
@@ -33,7 +34,7 @@ impl Game {
         )
     }
 
-    pub fn default_level() -> LithiumLevel<State> {
+    pub fn default_level() -> LithiumLevel<State, Level> {
         Level::create(384, 384, 16)
     }
 

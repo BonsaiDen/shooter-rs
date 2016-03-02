@@ -1,6 +1,5 @@
 // External Dependencies ------------------------------------------------------
 use std::f32;
-use std::any::Any;
 use bincode::SizeLimit;
 use bincode::rustc_serialize::{encode, decode};
 use lithium;
@@ -13,10 +12,6 @@ use super::Level;
 
 // Level Trait Implementation -------------------------------------------------
 impl lithium::level::Base<state::State> for Level {
-
-    fn as_any(&mut self) -> &mut Any {
-        self
-    }
 
     fn limit_state(&self, state: &mut state::State) {
 

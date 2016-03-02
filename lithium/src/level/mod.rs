@@ -1,5 +1,5 @@
 // External Dependencies ------------------------------------------------------
-use std::any::Any;
+use std::ops::{Deref, DerefMut};
 
 
 // Internal Dependencies ------------------------------------------------------
@@ -12,14 +12,14 @@ pub use level::traits::Drawable as Drawable;
 
 
 // Level Wrapper Structure ----------------------------------------------------
-pub struct Level<S: State> {
-    level: Box<Base<S>>,
+pub struct Level<S: State, L: Base<S>> {
+    level: L,
     drawable: Box<Drawable<S>>,
 }
 
-impl<S: State> Level<S> {
+impl<S: State, L: Base<S>> Level<S, L> {
 
-    pub fn new(level: Box<Base<S>>, drawable: Box<Drawable<S>>) -> Level<S> {
+    pub fn new(level: L, drawable: Box<Drawable<S>>) -> Level<S, L> {
         Level {
             level: level,
             drawable: drawable
@@ -40,16 +40,27 @@ impl<S: State> Level<S> {
     }
 
     pub fn draw(&mut self, renderer: &mut Renderer) {
-        self.drawable.draw(renderer, &*self.level);
+        self.drawable.draw(renderer, &self.level);
     }
 
     pub fn serialize(&self) -> Vec<u8> {
         self.level.serialize()
     }
 
-    pub fn as_any(&mut self) -> &mut Any {
-        self.level.as_any()
-    }
+}
 
+
+// Dereference to access internal level logic ---------------------------------
+impl<S: State, L: Base<S>> Deref for Level<S, L> {
+    type Target = L;
+    fn deref(&self) -> &L {
+        &self.level
+    }
+}
+
+impl<S: State, L: Base<S>> DerefMut for Level<S, L> {
+    fn deref_mut(&mut self) -> &mut L {
+        &mut self.level
+    }
 }
 

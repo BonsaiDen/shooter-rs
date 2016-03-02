@@ -1,13 +1,14 @@
 // External Dependencies ------------------------------------------------------
 use std::{cmp, f32};
 use rand::Rng;
-use lithium::{entity, Renderer, Level};
-use lithium::entity::State as LithiumState;
+use lithium::Level as LithiumLevel;
+use lithium::entity::{Entity, Event, traits, State as LithiumState};
 
 
 // Internal Dependencies ------------------------------------------------------
 use shared::entities;
 use shared::state::State;
+use shared::level::Level;
 use shared::color::{Color, ColorName};
 
 use renderer::AllegroRenderer;
@@ -24,8 +25,8 @@ pub struct Ship {
 
 impl Ship {
 
-    pub fn create_entity(scale: f32) -> entity::Entity<State> {
-        entity::Entity::new(
+    pub fn create_entity(scale: f32) -> Entity<State, Level, AllegroRenderer> {
+        Entity::new(
             Box::new(entities::Ship::new(scale)),
             Box::new(Ship::new(scale))
         )
@@ -43,16 +44,21 @@ impl Ship {
 
 }
 
-impl entity::traits::Drawable<State> for Ship {
+impl traits::Drawable<State, Level, AllegroRenderer> for Ship {
 
-    fn event(&mut self, event: &entity::Event, _: &State) {
-        if let &entity::Event::Flags(flags) = event {
+    fn event(&mut self, event: &Event, _: &State) {
+        if let &Event::Flags(flags) = event {
             self.color_light = Color::from_flags(flags);
             self.color_mid = self.color_light.darken(0.5);
         }
     }
 
-    fn draw(&mut self, renderer: &mut Renderer, _: &Level<State>, state: State) {
+    fn draw(
+        &mut self,
+        renderer: &mut AllegroRenderer,
+        _: &LithiumLevel<State, Level>,
+        state: State
+    ) {
 
         let light = &self.color_light;
         let mid = &self.color_mid;
@@ -77,16 +83,15 @@ impl entity::traits::Drawable<State> for Ship {
         // Effects
         if state.flags & 0x02 == 0x02 {
 
-            let ar = AllegroRenderer::downcast_mut(renderer);
-            if ar.rng().gen::<u8>() > 50 || self.particle_count > 1 {
+            if renderer.rng().gen::<u8>() > 50 || self.particle_count > 1 {
 
                 // Exhause more particles initially
                 for _ in 0..self.particle_count {
 
-                    let r = ar.rng().gen::<u8>() as f32;
-                    let v = ar.rng().gen::<u8>() as f32;
+                    let r = renderer.rng().gen::<u8>() as f32;
+                    let v = renderer.rng().gen::<u8>() as f32;
 
-                    if let Some(p) = ar.particle() {
+                    if let Some(p) = renderer.particle() {
 
                         // Exhaust angle
                         let w = 0.95;
@@ -141,7 +146,7 @@ impl entity::traits::Drawable<State> for Ship {
 
 // Helpers --------------------------------------------------------------------
 fn draw_triangle(
-    renderer: &mut Renderer,
+    renderer: &mut AllegroRenderer,
     state: &State, color: &Color,
     base_scale: f32, body_scale: f32, dr: f32, da: f32, db: f32
 ) {
@@ -154,7 +159,7 @@ fn draw_triangle(
     let by = oy + state.y + (state.r + beta).sin() * db * body_scale;
     let cx = ox + state.x + (state.r - beta).cos() * db * body_scale;
     let cy = oy + state.y + (state.r - beta).sin() * db * body_scale;
-    AllegroRenderer::downcast_mut(renderer).triangle(
+    renderer.triangle(
         color, ax, ay, bx, by, cx, cy, 0.5 * body_scale
     );
 }

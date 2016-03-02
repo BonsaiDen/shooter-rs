@@ -1,11 +1,14 @@
 // External Dependencies ------------------------------------------------------
 use std::f32;
 use lithium::entity::{Entity, Input, traits};
-use lithium::Level as BaseLevel;
+use lithium::Level as LithiumLevel;
+use lithium::renderer::DefaultRenderer;
 
 
 // Internal Dependencies ------------------------------------------------------
+use super::DefaultDrawable;
 use state::State;
+use level::Level;
 
 
 // Ship Logic Implementation --------------------------------------------------
@@ -17,10 +20,10 @@ pub struct Ship {
 
 impl Ship {
 
-    pub fn create_entity(scale: f32) -> Entity<State> {
+    pub fn create_entity(scale: f32) -> Entity<State, Level, DefaultRenderer> {
         Entity::new(
             Box::new(Ship::new(scale)),
-            Box::new(NoneDrawable)
+            Box::new(DefaultDrawable)
         )
     }
 
@@ -36,7 +39,7 @@ impl Ship {
 
 
 // Trait Implementations ------------------------------------------------------
-impl traits::Base<State> for Ship {
+impl traits::Base<State, Level> for Ship {
 
     fn type_id(&self) -> u8 {
         0
@@ -44,7 +47,7 @@ impl traits::Base<State> for Ship {
 
     fn apply_input(
         &mut self,
-        level: &BaseLevel<State>,
+        level: &LithiumLevel<State, Level>,
         state: &mut State, input: &Input,
         dt: f32
     ) {
@@ -92,9 +95,4 @@ impl traits::Base<State> for Ship {
     }
 
 }
-
-
-// Noop Drawable --------------------------------------------------------------
-pub struct NoneDrawable;
-impl traits::Drawable<State> for NoneDrawable {}
 

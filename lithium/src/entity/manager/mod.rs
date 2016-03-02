@@ -12,7 +12,7 @@ use client;
 use server;
 use entity::{Entity, State, Event as EntityEvent};
 use event::Event;
-use level::Level;
+use level::{Level, Base as BaseLevel};
 use idpool::IdPool;
 use renderer::Renderer;
 use self::registry::EntityRegistry;
@@ -25,13 +25,13 @@ use self::registry::EntityRegistry as Registry;
 
 
 // Entity Manager Implementation ----------------------------------------------
-pub struct EntityManager<S: State> {
+pub struct EntityManager<S: State, L: BaseLevel<S>, R: Renderer> {
 
     // Id pool for entities
     id_pool: IdPool<u16>,
 
     // Vector of entities
-    entities: HashMap<u16, Entity<S>>,
+    entities: HashMap<u16, Entity<S, L, R>>,
 
     // Configuration
     config: EntityManagerConfig,
@@ -43,20 +43,20 @@ pub struct EntityManager<S: State> {
     server_mode: bool,
 
     // Entity Registry
-    registry: Box<EntityRegistry<S>>
+    registry: Box<EntityRegistry<S, L, R>>
 
 }
 
-impl<S: State> EntityManager<S> {
+impl<S: State, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
 
     pub fn new(
         tick_rate: u8,
         buffer_ms: u32,
         interp_ms: u32,
         server_mode: bool,
-        registry: Box<EntityRegistry<S>>
+        registry: Box<EntityRegistry<S, L, R>>
 
-    ) -> EntityManager<S> {
+    ) -> EntityManager<S, L, R> {
         EntityManager {
             id_pool: IdPool::new(),
             entities: HashMap::new(),
@@ -93,7 +93,7 @@ impl<S: State> EntityManager<S> {
         state: Option<S>,
         owner: Option<&ConnectionID>
 
-    ) -> Option<&mut Entity<S>> {
+    ) -> Option<&mut Entity<S, L, R>> {
         if let Some(id) = self.id_pool.get_id() {
 
             let mut entity = self.registry.entity_from_type_id(type_id);
@@ -121,8 +121,8 @@ impl<S: State> EntityManager<S> {
 
     pub fn tick_server<E: Event>(
         &mut self,
-        level: &Level<S>,
-        handler: &mut Box<server::Handler<E, S>>,
+        level: &Level<S, L>,
+        handler: &mut Box<server::Handler<E, S, L, R>>, // TODO unbox?
         dt: f32
     ) {
 
@@ -144,13 +144,12 @@ impl<S: State> EntityManager<S> {
 
     pub fn tick_client<
         E: Event,
-        I: FnMut(ControlState, &mut Entity<S>, u8),
-        R: Renderer
+        I: FnMut(ControlState, &mut Entity<S, L, R>, u8)
     >(
         &mut self,
         renderer: &mut R,
-        handler: &mut client::Handler<E, S, R>,
-        level: &Level<S>, dt: f32,
+        handler: &mut client::Handler<E, S, L, R>,
+        level: &Level<S, L>, dt: f32,
         mut input_handler: I
     ) {
 
@@ -176,7 +175,7 @@ impl<S: State> EntityManager<S> {
 
     }
 
-    pub fn draw<R: Renderer>(&mut self, renderer: &mut R, level: &Level<S>) {
+    pub fn draw(&mut self, renderer: &mut R, level: &Level<S, L>) {
         for (_, entity) in self.entities.iter_mut() {
             if entity.is_visible() {
                 entity.draw(renderer, level);
@@ -184,7 +183,7 @@ impl<S: State> EntityManager<S> {
         }
     }
 
-    pub fn destroy(&mut self, entity_id: u16) -> Option<Entity<S>> {
+    pub fn destroy(&mut self, entity_id: u16) -> Option<Entity<S, L, R>> {
 
         if let Some(mut entity) = self.entities.remove(&entity_id) {
             // TODO can be an issue if re-used directly
@@ -202,7 +201,7 @@ impl<S: State> EntityManager<S> {
     pub fn get_entity_for_owner(
         &mut self, owner: &ConnectionID
 
-    ) -> Option<&mut Entity<S>> {
+    ) -> Option<&mut Entity<S, L, R>> {
         for (_, entity) in self.entities.iter_mut() {
             if entity.owned_by(owner) {
                 return Some(entity);
@@ -260,14 +259,14 @@ impl<S: State> EntityManager<S> {
 
         // Parse received state
         let mut i = 0;
-        while i + Entity::<S>::header_size() <= data.len() {
+        while i + Entity::<S, L, R>::header_size() <= data.len() {
 
             // Entity ID / Type
             let entity_id = (data[i] as u16) << 8 | (data[i + 1] as u16);
             let entity_type = data[i + 2];
             let entity_confirmed_tick = data[i + 3];
             let entity_is_visible = data[i + 4] == 1;
-            i += Entity::<S>::header_size();
+            i += Entity::<S, L, R>::header_size();
 
             // Read serialized entity state data for visible entities
             let entity_state = if entity_is_visible && S::encoded_size() <= data.len() {
@@ -350,7 +349,7 @@ impl<S: State> EntityManager<S> {
 
 
     // State Rewinding --------------------------------------------------------
-    pub fn rewind<'a>(&'a mut self, tick: u8) -> StateRewinder<'a, S> {
+    pub fn rewind<'a>(&'a mut self, tick: u8) -> StateRewinder<'a, S, L, R> {
 
         let tick_offset = cmp::max(0, self.tick - tick) as usize;
         for (_, entity) in self.entities.iter_mut() {
@@ -373,11 +372,11 @@ impl<S: State> EntityManager<S> {
 
 
 // Handle for rewinded entity state -------------------------------------------
-pub struct StateRewinder<'a, S: State + 'a> {
-    manager: &'a mut EntityManager<S>
+pub struct StateRewinder<'a, S: State + 'a, L: BaseLevel<S> + 'a, R: Renderer + 'a> {
+    manager: &'a mut EntityManager<S, L, R>
 }
 
-impl<'a, S: State> Drop for StateRewinder<'a, S> {
+impl<'a, S: State, L: BaseLevel<S>, R: Renderer> Drop for StateRewinder<'a, S, L, R> {
     fn drop(&mut self) {
         self.manager.forward();
     }

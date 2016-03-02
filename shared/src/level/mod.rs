@@ -1,9 +1,9 @@
 // External Dependencies ------------------------------------------------------
-use lithium;
+use lithium::level::{Drawable, Level as LithiumLevel};
 
 
 // Internal Dependencies ------------------------------------------------------
-use state;
+use state::State;
 mod traits;
 
 
@@ -25,14 +25,17 @@ impl Level {
         }
     }
 
-    pub fn create(width: u32, height: u32, border: u32) -> lithium::level::Level<state::State> {
-        lithium::level::Level::new(
-            Box::new(Level {
+    pub fn create(
+        width: u32, height: u32, border: u32
+
+    ) -> LithiumLevel<State, Level> {
+        LithiumLevel::new(
+            Level {
                 width: width,
                 height: height,
                 border: border
-            }),
-            Box::new(ZeroDrawable)
+            },
+            Box::new(NoneDrawable)
         )
     }
 
@@ -48,17 +51,10 @@ impl Level {
         (self.width / 2 + self.border, self.height / 2 + self.border)
     }
 
-    pub fn downcast_mut<'a>(level: &'a mut lithium::level::Level<state::State>) -> &'a mut Level {
-        match level.as_any().downcast_mut::<Level>() {
-            Some(r) => r,
-            None => unreachable!()
-        }
-    }
-
 }
 
 
 // Noop Drawable --------------------------------------------------------------
-struct ZeroDrawable;
-impl lithium::level::Drawable<state::State> for ZeroDrawable {}
+struct NoneDrawable;
+impl Drawable<State> for NoneDrawable {}
 

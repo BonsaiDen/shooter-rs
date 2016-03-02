@@ -21,7 +21,8 @@ use entity::{
     ManagerConfig as EntityManagerConfig,
     Registry as EntityRegistry
 };
-use level::Level;
+use renderer::Renderer;
+use level::{Level, Base as BaseLevel};
 use event::{Event, Handler as EventHandler};
 
 
@@ -30,17 +31,17 @@ pub type ConnectionMap = HashMap<ConnectionID, Connection>; // TODO move to coba
 
 
 // Server Abstraction ---------------------------------------------------------
-pub struct Server<E: Event, S: State> {
-    handler: Box<Handler<E, S>>,
-    manager: EntityManager<S>,
+pub struct Server<E: Event, S: State, L: BaseLevel<S>, R: Renderer> {
+    handler: Box<Handler<E, S, L, R>>, // TODO unbox?
+    manager: EntityManager<S, L, R>,
     events: EventHandler<E>,
-    level: Level<S>
+    level: Level<S, L>
 }
 
-impl<E: Event, S: State> Server<E, S> {
+impl<E: Event, S: State, L: BaseLevel<S>, R: Renderer> Server<E, S, L, R> {
 
     // Statics ----------------------------------------------------------------
-    pub fn run(addr: SocketAddr, mut server: Server<E, S>) where Self: Sized {
+    pub fn run(addr: SocketAddr, mut server: Server<E, S, L, R>) where Self: Sized {
 
         let mut cobalt_server = CobaltServer::new(Config {
             send_rate: server.config().tick_rate as u32,
@@ -52,11 +53,11 @@ impl<E: Event, S: State> Server<E, S> {
 
     pub fn new(
         tick_rate: u32, buffer_ms: u32, interp_ms: u32,
-        level: Level<S>,
-        registry: Box<EntityRegistry<S>>,
-        handler: Box<Handler<E, S>>
+        level: Level<S, L>,
+        registry: Box<EntityRegistry<S, L, R>>,
+        handler: Box<Handler<E, S, L, R>> // TODO unbox?
 
-    ) -> Server<E, S> {
+    ) -> Server<E, S, L, R> {
         Server {
             handler: handler,
             manager: EntityManager::new(
@@ -77,7 +78,10 @@ impl<E: Event, S: State> Server<E, S> {
 
 }
 
-impl<E: Event, S: State> CobaltHandler<CobaltServer> for Server<E, S> {
+impl<
+    E: Event, S: State, L: BaseLevel<S>, R: Renderer
+
+> CobaltHandler<CobaltServer> for Server<E, S, L, R> {
 
     fn bind(&mut self, _: &mut CobaltServer) {
         self.handler.bind(Handle {
@@ -225,31 +229,33 @@ impl<E: Event, S: State> CobaltHandler<CobaltServer> for Server<E, S> {
 
 
 // Server Handle for Access from Handler ------------------------------------
-pub struct Handle<'a, E: Event + 'a, S: State + 'a> {
-    pub level: &'a mut Level<S>,
-    pub entities: &'a mut EntityManager<S>,
+pub struct Handle<
+    'a, E: Event + 'a, S: State + 'a, L: BaseLevel<S> + 'a, R: Renderer + 'a
+> {
+    pub level: &'a mut Level<S, L>,
+    pub entities: &'a mut EntityManager<S, L, R>,
     pub events: &'a mut EventHandler<E>
 }
 
 
 // Server Handler -------------------------------------------------------------
-pub trait Handler<E: Event, S: State> {
+pub trait Handler<E: Event, S: State, L: BaseLevel<S>, R: Renderer> {
 
-    fn bind(&mut self, Handle<E, S>);
-    fn connect(&mut self, Handle<E, S>, &mut Connection);
-    fn disconnect(&mut self, Handle<E, S>, &mut Connection);
+    fn bind(&mut self, Handle<E, S, L, R>);
+    fn connect(&mut self, Handle<E, S, L, R>, &mut Connection);
+    fn disconnect(&mut self, Handle<E, S, L, R>, &mut Connection);
 
     // TODO pass in connections mapping for all event / tick handles
-    fn event(&mut self, Handle<E, S>, ConnectionID, E);
+    fn event(&mut self, Handle<E, S, L, R>, ConnectionID, E);
 
-    fn tick_before(&mut self, Handle<E, S>, &mut ConnectionMap, u8, f32);
+    fn tick_before(&mut self, Handle<E, S, L, R>, &mut ConnectionMap, u8, f32);
 
-    fn tick_entity_before(&mut self, &Level<S>, &mut Entity<S>, u8, f32);
-    fn tick_entity_after(&mut self, &Level<S>, &mut Entity<S>, u8, f32);
+    fn tick_entity_before(&mut self, &Level<S, L>, &mut Entity<S, L, R>, u8, f32);
+    fn tick_entity_after(&mut self, &Level<S, L>, &mut Entity<S, L, R>, u8, f32);
 
-    fn tick_after(&mut self, Handle<E, S>, &mut ConnectionMap, u8, f32);
+    fn tick_after(&mut self, Handle<E, S, L, R>, &mut ConnectionMap, u8, f32);
 
-    fn shutdown(&mut self, Handle<E, S>);
+    fn shutdown(&mut self, Handle<E, S, L, R>);
 
 }
 

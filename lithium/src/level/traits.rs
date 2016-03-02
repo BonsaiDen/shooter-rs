@@ -1,7 +1,3 @@
-// External Dependencies ------------------------------------------------------
-use std::any::Any;
-
-
 // Internal Dependencies ------------------------------------------------------
 use entity::State;
 use renderer::Renderer;
@@ -9,8 +5,6 @@ use renderer::Renderer;
 
 // Bassic Level Traits --------------------------------------------------------
 pub trait Base<S: State> {
-
-    fn as_any(&mut self) -> &mut Any;
 
     fn limit_state(&self, state: &mut S);
 

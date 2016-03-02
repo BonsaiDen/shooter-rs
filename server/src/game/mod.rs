@@ -1,5 +1,6 @@
 // External Dependencies ------------------------------------------------------
 use lithium::Server;
+use lithium::renderer::DefaultRenderer;
 use lithium::level::Level as LithiumLevel;
 
 
@@ -21,11 +22,11 @@ impl Game {
 
     pub fn new() -> Game {
         Game {
-            available_colors: Color::all_colored().into_iter().rev().collect(),
+            available_colors: Color::all_colored().into_iter().rev().collect()
         }
     }
 
-    pub fn server(tick_rate: u32) -> Server<Event, State> {
+    pub fn server(tick_rate: u32) -> Server<Event, State, Level, DefaultRenderer>{
         Server::new(
             tick_rate, 1000, 75,
             Game::default_level(),
@@ -34,7 +35,7 @@ impl Game {
         )
     }
 
-    pub fn default_level() -> LithiumLevel<State> {
+    pub fn default_level() -> LithiumLevel<State, Level> {
         Level::create(384, 384, 16)
     }
 

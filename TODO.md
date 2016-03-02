@@ -1,6 +1,7 @@
 # TODOs
 
-- Completely remove downcasts for BaseLevel and Renderer
+- Try to remove Boxing
+- Clean up lithium APIs and exports
 - Clean up client side network stream
 
 # General

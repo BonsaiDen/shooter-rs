@@ -1,6 +1,6 @@
 // External Dependencies ------------------------------------------------------
 use cobalt::ConnectionID;
-use lithium::entity;
+use lithium::entity::{Entity, Input, ControlState};
 use lithium::renderer::Renderer;
 use lithium::client::{Handle, Handler};
 use lithium::level::Level as LithiumLevel;
@@ -9,33 +9,34 @@ use lithium::entity::State as LithiumState;
 
 
 // Internal Dependencies ------------------------------------------------------
+use level::DrawableLevel;
 use game::{Game, GameState};
-use level::Level as DrawableLevel;
-use renderer::AllegroRenderer;
-use shared::color::{Color, ColorName};
 use shared::event::Event;
 use shared::level::Level;
 use shared::state::State;
+use shared::color::{Color, ColorName};
+use renderer::AllegroRenderer;
 
 
 // Type Aliases ---------------------------------------------------------------
-type ClientHandle<'a> = Handle<'a, Event, State, AllegroRenderer>;
+type ClientHandle<'a> = Handle<'a, Event, State, Level, AllegroRenderer>;
+type ClientEntity = Entity<State, Level, AllegroRenderer>;
+type ClientLevel = LithiumLevel<State, Level>;
 
 
 // Handler Implementation -----------------------------------------------------
-impl Handler<Event, State, AllegroRenderer> for Game {
+impl Handler<Event, State, Level, AllegroRenderer> for Game {
 
     fn init(&mut self, client: ClientHandle) {
 
-        let level = Level::downcast_mut(client.level);
         client.renderer.set_fps(60);
         client.renderer.set_title("Rustgame: Shooter");
-        client.renderer.resize(level.width() as i32, level.height() as i32);
+        client.renderer.resize(client.level.width() as i32, client.level.height() as i32);
 
         // Local Test Play
         if self.state == GameState::Disconnected {
 
-            let (x, y) = level.center();
+            let (x, y) = client.level.center();
             let flags = 0b0000_0001 | Color::from_name(ColorName::Red).to_flags();
             let state = State {
                 x: x as f32,
@@ -50,7 +51,7 @@ impl Handler<Event, State, AllegroRenderer> for Game {
 
     }
 
-    fn level(&mut self, _: ClientHandle, level_data: &[u8]) -> LithiumLevel<State> {
+    fn level(&mut self, _: ClientHandle, level_data: &[u8]) -> LithiumLevel<State, Level> {
         DrawableLevel::from_serialized(level_data)
     }
 
@@ -74,21 +75,19 @@ impl Handler<Event, State, AllegroRenderer> for Game {
     }
 
     fn tick_before(&mut self, client: ClientHandle, tick: u8, _: f32) {
-
         client.renderer.reseed_rng([
             ((tick as u32 + 7) * 941) as u32,
             ((tick as u32 + 659) * 461) as u32,
             ((tick as u32 + 13) * 227) as u32,
             ((tick as u32 + 97) * 37) as u32
         ]);
-
     }
 
     fn tick_entity_before(
         &mut self,
         renderer: &mut AllegroRenderer,
-        _: &LithiumLevel<State>,
-        entity: &mut entity::Entity<State>,
+        _: &ClientLevel,
+        entity: &mut ClientEntity,
         tick: u8, _: f32
     ) {
 
@@ -107,7 +106,7 @@ impl Handler<Event, State, AllegroRenderer> for Game {
                 buttons |= 0x04;
             }
 
-            let input = entity::Input {
+            let input = Input {
                 tick: tick,
                 fields: buttons
             };
@@ -121,22 +120,22 @@ impl Handler<Event, State, AllegroRenderer> for Game {
     fn tick_entity_after(
         &mut self,
         _: &mut AllegroRenderer,
-        _: &LithiumLevel<State>,
-        entity: &mut entity::Entity<State>,
+        _: &ClientLevel,
+        entity: &mut ClientEntity,
         _: u8, _: f32
 
-    ) -> entity::ControlState {
+    ) -> ControlState {
 
         if entity.local() {
             // TODO clean up once we have a local network proxy
             match self.state {
-                GameState::Disconnected => entity::ControlState::Local,
-                GameState::Connected => entity::ControlState::Remote,
-                _ => entity::ControlState::None
+                GameState::Disconnected => ControlState::Local,
+                GameState::Connected => ControlState::Remote,
+                _ => ControlState::None
             }
 
         } else {
-           entity::ControlState::None
+           ControlState::None
         }
 
     }
@@ -166,7 +165,9 @@ impl Handler<Event, State, AllegroRenderer> for Game {
             };
 
             client.renderer.text(
-                &Color::from_name(ColorName::White), 0.0, 0.0, &network_state[..]
+                &Color::from_name(ColorName::White),
+                0.0, 0.0,
+                &network_state[..]
             );
 
         }

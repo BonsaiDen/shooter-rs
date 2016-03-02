@@ -4,16 +4,16 @@ use std::collections::VecDeque;
 
 
 // Internal Dependencies ------------------------------------------------------
-use level::Level;
+use level::{Level, Base as BaseLevel};
 use entity::{Event, Input, State, traits};
 use renderer::Renderer;
 
 
 // Entity Wrapper Structure ---------------------------------------------------
-pub struct Entity<S: State> {
+pub struct Entity<S: State, L: BaseLevel<S>, R: Renderer> {
 
-    entity: Box<traits::Base<S>>,
-    drawable: Box<traits::Drawable<S>>,
+    entity: Box<traits::Base<S, L>>,
+    drawable: Box<traits::Drawable<S, L, R>>,
     owner: Option<ConnectionID>,
     is_alive: bool,
     is_visible: bool,
@@ -38,13 +38,13 @@ pub struct Entity<S: State> {
 
 }
 
-impl<S: State> Entity<S> {
+impl<S: State, L: BaseLevel<S>, R: Renderer> Entity<S, L, R> {
 
     pub fn new(
-        entity: Box<traits::Base<S>>,
-        drawable: Box<traits::Drawable<S>>
+        entity: Box<traits::Base<S, L>>,
+        drawable: Box<traits::Drawable<S, L, R>>
 
-    ) -> Entity<S> {
+    ) -> Entity<S, L, R> {
         Entity {
 
             // Entity Behavior
@@ -299,17 +299,17 @@ impl<S: State> Entity<S> {
 
 
     // Ticking ----------------------------------------------------------------
-    pub fn client_tick(&mut self, level: &Level<S>, tick: u8, dt: f32) {
+    pub fn client_tick(&mut self, level: &Level<S, L>, tick: u8, dt: f32) {
         self.event(Event::Tick(tick, dt)); // TODO useful?
         self.tick(level, tick, dt, false);
     }
 
-    pub fn server_tick(&mut self, level: &Level<S>, tick: u8, dt: f32) {
+    pub fn server_tick(&mut self, level: &Level<S, L>, tick: u8, dt: f32) {
         self.event(Event::Tick(tick, dt)); // TODO useful?
         self.tick(level, tick, dt, true);
     }
 
-    pub fn tick(&mut self, level: &Level<S>, tick: u8, dt: f32, server: bool) {
+    pub fn tick(&mut self, level: &Level<S, L>, tick: u8, dt: f32, server: bool) {
 
         // Check if we have a remote state
         if let Some((confirmed_tick, confirmed_state)) = self.confirmed_state.take() {
@@ -355,7 +355,7 @@ impl<S: State> Entity<S> {
 
 
     // Drawing ----------------------------------------------------------------
-    pub fn draw<R: Renderer>(&mut self, renderer: &mut R, level: &Level<S>) {
+    pub fn draw(&mut self, renderer: &mut R, level: &Level<S, L>) {
 
         let state = if self.local() {
             level.interpolate_entity_state(renderer, &self.state, &self.last_state)
@@ -423,4 +423,5 @@ impl<S: State> Entity<S> {
 pub fn tick_is_more_recent(a: u8, b: u8) -> bool {
     (a > b) && (a - b <= 128) || (b > a) && (b - a > 128)
 }
+
 

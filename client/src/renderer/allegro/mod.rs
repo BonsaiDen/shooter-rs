@@ -92,13 +92,6 @@ impl Renderer {
 
     }
 
-    pub fn downcast_mut<'a>(renderer: &'a mut LithiumRenderer) -> &'a mut Renderer {
-        match renderer.as_any().downcast_mut::<Renderer>() {
-            Some(r) => r,
-            None => unreachable!()
-        }
-    }
-
 
     // Window Handling --------------------------------------------------------
     pub fn set_title(&mut self, title: &str) {
