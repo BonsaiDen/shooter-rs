@@ -1,38 +1,38 @@
 // External Dependencies ------------------------------------------------------
-use lithium::entity::Entity;
-use lithium::entity::traits::State as EntityState;
-use lithium::level::{Level as LithiumLevel};
-use lithium::renderer::DefaultRenderer;
-use lithium::server::{Handler, Handle, ConnectionMap};
-use cobalt::{Connection, ConnectionID};
+use cobalt::{Connection, ConnectionID, ConnectionMap};
+use lithium::{
+    Entity,
+    EntityState,
+    Level,
+    DefaultRenderer,
+    ServerHandle,
+    ServerHandler
+};
 
 
 // Internal Dependencies ------------------------------------------------------
 use game::Game;
-use shared::color::Color;
-use shared::event::Event;
-use shared::level::Level;
-use shared::state::State;
+use shared::{Color, SharedEvent, SharedLevel, SharedState};
 
 
 // Type Aliases ---------------------------------------------------------------
-type ServerHandle<'a> = Handle<'a, Event, State, Level, DefaultRenderer>;
-type ServerLevel = LithiumLevel<State, Level>;
-type ServerEntity = Entity<State, Level, DefaultRenderer>;
+type Handle<'a> = ServerHandle<'a, SharedEvent, SharedState, SharedLevel, DefaultRenderer>;
+type ServerLevel = Level<SharedState, SharedLevel>;
+type ServerEntity = Entity<SharedState, SharedLevel, DefaultRenderer>;
 
 
 // Handler Implementation -----------------------------------------------------
-impl Handler<Event, State, Level, DefaultRenderer> for Game {
+impl ServerHandler<SharedEvent, SharedState, SharedLevel, DefaultRenderer> for Game {
 
-    fn bind(&mut self, _: ServerHandle) {
+    fn bind(&mut self, _: Handle) {
         println!("[Server] Started");
     }
 
-    fn connect(&mut self, _: ServerHandle, conn: &mut Connection) {
+    fn connect(&mut self, _: Handle, conn: &mut Connection) {
         println!("[Client {}] Connected", conn.peer_addr());
     }
 
-    fn disconnect(&mut self, server: ServerHandle, conn: &mut Connection) {
+    fn disconnect(&mut self, server: Handle, conn: &mut Connection) {
 
         println!("[Client {}] Disconnected", conn.peer_addr());
 
@@ -47,14 +47,14 @@ impl Handler<Event, State, Level, DefaultRenderer> for Game {
     }
 
     fn event(
-        &mut self, server: ServerHandle, owner: ConnectionID, event: Event
+        &mut self, server: Handle, owner: ConnectionID, event: SharedEvent
         // TODO pass in connection map?
     ) {
 
         println!("[Client {:?}] Event: {:?}", owner, event);
 
         match event {
-            Event::JoinGame => {
+            SharedEvent::JoinGame => {
 
                 if let Some(_) = server.entities.get_entity_for_owner(&owner) {
                     println!("[Client {:?}] Already has a entity.", owner);
@@ -65,11 +65,11 @@ impl Handler<Event, State, Level, DefaultRenderer> for Game {
                     if let Some(color) = self.available_colors.pop() {
 
                         let (x, y) = server.level.center();
-                        let state = State {
+                        let state = SharedState {
                             x: x as f32,
                             y: y as f32,
                             flags: color.to_flags(),
-                            .. State::default()
+                            .. SharedState::default() // TODO implement default trait
                         };
 
                         server.entities.create(
@@ -78,8 +78,8 @@ impl Handler<Event, State, Level, DefaultRenderer> for Game {
                             Some(&owner)
                         );
 
-                        server.events.send(Some(owner), Event::GameJoined);
-                        server.events.send(None, Event::PlayerJoined);
+                        server.events.send(Some(owner), SharedEvent::GameJoined);
+                        server.events.send(None, SharedEvent::PlayerJoined);
 
                     }
 
@@ -91,7 +91,7 @@ impl Handler<Event, State, Level, DefaultRenderer> for Game {
     }
 
     fn tick_before(
-        &mut self, _: ServerHandle, _: &mut ConnectionMap, _: u8, _: f32
+        &mut self, _: Handle, _: &mut ConnectionMap, _: u8, _: f32
     ) {
 
         // TODO bullets are handled by pre-creating a local object and then
@@ -117,12 +117,12 @@ impl Handler<Event, State, Level, DefaultRenderer> for Game {
     }
 
     fn tick_after(
-        &mut self, _: ServerHandle, _: &mut ConnectionMap, _: u8, _: f32
+        &mut self, _: Handle, _: &mut ConnectionMap, _: u8, _: f32
     ) {
 
     }
 
-    fn shutdown(&mut self, _: ServerHandle) {
+    fn shutdown(&mut self, _: Handle) {
         println!("[Server] Shutdown");
     }
 

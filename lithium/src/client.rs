@@ -7,18 +7,18 @@ use cobalt::{MessageKind, ConnectionID};
 use network;
 use entity::{
     Entity,
-    State,
-    Manager as EntityManager,
-    Registry as EntityRegistry,
-    ControlState as EntityControlState
+    EntityState,
+    EntityManager,
+    EntityRegistry,
+    EntityControlState
 };
-use level::{Level, Base as BaseLevel};
-use event::{Event, Handler as EventHandler};
+use level::{Level, BaseLevel};
+use event::{Event, EventHandler};
 use renderer::Renderer;
 
 
 // Client Abstraction ---------------------------------------------------------
-pub struct Client<E: Event, S: State, L: BaseLevel<S>, R: Renderer> {
+pub struct Client<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> {
     network: network::Stream,
     manager: EntityManager<S, L, R>,
     events: EventHandler<E>,
@@ -26,7 +26,7 @@ pub struct Client<E: Event, S: State, L: BaseLevel<S>, R: Renderer> {
     level: Level<S, L>
 }
 
-impl<E: Event, S: State, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> {
+impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> {
 
     // Statics ----------------------------------------------------------------
     pub fn new(
@@ -244,7 +244,7 @@ impl<E: Event, S: State, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> {
 pub struct Handle<
     'a,
     E: Event + 'a,
-    S: State + 'a,
+    S: EntityState + 'a,
     L: BaseLevel<S> + 'a,
     R: Renderer + 'a
 > {
@@ -257,7 +257,7 @@ pub struct Handle<
 
 
 // Client Handler -------------------------------------------------------------
-pub trait Handler<E: Event, S: State, L: BaseLevel<S>, R: Renderer> {
+pub trait Handler<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> {
 
     fn init(&mut self, Handle<E, S, L, R>);
     fn connect(&mut self, Handle<E, S, L, R>);

@@ -1,7 +1,7 @@
 // Internal -------------------------------------------------------------------
-use entity::State;
 use event::Event;
-use level::Base as BaseLevel;
+use level::BaseLevel;
+use entity::EntityState;
 use client::{Client, Handler};
 
 
@@ -12,7 +12,7 @@ pub trait Renderer {
     fn run<
         H: Handler<E, S, L, Self>,
         E: Event,
-        S: State,
+        S: EntityState,
         L: BaseLevel<S>
 
     >(_: Client<E, S, L, Self>, _: H) where Self: Sized {}

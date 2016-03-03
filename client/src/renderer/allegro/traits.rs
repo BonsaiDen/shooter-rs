@@ -1,5 +1,4 @@
 // External Dependencies ------------------------------------------------------
-use lithium;
 use allegro::{
     Core,
     Display,
@@ -8,24 +7,31 @@ use allegro::{
     EventQueue,
     OPENGL
 };
+use lithium::{
+    Client,
+    ClientHandler,
+    EntityState,
+    Event,
+    BaseLevel,
+    Renderer
+};
 
 
 // Internal Dependencies ------------------------------------------------------
-use super::Renderer;
-use shared::state::State;
+use super::AllegroRenderer;
 
 
 // Allegro Renderer Trait Implementation --------------------------------------
-impl lithium::Renderer for Renderer {
+impl Renderer for AllegroRenderer {
 
     // Statics ----------------------------------------------------------------
     fn run<
-        H: lithium::client::Handler<E, S, L, Self>,
-        E: lithium::event::Event,
-        S: lithium::entity::State,
-        L: lithium::level::Base<S>
+        H: ClientHandler<E, S, L, Self>,
+        E: Event,
+        S: EntityState,
+        L: BaseLevel<S>
 
-    >(mut client: lithium::Client<E, S, L, Self>, mut handler: H) where Self: Sized {
+    >(mut client: Client<E, S, L, Self>, mut handler: H) where Self: Sized {
 
         // Init Allegro
         let mut core = Core::init().unwrap();
@@ -57,7 +63,7 @@ impl lithium::Renderer for Renderer {
         q.register_event_source(disp.get_event_source());
 
         // Create renderer
-        let mut renderer = Renderer::new(core, disp, q);
+        let mut renderer = AllegroRenderer::new(core, disp, q);
 
         // Init callback
         client.init(&mut handler, &mut renderer);

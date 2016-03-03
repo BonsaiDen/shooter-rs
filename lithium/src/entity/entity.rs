@@ -4,16 +4,17 @@ use std::collections::VecDeque;
 
 
 // Internal Dependencies ------------------------------------------------------
-use level::{Level, Base as BaseLevel};
-use entity::{Event, Input, State, traits};
 use renderer::Renderer;
+use level::{Level, BaseLevel};
+use entity::{EntityEvent, EntityInput, EntityState};
+use entity::traits::{BaseEntity, DrawableEntity};
 
 
 // Entity Wrapper Structure ---------------------------------------------------
-pub struct Entity<S: State, L: BaseLevel<S>, R: Renderer> {
+pub struct Entity<S: EntityState, L: BaseLevel<S>, R: Renderer> {
 
-    entity: Box<traits::Base<S, L>>,
-    drawable: Box<traits::Drawable<S, L, R>>,
+    entity: Box<BaseEntity<S, L>>,
+    drawable: Box<DrawableEntity<S, L, R>>,
     owner: Option<ConnectionID>,
     is_alive: bool,
     is_visible: bool,
@@ -27,7 +28,7 @@ pub struct Entity<S: State, L: BaseLevel<S>, R: Renderer> {
     state_buffer: VecDeque<(u8, S)>,
 
     // Inputs
-    input_buffer: VecDeque<Input>,
+    input_buffer: VecDeque<EntityInput>,
     confirmed_input_tick: u8,
     initial_input: bool,
     serialized_inputs: Option<Vec<u8>>,
@@ -38,11 +39,11 @@ pub struct Entity<S: State, L: BaseLevel<S>, R: Renderer> {
 
 }
 
-impl<S: State, L: BaseLevel<S>, R: Renderer> Entity<S, L, R> {
+impl<S: EntityState, L: BaseLevel<S>, R: Renderer> Entity<S, L, R> {
 
     pub fn new(
-        entity: Box<traits::Base<S, L>>,
-        drawable: Box<traits::Drawable<S, L, R>>
+        entity: Box<BaseEntity<S, L>>,
+        drawable: Box<DrawableEntity<S, L, R>>
 
     ) -> Entity<S, L, R> {
         Entity {
@@ -155,12 +156,12 @@ impl<S: State, L: BaseLevel<S>, R: Renderer> Entity<S, L, R> {
 
     pub fn show(&mut self, tick: u8) {
         self.is_visible = true;
-        self.event(Event::Show(tick));
+        self.event(EntityEvent::Show(tick));
     }
 
     pub fn hide(&mut self, tick: u8) {
         self.is_visible = false;
-        self.event(Event::Hide(tick));
+        self.event(EntityEvent::Hide(tick));
     }
 
 
@@ -240,7 +241,7 @@ impl<S: State, L: BaseLevel<S>, R: Renderer> Entity<S, L, R> {
         self.state.set_to(&new_state);
 
         if old_flags != new_state.flags() {
-            self.event(Event::Flags(new_state.flags()));
+            self.event(EntityEvent::Flags(new_state.flags()));
         }
 
     }
@@ -251,7 +252,7 @@ impl<S: State, L: BaseLevel<S>, R: Renderer> Entity<S, L, R> {
         self.confirmed_input_tick
     }
 
-    pub fn local_input(&mut self, input: Input) {
+    pub fn local_input(&mut self, input: EntityInput) {
 
         self.input(input);
 
@@ -273,7 +274,7 @@ impl<S: State, L: BaseLevel<S>, R: Renderer> Entity<S, L, R> {
         }
     }
 
-    pub fn remote_input(&mut self, input: Input) {
+    pub fn remote_input(&mut self, input: EntityInput) {
 
         if self.initial_input ||  tick_is_more_recent(
             input.tick,
@@ -286,7 +287,7 @@ impl<S: State, L: BaseLevel<S>, R: Renderer> Entity<S, L, R> {
 
     }
 
-    fn input(&mut self, input: Input) {
+    fn input(&mut self, input: EntityInput) {
 
         self.input_buffer.push_back(input);
 
@@ -300,12 +301,12 @@ impl<S: State, L: BaseLevel<S>, R: Renderer> Entity<S, L, R> {
 
     // Ticking ----------------------------------------------------------------
     pub fn client_tick(&mut self, level: &Level<S, L>, tick: u8, dt: f32) {
-        self.event(Event::Tick(tick, dt)); // TODO useful?
+        self.event(EntityEvent::Tick(tick, dt)); // TODO useful?
         self.tick(level, tick, dt, false);
     }
 
     pub fn server_tick(&mut self, level: &Level<S, L>, tick: u8, dt: f32) {
-        self.event(Event::Tick(tick, dt)); // TODO useful?
+        self.event(EntityEvent::Tick(tick, dt)); // TODO useful?
         self.tick(level, tick, dt, true);
     }
 
@@ -411,7 +412,7 @@ impl<S: State, L: BaseLevel<S>, R: Renderer> Entity<S, L, R> {
 
 
     // Events -----------------------------------------------------------------
-    pub fn event(&mut self, event: Event) {
+    pub fn event(&mut self, event: EntityEvent) {
         self.entity.event(&event, &self.state);
         self.drawable.event(&event, &self.state);
     }

@@ -3,7 +3,7 @@ use std::cmp;
 
 
 // Internal Dependencies ------------------------------------------------------
-use shared::color::{Color, ColorName};
+use shared::{Color, ColorName};
 
 
 // ParticleSystem -------------------------------------------------------------

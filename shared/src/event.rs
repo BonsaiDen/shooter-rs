@@ -1,10 +1,10 @@
 // External Dependencies ------------------------------------------------------
-use lithium;
+use lithium::Event;
 
 
 // Game Events ----------------------------------------------------------------
 #[derive(Debug, RustcEncodable, RustcDecodable)]
-pub enum Event {
+pub enum SharedEvent {
     JoinGame,
     GameJoined,
     PlayerJoined,
@@ -12,11 +12,11 @@ pub enum Event {
     Unknown
 }
 
-impl lithium::Event for Event {}
+impl Event for SharedEvent {}
 
-impl Default for Event {
-    fn default() -> Event {
-        Event::Unknown
+impl Default for SharedEvent {
+    fn default() -> SharedEvent {
+        SharedEvent::Unknown
     }
 }
 

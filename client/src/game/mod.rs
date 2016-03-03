@@ -1,13 +1,11 @@
 // External Dependencies ------------------------------------------------------
 use std::net::SocketAddr;
-use lithium::{Client, Level as LithiumLevel};
+use lithium::{Client, Level};
 
 
 // Internal Dependencies ------------------------------------------------------
-use entities;
-use shared::level::Level;
-use shared::event::Event;
-use shared::state::State;
+use entities::Registry;
+use shared::{SharedEvent, SharedState, SharedLevel};
 use renderer::AllegroRenderer;
 mod handler;
 
@@ -25,17 +23,19 @@ impl Game {
         }
     }
 
-    pub fn client(server_addr: SocketAddr) -> Client<Event, State, Level, AllegroRenderer> {
+    pub fn client(server_addr: SocketAddr) -> Client<
+        SharedEvent, SharedState, SharedLevel, AllegroRenderer
+    > {
         Client::new(
             server_addr,
             30,
             Game::default_level(),
-            Box::new(entities::Registry)
+            Box::new(Registry)
         )
     }
 
-    pub fn default_level() -> LithiumLevel<State, Level> {
-        Level::create(384, 384, 16)
+    pub fn default_level() -> Level<SharedState, SharedLevel> {
+        SharedLevel::create(384, 384, 16)
     }
 
 }

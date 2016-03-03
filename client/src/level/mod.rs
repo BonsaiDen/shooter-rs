@@ -1,31 +1,26 @@
 // External Dependencies ------------------------------------------------------
-use lithium::{level, renderer};
-use lithium::level::Base as LithiumLevelBase;
+use lithium::{Level, BaseLevel, DrawableLevel, Renderer};
 
 
 // Internal Dependencies ------------------------------------------------------
-use shared::level::Level;
-use shared::state::State;
+use shared::{SharedLevel, SharedState};
 
 
 // Level Drawable Implementation Dependencies ----------------------------------
-pub struct DrawableLevel;
-impl DrawableLevel {
+pub struct RenderedLevel;
+impl RenderedLevel {
 
-    pub fn from_serialized(data: &[u8]) -> level::Level<State, Level> {
-        level::Level::new(
-            Level::from_serialized(data),
-            Box::new(DrawableLevel)
+    pub fn from_serialized(data: &[u8]) -> Level<SharedState, SharedLevel> {
+        Level::new(
+            SharedLevel::from_serialized(data),
+            Box::new(RenderedLevel)
         )
     }
 
 }
 
-impl level::Drawable<State> for DrawableLevel {
-
-    fn draw(&mut self, _: &mut renderer::Renderer, _: &level::Base<State>) {
-
+impl DrawableLevel<SharedState> for RenderedLevel {
+    fn draw(&mut self, _: &mut Renderer, _: &BaseLevel<SharedState>) {
     }
-
 }
 

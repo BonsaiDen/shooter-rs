@@ -2,9 +2,16 @@ extern crate lithium;
 extern crate bincode;
 extern crate rustc_serialize;
 
-pub mod color;
+mod color;
 pub mod entities;
-pub mod event;
-pub mod level;
-pub mod state;
+mod event;
+mod level;
+mod state;
+
+pub use color::Color;
+pub use color::ColorName;
+pub use event::SharedEvent;
+pub use level::SharedLevel;
+pub use state::SharedState;
+pub use entities::Registry as SharedRegistry;
 

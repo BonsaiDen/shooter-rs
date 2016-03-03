@@ -7,21 +7,28 @@ extern crate rustc_serialize;
 
 
 // Module Declarations --------------------------------------------------------
-pub mod client;
+mod client;
 pub mod entity;
-pub mod event;
-pub mod level;
+mod event;
+mod level;
 pub mod network;
-pub mod renderer;
-pub mod server;
+mod renderer;
+mod server;
 mod idpool;
 
 
 // Re-Exports -----------------------------------------------------------------
-pub use client::Client as Client;
-pub use event::Event as Event;
-pub use level::Level as Level;
-pub use idpool::IdPool as IdPool;
-pub use server::Server as Server;
-pub use renderer::Renderer as Renderer;
+pub use entity::*;
+pub use level::*;
+pub use event::Event;
+pub use event::EventHandler;
+pub use idpool::IdPool;
+pub use client::Client;
+pub use client::Handle as ClientHandle;
+pub use client::Handler as ClientHandler;
+pub use server::Server;
+pub use server::Handle as ServerHandle;
+pub use server::Handler as ServerHandler;
+pub use renderer::Renderer;
+pub use renderer::DefaultRenderer;
 

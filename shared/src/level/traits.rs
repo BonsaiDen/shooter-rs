@@ -2,18 +2,18 @@
 use std::f32;
 use bincode::SizeLimit;
 use bincode::rustc_serialize::{encode, decode};
-use lithium;
+use lithium::{BaseLevel, Renderer};
 
 
 // Internal Dependencies ------------------------------------------------------
-use state;
-use super::Level;
+use state::SharedState;
+use level::SharedLevel;
 
 
 // Level Trait Implementation -------------------------------------------------
-impl lithium::level::Base<state::State> for Level {
+impl BaseLevel<SharedState> for SharedLevel {
 
-    fn limit_state(&self, state: &mut state::State) {
+    fn limit_state(&self, state: &mut SharedState) {
 
         let width = (self.height + self.border * 2) as f32;
         if state.x < 0.0 {
@@ -35,10 +35,10 @@ impl lithium::level::Base<state::State> for Level {
 
     fn interpolate_entity_state(
         &self,
-        renderer: &mut lithium::Renderer,
-        current: &state::State, last: &state::State
+        renderer: &mut Renderer,
+        current: &SharedState, last: &SharedState
 
-    ) -> state::State {
+    ) -> SharedState {
 
         let u = renderer.delta_u();
 
@@ -59,7 +59,7 @@ impl lithium::level::Base<state::State> for Level {
         };
 
         let mr = current.r - last.r;
-        state::State {
+        SharedState {
             r: (last.r + mr.sin().atan2(mr.cos()) * u) % (f32::consts::PI * 2.0),
             x: x - self.border as f32,
             y: y - self.border as f32,

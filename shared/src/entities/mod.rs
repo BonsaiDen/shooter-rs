@@ -1,11 +1,10 @@
 // External Dependencies ------------------------------------------------------
-use lithium::entity;
-use lithium::renderer::DefaultRenderer;
+use lithium::{Entity, EntityRegistry, DrawableEntity, DefaultRenderer};
 
 
 // Internal Dependencies ------------------------------------------------------
-use state::State;
-use level::Level;
+use state::SharedState;
+use level::SharedLevel;
 
 mod ship;
 pub use entities::ship::Ship;
@@ -13,8 +12,8 @@ pub use entities::ship::Ship;
 
 // Entity Registry ------------------------------------------------------------
 pub struct Registry;
-impl entity::Registry<State, Level, DefaultRenderer> for Registry {
-    fn entity_from_type_id(&self, type_id: u8) -> entity::Entity<State, Level, DefaultRenderer> {
+impl EntityRegistry<SharedState, SharedLevel, DefaultRenderer> for Registry {
+    fn entity_from_type_id(&self, type_id: u8) -> Entity<SharedState, SharedLevel, DefaultRenderer> {
         match type_id {
             0 => ship::Ship::create_entity(1.0),
             _ => unreachable!()
@@ -25,5 +24,5 @@ impl entity::Registry<State, Level, DefaultRenderer> for Registry {
 
 // Noop Drawable --------------------------------------------------------------
 pub struct DefaultDrawable;
-impl entity::traits::Drawable<State, Level, DefaultRenderer> for DefaultDrawable {}
+impl DrawableEntity<SharedState, SharedLevel, DefaultRenderer> for DefaultDrawable {}
 

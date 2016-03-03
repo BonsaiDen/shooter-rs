@@ -3,23 +3,23 @@ use std::ops::{Deref, DerefMut};
 
 
 // Internal Dependencies ------------------------------------------------------
-use entity::State;
 use renderer::Renderer;
+use entity::EntityState;
 
 mod traits;
-pub use level::traits::Base as Base;
-pub use level::traits::Drawable as Drawable;
+pub use level::traits::BaseLevel;
+pub use level::traits::DrawableLevel;
 
 
 // Level Wrapper Structure ----------------------------------------------------
-pub struct Level<S: State, L: Base<S>> {
+pub struct Level<S: EntityState, L: BaseLevel<S>> {
     level: L,
-    drawable: Box<Drawable<S>>,
+    drawable: Box<DrawableLevel<S>>,
 }
 
-impl<S: State, L: Base<S>> Level<S, L> {
+impl<S: EntityState, L: BaseLevel<S>> Level<S, L> {
 
-    pub fn new(level: L, drawable: Box<Drawable<S>>) -> Level<S, L> {
+    pub fn new(level: L, drawable: Box<DrawableLevel<S>>) -> Level<S, L> {
         Level {
             level: level,
             drawable: drawable
@@ -51,14 +51,14 @@ impl<S: State, L: Base<S>> Level<S, L> {
 
 
 // Dereference to access internal level logic ---------------------------------
-impl<S: State, L: Base<S>> Deref for Level<S, L> {
+impl<S: EntityState, L: BaseLevel<S>> Deref for Level<S, L> {
     type Target = L;
     fn deref(&self) -> &L {
         &self.level
     }
 }
 
-impl<S: State, L: Base<S>> DerefMut for Level<S, L> {
+impl<S: EntityState, L: BaseLevel<S>> DerefMut for Level<S, L> {
     fn deref_mut(&mut self) -> &mut L {
         &mut self.level
     }

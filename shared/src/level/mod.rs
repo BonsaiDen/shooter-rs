@@ -1,24 +1,24 @@
 // External Dependencies ------------------------------------------------------
-use lithium::level::{Drawable, Level as LithiumLevel};
+use lithium::{Level, DrawableLevel};
 
 
 // Internal Dependencies ------------------------------------------------------
-use state::State;
+use state::SharedState;
 mod traits;
 
 
 // Shared Level Logic ---------------------------------------------------------
 #[derive(Debug, RustcEncodable, RustcDecodable)]
-pub struct Level {
+pub struct SharedLevel {
     width: u32,
     height: u32,
     border: u32
 }
 
-impl Level {
+impl SharedLevel {
 
-    pub fn new(width: u32, height: u32, border: u32) -> Level {
-        Level {
+    pub fn new(width: u32, height: u32, border: u32) -> SharedLevel {
+        SharedLevel {
             width: width,
             height: height,
             border: border
@@ -28,9 +28,9 @@ impl Level {
     pub fn create(
         width: u32, height: u32, border: u32
 
-    ) -> LithiumLevel<State, Level> {
-        LithiumLevel::new(
-            Level {
+    ) -> Level<SharedState, SharedLevel> {
+        Level::new(
+            SharedLevel {
                 width: width,
                 height: height,
                 border: border
@@ -56,5 +56,5 @@ impl Level {
 
 // Noop Drawable --------------------------------------------------------------
 struct NoneDrawable;
-impl Drawable<State> for NoneDrawable {}
+impl DrawableLevel<SharedState> for NoneDrawable {}
 

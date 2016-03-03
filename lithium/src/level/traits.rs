@@ -1,10 +1,10 @@
 // Internal Dependencies ------------------------------------------------------
-use entity::State;
+use entity::EntityState;
 use renderer::Renderer;
 
 
 // Bassic Level Traits --------------------------------------------------------
-pub trait Base<S: State> {
+pub trait BaseLevel<S: EntityState> {
 
     fn limit_state(&self, state: &mut S);
 
@@ -18,7 +18,7 @@ pub trait Base<S: State> {
 
 }
 
-pub trait Drawable<S: State> {
-    fn draw(&mut self, _: &mut Renderer, _: &Base<S>) {}
+pub trait DrawableLevel<S: EntityState> {
+    fn draw(&mut self, _: &mut Renderer, _: &BaseLevel<S>) {}
 }
 

@@ -10,22 +10,17 @@ pub mod registry;
 
 use client;
 use server;
-use entity::{Entity, State, Event as EntityEvent};
 use event::Event;
-use level::{Level, Base as BaseLevel};
 use idpool::IdPool;
 use renderer::Renderer;
-use self::registry::EntityRegistry;
+use level::{Level, BaseLevel};
+use entity::{Entity, EntityState, EntityEvent};
 use self::config::EntityManagerConfig;
-
-
-// Re-Exports -----------------------------------------------------------------
-use self::config::EntityManagerConfig as Config;
-use self::registry::EntityRegistry as Registry;
+use self::registry::EntityRegistry;
 
 
 // Entity Manager Implementation ----------------------------------------------
-pub struct EntityManager<S: State, L: BaseLevel<S>, R: Renderer> {
+pub struct EntityManager<S: EntityState, L: BaseLevel<S>, R: Renderer> {
 
     // Id pool for entities
     id_pool: IdPool<u16>,
@@ -47,7 +42,7 @@ pub struct EntityManager<S: State, L: BaseLevel<S>, R: Renderer> {
 
 }
 
-impl<S: State, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
+impl<S: EntityState, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
 
     pub fn new(
         tick_rate: u8,
@@ -75,7 +70,7 @@ impl<S: State, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
         self.tick
     }
 
-    pub fn config(&self) -> &Config {
+    pub fn config(&self) -> &EntityManagerConfig {
         &self.config
     }
 
@@ -144,7 +139,7 @@ impl<S: State, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
 
     pub fn tick_client<
         E: Event,
-        I: FnMut(ControlState, &mut Entity<S, L, R>, u8)
+        I: FnMut(EntityControlState, &mut Entity<S, L, R>, u8)
     >(
         &mut self,
         renderer: &mut R,
@@ -160,7 +155,7 @@ impl<S: State, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
             entity.tick(level, self.tick, dt, self.server_mode);
 
             match handler.tick_entity_after(renderer, level, entity, self.tick, dt) {
-                ControlState::None => {},
+                EntityControlState::None => {},
                 state => input_handler(state, entity, self.tick)
             }
 
@@ -372,11 +367,11 @@ impl<S: State, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
 
 
 // Handle for rewinded entity state -------------------------------------------
-pub struct StateRewinder<'a, S: State + 'a, L: BaseLevel<S> + 'a, R: Renderer + 'a> {
+pub struct StateRewinder<'a, S: EntityState + 'a, L: BaseLevel<S> + 'a, R: Renderer + 'a> {
     manager: &'a mut EntityManager<S, L, R>
 }
 
-impl<'a, S: State, L: BaseLevel<S>, R: Renderer> Drop for StateRewinder<'a, S, L, R> {
+impl<'a, S: EntityState, L: BaseLevel<S>, R: Renderer> Drop for StateRewinder<'a, S, L, R> {
     fn drop(&mut self) {
         self.manager.forward();
     }
@@ -384,7 +379,7 @@ impl<'a, S: State, L: BaseLevel<S>, R: Renderer> Drop for StateRewinder<'a, S, L
 
 
 // Client Entity Control State ------------------------------------------------
-pub enum ControlState {
+pub enum EntityControlState {
     Local,
     Remote,
     None

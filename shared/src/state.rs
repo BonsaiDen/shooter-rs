@@ -1,12 +1,12 @@
 // External Dependencies ------------------------------------------------------
-use lithium::entity;
+use lithium::EntityState;
 use bincode::SizeLimit;
 use bincode::rustc_serialize::{encode, decode};
 
 
 // Entity State ---------------------------------------------------------------
 #[derive(Debug, RustcEncodable, RustcDecodable)]
-pub struct State {
+pub struct SharedState {
     pub x: f32,
     pub y: f32,
     pub r: f32,
@@ -15,14 +15,14 @@ pub struct State {
     pub flags: u8
 }
 
-impl entity::State for State {
+impl EntityState for SharedState {
 
     fn encoded_size() -> usize {
         21
     }
 
-    fn from_serialized(data: &[u8]) -> State {
-        decode::<State>(data).unwrap()
+    fn from_serialized(data: &[u8]) -> SharedState {
+        decode::<SharedState>(data).unwrap()
     }
 
     fn serialize(&self) -> Vec<u8> {
@@ -39,7 +39,7 @@ impl entity::State for State {
     }
 
     fn clone(&self) -> Self {
-        State {
+        SharedState {
             x: self.x,
             y: self.y,
             r: self.r,
@@ -50,7 +50,7 @@ impl entity::State for State {
     }
 
     fn default() -> Self where Self: Sized {
-        State {
+        SharedState {
             x: 0.0,
             y: 0.0,
             r: 0.0,

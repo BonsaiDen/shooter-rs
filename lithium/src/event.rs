@@ -14,16 +14,16 @@ pub trait Event: Encodable + Decodable + Default {}
 
 
 // Event Handler --------------------------------------------------------------
-pub struct Handler<T: Event> {
+pub struct EventHandler<T: Event> {
     incoming: Option<Vec<(ConnectionID, T)>>,
     outgoing: Vec<(Option<ConnectionID>, T)>,
     event_size: usize
 }
 
-impl<T: Event> Handler<T> {
+impl<T: Event> EventHandler<T> {
 
-    pub fn new() -> Handler<T> {
-        Handler {
+    pub fn new() -> EventHandler<T> {
+        EventHandler {
             incoming: None,
             outgoing: Vec::new(),
             event_size: encoded_size::<T>(&T::default()) as usize

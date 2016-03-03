@@ -18,13 +18,13 @@ use allegro_primitives::PrimitivesAddon;
 
 // Internal Dependencies ------------------------------------------------------
 mod traits;
-use shared::color::Color;
-use lithium::Renderer as LithiumRenderer;
+use shared::Color;
+use lithium::Renderer;
 use renderer::particle::{Particle, ParticleSystem};
 
 
 // Allegro Based Renderer -----------------------------------------------------
-pub struct Renderer {
+pub struct AllegroRenderer {
 
     // Allegro Related
     core: Core,
@@ -55,12 +55,12 @@ pub struct Renderer {
 
 }
 
-impl Renderer {
+impl AllegroRenderer {
 
     pub fn new(
         core: Core, display: Display, queue: EventQueue
 
-    ) -> Renderer {
+    ) -> AllegroRenderer {
 
         let prim = PrimitivesAddon::init(&core).unwrap();
         let font_addon = FontAddon::init(&core).unwrap();
@@ -70,7 +70,7 @@ impl Renderer {
         queue.register_event_source(timer.get_event_source());
         timer.start();
 
-        Renderer {
+        AllegroRenderer {
             core: core,
             display: display,
             queue: queue,
@@ -111,7 +111,7 @@ impl Renderer {
 
     // Drawing Methods --------------------------------------------------------
     pub fn clear(&mut self, color: &Color) {
-        self.core.clear_to_color(Renderer::get_color(color));
+        self.core.clear_to_color(AllegroRenderer::get_color(color));
     }
 
     pub fn triangle(
@@ -122,13 +122,13 @@ impl Renderer {
         line_width: f32
     ) {
         self.prim.draw_triangle(
-            ax, ay, bx, by, cx, cy, Renderer::get_color(color), line_width
+            ax, ay, bx, by, cx, cy, AllegroRenderer::get_color(color), line_width
         );
     }
 
     pub fn text(&mut self, color: &Color, x: f32, y: f32, text: &str) {
         self.core.draw_text(
-            &self.font, Renderer::get_color(color), x, y, FontAlign::Left, text
+            &self.font, AllegroRenderer::get_color(color), x, y, FontAlign::Left, text
         );
     }
 
@@ -161,7 +161,7 @@ impl Renderer {
 
 
 // Internal Methods required for trait implementation -------------------------
-impl Renderer {
+impl AllegroRenderer {
 
     fn should_draw(&mut self) -> bool {
         let redraw = self.redraw;
@@ -210,7 +210,7 @@ impl Renderer {
         self.particle_system.draw(self.dt, |ref color, s, x, y| {
             prim.draw_filled_rectangle(
                 x - s + 0.5, y - s + 0.5, x + s + 0.5, y + s + 0.5,
-                Renderer::get_color(color)
+                AllegroRenderer::get_color(color)
             );
         });
         self.core.flip_display();

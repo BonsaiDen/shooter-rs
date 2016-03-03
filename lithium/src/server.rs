@@ -1,10 +1,10 @@
 // External Dependencies ------------------------------------------------------
-use std::collections::HashMap;
 use std::net::SocketAddr;
 use cobalt::{
     Config,
     Connection,
     ConnectionID,
+    ConnectionMap,
     MessageKind,
     Handler as CobaltHandler,
     Server as CobaltServer
@@ -15,30 +15,26 @@ use cobalt::{
 use network;
 use entity::{
     Entity,
-    State,
-    Input,
-    Manager as EntityManager,
-    ManagerConfig as EntityManagerConfig,
-    Registry as EntityRegistry
+    EntityState,
+    EntityInput,
+    EntityManager,
+    EntityManagerConfig,
+    EntityRegistry
 };
+use level::{Level, BaseLevel};
+use event::{Event, EventHandler};
 use renderer::Renderer;
-use level::{Level, Base as BaseLevel};
-use event::{Event, Handler as EventHandler};
-
-
-// Type Aliases ---------------------------------------------------------------
-pub type ConnectionMap = HashMap<ConnectionID, Connection>; // TODO move to cobalt?
 
 
 // Server Abstraction ---------------------------------------------------------
-pub struct Server<E: Event, S: State, L: BaseLevel<S>, R: Renderer> {
+pub struct Server<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> {
     handler: Box<Handler<E, S, L, R>>, // TODO unbox?
     manager: EntityManager<S, L, R>,
     events: EventHandler<E>,
     level: Level<S, L>
 }
 
-impl<E: Event, S: State, L: BaseLevel<S>, R: Renderer> Server<E, S, L, R> {
+impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Server<E, S, L, R> {
 
     // Statics ----------------------------------------------------------------
     pub fn run(addr: SocketAddr, mut server: Server<E, S, L, R>) where Self: Sized {
@@ -79,7 +75,7 @@ impl<E: Event, S: State, L: BaseLevel<S>, R: Renderer> Server<E, S, L, R> {
 }
 
 impl<
-    E: Event, S: State, L: BaseLevel<S>, R: Renderer
+    E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer
 
 > CobaltHandler<CobaltServer> for Server<E, S, L, R> {
 
@@ -122,9 +118,9 @@ impl<
                         // Extract all unconfirmed inputs the client sent us
                         if let Some(entity) = self.manager.get_entity_for_owner(id) {
                             let data = &data[1..];
-                            for i in data.chunks(Input::encoded_size()) {
+                            for i in data.chunks(EntityInput::encoded_size()) {
                                 entity.remote_input(
-                                    Input::from_serialized(i)
+                                    EntityInput::from_serialized(i)
                                 );
                             }
                         }
@@ -230,7 +226,7 @@ impl<
 
 // Server Handle for Access from Handler ------------------------------------
 pub struct Handle<
-    'a, E: Event + 'a, S: State + 'a, L: BaseLevel<S> + 'a, R: Renderer + 'a
+    'a, E: Event + 'a, S: EntityState + 'a, L: BaseLevel<S> + 'a, R: Renderer + 'a
 > {
     pub level: &'a mut Level<S, L>,
     pub entities: &'a mut EntityManager<S, L, R>,
@@ -239,7 +235,7 @@ pub struct Handle<
 
 
 // Server Handler -------------------------------------------------------------
-pub trait Handler<E: Event, S: State, L: BaseLevel<S>, R: Renderer> {
+pub trait Handler<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> {
 
     fn bind(&mut self, Handle<E, S, L, R>);
     fn connect(&mut self, Handle<E, S, L, R>, &mut Connection);

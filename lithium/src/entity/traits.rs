@@ -5,17 +5,17 @@ use rustc_serialize::{Encodable, Decodable};
 
 // Internal Dependencies ------------------------------------------------------
 use renderer::Renderer;
-use entity::{Event, Input};
-use level::{Level, Base as BaseLevel};
+use level::{Level, BaseLevel};
+use entity::{EntityEvent, EntityInput};
 
 
 // Basic Entity Traits --------------------------------------------------------
-pub trait Base<S: State, L: BaseLevel<S>> {
+pub trait BaseEntity<S: EntityState, L: BaseLevel<S>> {
 
     fn type_id(&self) -> u8;
 
     fn apply_input(
-        &mut self, level: &Level<S, L>, state: &mut S, input: &Input, dt: f32
+        &mut self, level: &Level<S, L>, state: &mut S, input: &EntityInput, dt: f32
     );
 
     fn visible_to(&self, _: &ConnectionID) -> bool {
@@ -24,19 +24,19 @@ pub trait Base<S: State, L: BaseLevel<S>> {
 
     fn serialize_state(&self, _: &mut S, _: &ConnectionID) {}
 
-    fn event(&mut self, _: &Event, _: &S) {}
+    fn event(&mut self, _: &EntityEvent, _: &S) {}
 
 }
 
-pub trait Drawable<S: State, L: BaseLevel<S>, R: Renderer> {
+pub trait DrawableEntity<S: EntityState, L: BaseLevel<S>, R: Renderer> {
 
     fn draw(&mut self, _: &mut R, _: &Level<S, L>, _: S) {}
 
-    fn event(&mut self, _: &Event, _: &S) {}
+    fn event(&mut self, _: &EntityEvent, _: &S) {}
 
 }
 
-pub trait State: Encodable + Decodable {
+pub trait EntityState: Encodable + Decodable {
 
     fn encoded_size() -> usize where Self: Sized;
 

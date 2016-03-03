@@ -1,52 +1,49 @@
 // External Dependencies ------------------------------------------------------
-use std::{cmp, f32};
 use rand::Rng;
-use lithium::Level as LithiumLevel;
-use lithium::entity::{Entity, Event, traits, State as LithiumState};
+use std::{cmp, f32};
+use lithium::{Entity, EntityState, EntityEvent, DrawableEntity, Level};
 
 
 // Internal Dependencies ------------------------------------------------------
-use shared::entities;
-use shared::state::State;
-use shared::level::Level;
-use shared::color::{Color, ColorName};
+use shared::entities::Ship;
+use shared::{SharedState, SharedLevel, Color, ColorName};
 use renderer::AllegroRenderer;
 
 
 // Ship Drawable Implementation Dependencies ----------------------------------
-pub struct Ship {
+pub struct RenderedShip {
     color_light: Color,
     color_mid: Color,
     scale: f32,
     particle_count: u32,
-    last_draw_state: State
+    last_draw_state: SharedState
 }
 
-impl Ship {
+impl RenderedShip {
 
-    pub fn create_entity(scale: f32) -> Entity<State, Level, AllegroRenderer> {
+    pub fn create_entity(scale: f32) -> Entity<SharedState, SharedLevel, AllegroRenderer> {
         Entity::new(
-            Box::new(entities::Ship::new(scale)),
-            Box::new(Ship::new(scale))
+            Box::new(Ship::new(scale)),
+            Box::new(RenderedShip::new(scale))
         )
     }
 
-    pub fn new(scale: f32) -> Ship {
-        Ship {
+    pub fn new(scale: f32) -> RenderedShip {
+        RenderedShip {
             color_light: Color::from_name(ColorName::Grey),
             color_mid: Color::from_name(ColorName::Grey).darken(0.5),
             scale: scale,
             particle_count: 5,
-            last_draw_state: State::default()
+            last_draw_state: SharedState::default()
         }
     }
 
 }
 
-impl traits::Drawable<State, Level, AllegroRenderer> for Ship {
+impl DrawableEntity<SharedState, SharedLevel, AllegroRenderer> for RenderedShip {
 
-    fn event(&mut self, event: &Event, _: &State) {
-        if let &Event::Flags(flags) = event {
+    fn event(&mut self, event: &EntityEvent, _: &SharedState) {
+        if let &EntityEvent::Flags(flags) = event {
             self.color_light = Color::from_flags(flags);
             self.color_mid = self.color_light.darken(0.5);
         }
@@ -55,8 +52,8 @@ impl traits::Drawable<State, Level, AllegroRenderer> for Ship {
     fn draw(
         &mut self,
         renderer: &mut AllegroRenderer,
-        _: &LithiumLevel<State, Level>,
-        state: State
+        _: &Level<SharedState, SharedLevel>,
+        state: SharedState
     ) {
 
         let light = &self.color_light;
@@ -146,7 +143,7 @@ impl traits::Drawable<State, Level, AllegroRenderer> for Ship {
 // Helpers --------------------------------------------------------------------
 fn draw_triangle(
     renderer: &mut AllegroRenderer,
-    state: &State, color: &Color,
+    state: &SharedState, color: &Color,
     base_scale: f32, body_scale: f32, dr: f32, da: f32, db: f32
 ) {
     let beta = f32::consts::PI / dr;
