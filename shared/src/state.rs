@@ -49,6 +49,18 @@ impl EntityState for SharedState {
         }
     }
 
+    fn flags(&self) -> u8 {
+        self.flags
+    }
+
+    fn set_flags(&mut self, flags: u8) {
+        self.flags = flags;
+    }
+
+}
+
+impl Default for SharedState {
+
     fn default() -> Self where Self: Sized {
         SharedState {
             x: 0.0,
@@ -58,14 +70,6 @@ impl EntityState for SharedState {
             my: 0.0,
             flags: 0
         }
-    }
-
-    fn flags(&self) -> u8 {
-        self.flags
-    }
-
-    fn set_flags(&mut self, flags: u8) {
-        self.flags = flags;
     }
 
 }

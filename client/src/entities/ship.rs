@@ -34,7 +34,7 @@ impl RenderedShip {
             color_mid: Color::from_name(ColorName::Grey).darken(0.5),
             scale: scale,
             particle_count: 5,
-            last_draw_state: SharedState::default()
+            last_draw_state: Default::default()
         }
     }
 

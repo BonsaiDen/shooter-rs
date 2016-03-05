@@ -57,7 +57,7 @@ impl Stream {
         let mut client = Client::new(Config {
             send_rate: tick_rate,
             connection_init_threshold: 250,
-            .. Config::default()
+            .. Default::default()
         });
 
         let sync_token = client.connect_sync(&mut handler, addr).unwrap();
@@ -115,7 +115,7 @@ impl Stream {
         self.client.set_config(Config {
             send_rate: tick_rate,
             connection_init_threshold: 250,
-            .. Config::default()
+            .. Default::default()
 
         }, &mut self.sync_token)
     }

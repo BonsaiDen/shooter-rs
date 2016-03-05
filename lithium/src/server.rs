@@ -41,7 +41,7 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Server<E, S, L, R> 
 
         let mut cobalt_server = CobaltServer::new(Config {
             send_rate: server.config().tick_rate as u32,
-            .. Config::default()
+            .. Default::default()
         });
         cobalt_server.bind(&mut server, addr).unwrap();
 
@@ -109,25 +109,27 @@ impl<
 
         // Receive Data
         for (id, conn) in connections.iter_mut() {
-            for data in conn.received() {
-                match network::Message::from_u8(data[0]) {
-                    network::Message::ClientInput => {
+            for msg in conn.received() {
+                match network::Message::from_u8(msg[0]) {
 
+                    network::Message::ClientInput => {
                         // Extract all unconfirmed inputs the client sent us
                         if let Some(entity) = self.manager.get_entity_for_owner(id) {
-                            let data = &data[1..];
-                            for i in data.chunks(EntityInput::encoded_size()) {
+                            let msg = &msg[1..];
+                            for i in msg.chunks(EntityInput::encoded_size()) {
                                 entity.remote_input(
                                     EntityInput::from_serialized(i)
                                 );
                             }
                         }
+                    },
 
-                    },
                     network::Message::ClientEvents => {
-                        self.events.receive_events(*id, &data[1..]);
+                        self.events.receive_events(*id, &msg[1..]);
                     },
-                    _=> println!("Unknown Client Message {:?}", data)
+
+                    _=> println!("Unknown Client Message {:?}", msg)
+
                 }
             }
         }
@@ -192,16 +194,6 @@ impl<
             events: &mut self.events
 
         }, conn);
-    }
-
-    fn connection_packet_lost(
-        &mut self, _: &mut CobaltServer, _: &mut Connection, _: &[u8]
-    ) {
-    }
-
-    fn connection_congestion_state(
-        &mut self, _: &mut CobaltServer, _: &mut Connection, _: bool
-    ) {
     }
 
     fn shutdown(&mut self, _: &mut CobaltServer) {

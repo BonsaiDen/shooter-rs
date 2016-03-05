@@ -36,7 +36,7 @@ pub trait DrawableEntity<S: EntityState, L: BaseLevel<S>, R: Renderer> {
 
 }
 
-pub trait EntityState: Encodable + Decodable {
+pub trait EntityState: Encodable + Decodable + Default {
 
     fn encoded_size() -> usize where Self: Sized;
 
@@ -47,8 +47,6 @@ pub trait EntityState: Encodable + Decodable {
     fn set_to(&mut self, state: &Self);
 
     fn clone(&self) -> Self;
-
-    fn default() -> Self where Self: Sized;
 
     fn flags(&self) -> u8;
 

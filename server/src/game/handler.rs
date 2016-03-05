@@ -69,7 +69,7 @@ impl ServerHandler<SharedEvent, SharedState, SharedLevel, DefaultRenderer> for G
                             x: x as f32,
                             y: y as f32,
                             flags: color.to_flags(),
-                            .. SharedState::default() // TODO implement default trait
+                            .. Default::default() // TODO implement default trait
                         };
 
                         server.entities.create(
