@@ -70,6 +70,10 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
         self.tick
     }
 
+    pub fn dt(&self) -> f32 {
+        1.0 / self.config.tick_rate as f32
+    }
+
     pub fn config(&self) -> &EntityManagerConfig {
         &self.config
     }
@@ -117,13 +121,13 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
     pub fn tick_server<E: Event>(
         &mut self,
         level: &Level<S, L>,
-        handler: &mut Box<server::Handler<E, S, L, R>>, // TODO unbox?
-        dt: f32
+        handler: &mut Box<server::Handler<E, S, L, R>>
     ) {
 
+        let dt = self.dt();
         for (_, entity) in self.entities.iter_mut() {
             handler.tick_entity_before(level, entity, self.tick, dt);
-            entity.event(EntityEvent::Tick(self.tick, dt)); // TODO useful?
+            entity.event(EntityEvent::Tick(self.tick, dt));
             entity.tick(level, self.tick, dt, self.server_mode);
             handler.tick_entity_after(level, entity, self.tick, dt);
         }
@@ -144,10 +148,11 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
         &mut self,
         renderer: &mut R,
         handler: &mut client::Handler<E, S, L, R>,
-        level: &Level<S, L>, dt: f32,
+        level: &Level<S, L>,
         mut input_handler: I
     ) {
 
+        let dt = self.dt();
         for (_, entity) in self.entities.iter_mut() {
 
             handler.tick_entity_before(renderer, level, entity, self.tick, dt);

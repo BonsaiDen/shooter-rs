@@ -16,9 +16,9 @@ use shared::{Color, SharedEvent, SharedLevel, SharedState};
 
 
 // Type Aliases ---------------------------------------------------------------
-type Handle<'a> = ServerHandle<'a, SharedEvent, SharedState, SharedLevel, DefaultRenderer>;
-type ServerLevel = Level<SharedState, SharedLevel>;
-type ServerEntity = Entity<SharedState, SharedLevel, DefaultRenderer>;
+pub type Handle<'a> = ServerHandle<'a, SharedEvent, SharedState, SharedLevel, DefaultRenderer>;
+pub type ServerLevel = Level<SharedState, SharedLevel>;
+pub type ServerEntity = Entity<SharedState, SharedLevel, DefaultRenderer>;
 
 
 // Handler Implementation -----------------------------------------------------
@@ -47,7 +47,7 @@ impl ServerHandler<SharedEvent, SharedState, SharedLevel, DefaultRenderer> for G
     }
 
     fn event(
-        &mut self, server: Handle, owner: ConnectionID, event: SharedEvent
+        &mut self, server: Handle, _: &mut ConnectionMap, owner: ConnectionID, event: SharedEvent
         // TODO pass in connection map?
     ) {
 
@@ -90,9 +90,7 @@ impl ServerHandler<SharedEvent, SharedState, SharedLevel, DefaultRenderer> for G
 
     }
 
-    fn tick_before(
-        &mut self, _: Handle, _: &mut ConnectionMap, _: u8, _: f32
-    ) {
+    fn tick_before(&mut self, _: Handle, _: &mut ConnectionMap) {
 
         // TODO bullets are handled by pre-creating a local object and then
         // syncing it with the remote one, we submit a local ID and the server
@@ -116,9 +114,7 @@ impl ServerHandler<SharedEvent, SharedState, SharedLevel, DefaultRenderer> for G
 
     }
 
-    fn tick_after(
-        &mut self, _: Handle, _: &mut ConnectionMap, _: u8, _: f32
-    ) {
+    fn tick_after(&mut self, _: Handle, _: &mut ConnectionMap) {
 
     }
 

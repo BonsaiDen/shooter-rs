@@ -88,8 +88,6 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
     ) -> bool {
 
         let mut ticked = false;
-        let tick_rate = self.manager.config().tick_rate;
-        let dt = 1.0 / tick_rate as f32;
 
         self.network.receive();
 
@@ -131,10 +129,9 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
                         }
                     }
 
-                    let tick = self.manager.tick();
-                    handler.tick_before(self.handle(renderer), tick, dt);
-                    self.tick_entities(dt, handler, renderer);
-                    handler.tick_after(self.handle(renderer), tick, dt);
+                    handler.tick_before(self.handle(renderer));
+                    self.tick_entities(handler, renderer);
+                    handler.tick_after(self.handle(renderer));
                     ticked = true;
 
                 },
@@ -179,7 +176,6 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
 
     fn tick_entities(
         &mut self,
-        dt: f32,
         handler: &mut Handler<E, S, L, R>,
         renderer: &mut R
     ) {
@@ -190,7 +186,7 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
         // Tick entities
         self.manager.tick_client(
             renderer, handler,
-            &self.level, dt,
+            &self.level,
             |state, entity, tick| {
                 match state {
 
@@ -267,7 +263,7 @@ pub trait Handler<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> {
     fn config(&mut self, Handle<E, S, L, R>);
 
     fn event(&mut self, Handle<E, S, L, R>, ConnectionID, E);
-    fn tick_before(&mut self, Handle<E, S, L, R>, u8, f32);
+    fn tick_before(&mut self, Handle<E, S, L, R>);
 
     fn tick_entity_before(
         &mut self, &mut R, &Level<S, L>, &mut Entity<S, L, R>, u8, f32
@@ -278,7 +274,7 @@ pub trait Handler<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> {
 
     ) -> EntityControlState;
 
-    fn tick_after(&mut self, Handle<E, S, L, R>, u8, f32);
+    fn tick_after(&mut self, Handle<E, S, L, R>);
 
     fn draw(&mut self, Handle<E, S, L, R>);
 

@@ -107,8 +107,6 @@ impl<
         &mut self, _: &mut CobaltServer, connections: &mut ConnectionMap
     ) {
 
-        let tick_dt = 1.0 / self.manager.config().tick_rate as f32;
-
         // Receive Data
         for (id, conn) in connections.iter_mut() {
             for data in conn.received() {
@@ -142,32 +140,26 @@ impl<
                     entities: &mut self.manager,
                     events: &mut self.events
 
-                }, owner, event);
+                }, connections, owner, event);
             }
         }
 
         // Tick Entities
-        let tick = self.manager.tick();
+        self.handler.tick_before(Handle {
+            level: &mut self.level,
+            entities: &mut self.manager,
+            events: &mut self.events
 
-        {
-            self.handler.tick_before(Handle {
-                level: &mut self.level,
-                entities: &mut self.manager,
-                events: &mut self.events
+        }, connections);
 
-            }, connections, tick, tick_dt);
-        }
+        self.manager.tick_server(&self.level, &mut self.handler);
 
-        self.manager.tick_server(&self.level, &mut self.handler, tick_dt);
+        self.handler.tick_after(Handle {
+            level: &mut self.level,
+            entities: &mut self.manager,
+            events: &mut self.events
 
-        {
-            self.handler.tick_after(Handle {
-                level: &mut self.level,
-                entities: &mut self.manager,
-                events: &mut self.events
-
-            }, connections, tick, tick_dt);
-        }
+        }, connections);
 
         // Send Data
         for (id, conn) in connections.iter_mut() {
@@ -182,7 +174,6 @@ impl<
             // do not yet exist or have already been destroyed
             // fix: delay events and drop them eventually (after some specified time)?
             if let Some(ref events) = self.events.serialize_events(Some(&id)) {
-                // TODO filter events here?
                 let mut data = [network::Message::ServerEvents as u8].to_vec();
                 data.extend(events.clone());
                 conn.send(MessageKind::Reliable, data);
@@ -241,15 +232,14 @@ pub trait Handler<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> {
     fn connect(&mut self, Handle<E, S, L, R>, &mut Connection);
     fn disconnect(&mut self, Handle<E, S, L, R>, &mut Connection);
 
-    // TODO pass in connections mapping for all event / tick handles
-    fn event(&mut self, Handle<E, S, L, R>, ConnectionID, E);
+    fn event(&mut self, Handle<E, S, L, R>, &mut ConnectionMap, ConnectionID, E);
 
-    fn tick_before(&mut self, Handle<E, S, L, R>, &mut ConnectionMap, u8, f32);
+    fn tick_before(&mut self, Handle<E, S, L, R>, &mut ConnectionMap);
 
     fn tick_entity_before(&mut self, &Level<S, L>, &mut Entity<S, L, R>, u8, f32);
     fn tick_entity_after(&mut self, &Level<S, L>, &mut Entity<S, L, R>, u8, f32);
 
-    fn tick_after(&mut self, Handle<E, S, L, R>, &mut ConnectionMap, u8, f32);
+    fn tick_after(&mut self, Handle<E, S, L, R>, &mut ConnectionMap);
 
     fn shutdown(&mut self, Handle<E, S, L, R>);
 

@@ -20,9 +20,9 @@ use renderer::AllegroRenderer;
 
 
 // Type Aliases ---------------------------------------------------------------
-type Handle<'a> = ClientHandle<'a, SharedEvent, SharedState, SharedLevel, AllegroRenderer>;
-type ClientEntity = Entity<SharedState, SharedLevel, AllegroRenderer>;
-type ClientLevel = Level<SharedState, SharedLevel>;
+pub type Handle<'a> = ClientHandle<'a, SharedEvent, SharedState, SharedLevel, AllegroRenderer>;
+pub type ClientEntity = Entity<SharedState, SharedLevel, AllegroRenderer>;
+pub type ClientLevel = Level<SharedState, SharedLevel>;
 
 
 // Handler Implementation -----------------------------------------------------
@@ -61,9 +61,9 @@ impl ClientHandler<SharedEvent, SharedState, SharedLevel, AllegroRenderer> for G
         self.init(client);
     }
 
-    fn connect(&mut self, server: Handle) {
+    fn connect(&mut self, client: Handle) {
         self.state = GameState::Pending;
-        server.events.send(None, SharedEvent::JoinGame);
+        client.events.send(None, SharedEvent::JoinGame);
     }
 
     fn disconnect(&mut self, client: Handle) {
@@ -75,7 +75,8 @@ impl ClientHandler<SharedEvent, SharedState, SharedLevel, AllegroRenderer> for G
         println!("Event: {:?} {:?}", owner, event);
     }
 
-    fn tick_before(&mut self, client: Handle, tick: u8, _: f32) {
+    fn tick_before(&mut self, client: Handle) {
+        let tick = client.entities.tick();
         client.renderer.reseed_rng([
             ((tick as u32 + 7) * 941) as u32,
             ((tick as u32 + 659) * 461) as u32,
@@ -142,7 +143,7 @@ impl ClientHandler<SharedEvent, SharedState, SharedLevel, AllegroRenderer> for G
 
     }
 
-    fn tick_after(&mut self, _: Handle, _: u8, _: f32) {
+    fn tick_after(&mut self, _: Handle) {
     }
 
     fn draw(&mut self, client: Handle) {
