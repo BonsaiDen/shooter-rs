@@ -9,8 +9,7 @@ use entity::{
     Entity,
     EntityState,
     EntityManager,
-    EntityRegistry,
-    EntityControlState
+    EntityRegistry
 };
 use level::{Level, BaseLevel};
 use event::{Event, EventHandler};
@@ -70,12 +69,16 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
     }
 
     pub fn destroy(
-        &mut self,
-        handler: &mut Handler<E, S, L, R>,
-        renderer: &mut R
+        &mut self, handler: &mut Handler<E, S, L, R>, renderer: &mut R
     ) {
-        self.network.destroy();
+
         handler.destroy(self.handle(renderer));
+
+        // Send any pending outgoing events
+        self.send_events();
+        self.network.send();
+        self.network.destroy();
+
     }
 
 
@@ -131,6 +134,7 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
 
                     handler.tick_before(self.handle(renderer));
                     self.tick_entities(handler, renderer);
+                    self.send_events();
                     handler.tick_after(self.handle(renderer));
                     ticked = true;
 
@@ -180,39 +184,9 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
         renderer: &mut R
     ) {
 
-        let mut local_inputs: Option<Vec<u8>> = None;
-        let remote_states = &mut self.remote_states;
-
         // Tick entities
-        self.manager.tick_client(
-            renderer, handler,
-            &self.level,
-            |state, entity, tick| {
-                match state {
-
-                    // TODO this will no longer be needed once we have a local
-                    // network proxy
-                    EntityControlState::Remote => {
-                        local_inputs = entity.serialized_inputs();
-                    },
-
-                    // TODO solve this via a local network proxy which has a delay
-                    EntityControlState::Local => {
-
-                        // Emulate remote server state stuff with a 20 frames delay
-                        remote_states.push((tick, entity.state().clone()));
-
-                        // TODO scale delay with tick rate or configure it
-                        // TODO or increase state buffer size?
-                        if remote_states.len() > 10 {
-                            let first = remote_states.remove(0);
-                            entity.set_confirmed_state(first.0, first.1);
-                        }
-
-                    },
-                    _ => unreachable!()
-                }
-            }
+        let local_inputs = self.manager.tick_client(
+            renderer, handler, &self.level
         );
 
         // Send all unconfirmed inputs to server
@@ -222,10 +196,14 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
             self.network.send_message(MessageKind::Instant, data);
         }
 
+    }
+
+    fn send_events(&mut self) {
+
         // Send events
         if let Some(ref events) = self.events.serialize_events(None) {
             let mut data = [network::Message::ClientEvents as u8].to_vec();
-            data.extend(events.clone());
+            data.extend(events);
             self.network.send_message(MessageKind::Reliable, data);
         }
 
@@ -272,7 +250,7 @@ pub trait Handler<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> {
     fn tick_entity_after(
         &mut self, &mut R, &Level<S, L>, &mut Entity<S, L, R>, u8, f32
 
-    ) -> EntityControlState;
+    ) -> bool;
 
     fn tick_after(&mut self, Handle<E, S, L, R>);
 

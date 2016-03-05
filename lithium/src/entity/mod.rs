@@ -14,7 +14,6 @@ pub use self::input::EntityInput;
 pub use self::traits::BaseEntity;
 pub use self::traits::DrawableEntity;
 pub use self::manager::EntityManager;
-pub use self::manager::EntityControlState;
 pub use self::manager::config::EntityManagerConfig;
 pub use self::manager::registry::EntityRegistry;
 

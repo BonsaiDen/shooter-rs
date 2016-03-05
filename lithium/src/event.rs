@@ -2,11 +2,7 @@
 use cobalt::ConnectionID;
 use bincode::SizeLimit;
 use rustc_serialize::{Encodable, Decodable};
-use bincode::rustc_serialize::{
-    encode,
-    decode,
-    encoded_size
-};
+use bincode::rustc_serialize::{encode,decode_from};
 
 
 // Abstract Event -------------------------------------------------------------
@@ -16,8 +12,7 @@ pub trait Event: Encodable + Decodable + Default {}
 // Event Handler --------------------------------------------------------------
 pub struct EventHandler<T: Event> {
     incoming: Option<Vec<(ConnectionID, T)>>,
-    outgoing: Vec<(Option<ConnectionID>, T)>,
-    event_size: usize
+    outgoing: Vec<(Option<ConnectionID>, T)>
 }
 
 impl<T: Event> EventHandler<T> {
@@ -25,8 +20,7 @@ impl<T: Event> EventHandler<T> {
     pub fn new() -> EventHandler<T> {
         EventHandler {
             incoming: None,
-            outgoing: Vec::new(),
-            event_size: encoded_size::<T>(&T::default()) as usize
+            outgoing: Vec::new()
         }
     }
 
@@ -41,9 +35,8 @@ impl<T: Event> EventHandler<T> {
     pub fn receive_events(&mut self, owner_id: ConnectionID, mut data: &[u8]) {
 
         let mut incoming = Vec::new();
-        while let Ok(event) = decode::<T>(data) {
+        while let Ok(event) = decode_from::<&[u8], T>(&mut data, SizeLimit::Bounded(256)) {
             incoming.push((owner_id, event));
-            data = &data[self.event_size..];
         }
 
         self.incoming = Some(incoming);

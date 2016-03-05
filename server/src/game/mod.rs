@@ -9,23 +9,28 @@ mod handler;
 
 // Server Side Game Logic -----------------------------------------------------
 pub struct Game {
-    available_colors: Vec<Color>
+    available_colors: Vec<Color>,
+    loopback_mode: bool
 }
 
 impl Game {
 
-    pub fn new() -> Game {
+    pub fn new(loopback_mode: bool) -> Game {
         Game {
-            available_colors: Color::all_colored().into_iter().rev().collect()
+            available_colors: Color::all_colored().into_iter().rev().collect(),
+            loopback_mode: loopback_mode
         }
     }
 
-    pub fn server(tick_rate: u32) -> Server<SharedEvent, SharedState, SharedLevel, DefaultRenderer>{
+    pub fn server(
+        tick_rate: u32, loopback_mode: bool
+
+    ) -> Server<SharedEvent, SharedState, SharedLevel, DefaultRenderer>{
         Server::new(
             tick_rate, 1000, 75,
             Game::default_level(),
             Box::new(SharedRegistry),
-            Box::new(Game::new())
+            Box::new(Game::new(loopback_mode))
         )
     }
 

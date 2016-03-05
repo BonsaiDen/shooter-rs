@@ -138,7 +138,7 @@ impl Stream {
         // Try to reconnect after 3 seconds
         if self.connection_time != 0.0 && time - self.connection_time > 3.0 {
             self.connection_time = 0.0;
-            self.handler.reset();
+            self.sync_token.reset();
         }
 
         // Internal event handling
@@ -183,7 +183,7 @@ impl Stream {
     }
 
     pub fn send_message(&mut self, kind: MessageKind, data: Vec<u8>) {
-        self.handler.send(kind, data);
+        self.sync_token.send(kind, data);
     }
 
     pub fn destroy(&mut self) {
@@ -209,36 +209,25 @@ pub enum StreamEvent {
 }
 
 pub enum StreamCommand {
-    Reset,
     Send(MessageKind, Vec<u8>)
 }
 
 
 // Network Stream Handler Implementation --------------------------------------
 pub struct StreamHandler {
-    events: VecDeque<StreamEvent>,
-    commands: VecDeque<StreamCommand>
+    events: VecDeque<StreamEvent>
 }
 
 impl StreamHandler {
 
     pub fn new() -> StreamHandler {
         StreamHandler {
-            events: VecDeque::new(),
-            commands: VecDeque::new()
+            events: VecDeque::new()
         }
     }
 
     pub fn try_recv(&mut self) -> Option<StreamEvent> {
         self.events.pop_front()
-    }
-
-    pub fn send(&mut self, kind: MessageKind, data: Vec<u8>) {
-        self.commands.push_back(StreamCommand::Send(kind, data));
-    }
-
-    pub fn reset(&mut self) {
-        self.commands.push_back(StreamCommand::Reset);
     }
 
 }
@@ -266,21 +255,6 @@ impl Handler<Client> for StreamHandler {
         self.events.push_back(
             StreamEvent::Tick(conn.rtt(), conn.packet_loss(), client.stats())
         );
-
-        // TODO we somehow need to be able to send a outgoing packet without delay
-        // we currently have a one tick delay (?) is this still correct?
-
-        // Handle commands
-        while let Some(cmd) = self.commands.pop_front() {
-            match cmd {
-                StreamCommand::Send(kind, data) => {
-                    conn.send(kind, data);
-                },
-                StreamCommand::Reset => {
-                    conn.reset();
-                }
-            }
-        }
 
     }
 

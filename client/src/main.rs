@@ -4,6 +4,7 @@ extern crate rand;
 extern crate cobalt;
 extern crate lithium;
 extern crate shared;
+extern crate shooter_server;
 
 #[macro_use]
 extern crate allegro;
@@ -13,8 +14,11 @@ extern crate allegro_primitives;
 
 
 // External Dependencies ------------------------------------------------------
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
-use lithium::Renderer;
+use std::thread;
+use std::str::FromStr;
+use std::net::SocketAddr;
+use std::time::Duration;
+use lithium::{Renderer, Server};
 
 
 // Internal Dependencies ------------------------------------------------------
@@ -40,16 +44,40 @@ allegro_main! {
 
 
     // Arguments --------------------------------------------------------------
-    let server_addr = value_t!(
+    if let Ok(remote_addr) = value_t!(
         args.value_of("address:port"), SocketAddr
+    ) {
+        run_client(remote_addr);
 
-    ).unwrap_or(SocketAddr::V4(
-        SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 31476)
-    ));
+    } else {
 
+        let local_addr = SocketAddr::from_str("127.0.0.1:31475").unwrap();
+        let server_thread = thread::spawn(move|| {
+            run_server(local_addr, 30);
+        });
 
-    // Client Setup -----------------------------------------------------------
-    AllegroRenderer::run(game::Game::client(server_addr), game::Game::new());
+        // Ensure that the server is up and running
+        // TODO make the reconnect timeout configurable
+        thread::sleep(Duration::from_millis(10));
 
+        run_client(local_addr);
+        server_thread.join().unwrap();
+
+    };
+
+}
+
+fn run_client(server_addr: SocketAddr) {
+    AllegroRenderer::run(
+        game::Game::client(server_addr),
+        game::Game::new()
+    );
+}
+
+fn run_server(server_addr: SocketAddr, tick_rate: u32) {
+    Server::run(
+        server_addr,
+        shooter_server::game::Game::server(tick_rate, true)
+    );
 }
 

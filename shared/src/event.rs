@@ -2,6 +2,9 @@
 use lithium::Event;
 
 
+// Internal Dependencies ------------------------------------------------------
+use command::SharedCommand;
+
 // Game Events ----------------------------------------------------------------
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub enum SharedEvent {
@@ -9,6 +12,7 @@ pub enum SharedEvent {
     GameJoined,
     PlayerJoined,
     PlayerLeft,
+    Command(SharedCommand),
     Unknown
 }
 

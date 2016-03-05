@@ -4,7 +4,6 @@ use lithium::{
     Entity,
     EntityInput,
     EntityState,
-    EntityControlState,
     ClientHandle,
     ClientHandler,
     Level,
@@ -15,8 +14,8 @@ use lithium::{
 // Internal Dependencies ------------------------------------------------------
 use level::RenderedLevel;
 use game::{Game, GameState};
-use shared::{Color, ColorName, SharedEvent, SharedLevel, SharedState};
 use renderer::AllegroRenderer;
+use shared::{Color, ColorName, SharedEvent, SharedCommand, SharedLevel, SharedState};
 
 
 // Type Aliases ---------------------------------------------------------------
@@ -33,22 +32,6 @@ impl ClientHandler<SharedEvent, SharedState, SharedLevel, AllegroRenderer> for G
         client.renderer.set_fps(60);
         client.renderer.set_title("Rustgame: Shooter");
         client.renderer.resize(client.level.width() as i32, client.level.height() as i32);
-
-        // Local Test Play
-        if self.state == GameState::Disconnected {
-
-            let (x, y) = client.level.center();
-            let flags = 0b0000_0001 | Color::from_name(ColorName::Red).to_flags();
-            let state = SharedState {
-                x: x as f32,
-                y: y as f32,
-                flags: flags,
-                .. SharedState::default() // TODO implement default so we can use Default::default()
-            };
-
-            client.entities.create(0, Some(state), None).unwrap().show(0);
-
-        }
 
     }
 
@@ -126,21 +109,8 @@ impl ClientHandler<SharedEvent, SharedState, SharedLevel, AllegroRenderer> for G
         entity: &mut ClientEntity,
         _: u8, _: f32
 
-    ) -> EntityControlState {
-
-        // TODO have a method on the entity?
-        if entity.local() {
-            // TODO clean up once we have a local network proxy
-            match self.state {
-                GameState::Disconnected => EntityControlState::Local,
-                GameState::Connected => EntityControlState::Remote,
-                _ => EntityControlState::None
-            }
-
-        } else {
-           EntityControlState::None
-        }
-
+    ) -> bool {
+        entity.local() && self.state == GameState::Connected
     }
 
     fn tick_after(&mut self, _: Handle) {
@@ -177,8 +147,8 @@ impl ClientHandler<SharedEvent, SharedState, SharedLevel, AllegroRenderer> for G
 
     }
 
-    fn destroy(&mut self, _: Handle) {
-
+    fn destroy(&mut self, client: Handle) {
+        client.events.send(None, SharedEvent::Command(SharedCommand::Shutdown));
     }
 
 }

@@ -79,15 +79,16 @@ impl<
 
 > CobaltHandler<CobaltServer> for Server<E, S, L, R> {
 
-    fn bind(&mut self, _: &mut CobaltServer) {
+    fn bind(&mut self, server: &mut CobaltServer) {
         self.handler.bind(Handle {
             level: &mut self.level,
             entities: &mut self.manager,
-            events: &mut self.events
+            events: &mut self.events,
+            server: server
         });
     }
 
-    fn connection(&mut self, _: &mut CobaltServer, conn: &mut Connection) {
+    fn connection(&mut self, server: &mut CobaltServer, conn: &mut Connection) {
 
         let mut config = [network::Message::ServerConfig as u8].to_vec();
         config.extend(self.manager.serialize_config());
@@ -97,14 +98,15 @@ impl<
         self.handler.connect(Handle {
             level: &mut self.level,
             entities: &mut self.manager,
-            events: &mut self.events
+            events: &mut self.events,
+            server: server
 
         }, conn);
 
     }
 
     fn tick_connections(
-        &mut self, _: &mut CobaltServer, connections: &mut ConnectionMap
+        &mut self, server: &mut CobaltServer, connections: &mut ConnectionMap
     ) {
 
         // Receive Data
@@ -140,7 +142,8 @@ impl<
                 self.handler.event(Handle {
                     level: &mut self.level,
                     entities: &mut self.manager,
-                    events: &mut self.events
+                    events: &mut self.events,
+                    server: server
 
                 }, connections, owner, event);
             }
@@ -150,7 +153,8 @@ impl<
         self.handler.tick_before(Handle {
             level: &mut self.level,
             entities: &mut self.manager,
-            events: &mut self.events
+            events: &mut self.events,
+            server: server
 
         }, connections);
 
@@ -159,7 +163,8 @@ impl<
         self.handler.tick_after(Handle {
             level: &mut self.level,
             entities: &mut self.manager,
-            events: &mut self.events
+            events: &mut self.events,
+            server: server
 
         }, connections);
 
@@ -187,20 +192,22 @@ impl<
 
     }
 
-    fn connection_lost(&mut self, _: &mut CobaltServer, conn: &mut Connection) {
+    fn connection_lost(&mut self, server: &mut CobaltServer, conn: &mut Connection) {
         self.handler.disconnect(Handle {
             level: &mut self.level,
             entities: &mut self.manager,
-            events: &mut self.events
+            events: &mut self.events,
+            server: server
 
         }, conn);
     }
 
-    fn shutdown(&mut self, _: &mut CobaltServer) {
+    fn shutdown(&mut self, server: &mut CobaltServer) {
         self.handler.shutdown(Handle {
             level: &mut self.level,
             entities: &mut self.manager,
-            events: &mut self.events
+            events: &mut self.events,
+            server: server
         });
     }
 
@@ -213,7 +220,8 @@ pub struct Handle<
 > {
     pub level: &'a mut Level<S, L>,
     pub entities: &'a mut EntityManager<S, L, R>,
-    pub events: &'a mut EventHandler<E>
+    pub events: &'a mut EventHandler<E>,
+    pub server: &'a mut CobaltServer
 }
 
 

@@ -132,25 +132,19 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
             handler.tick_entity_after(level, entity, self.tick, dt);
         }
 
-        if self.tick == 255 {
-            self.tick = 0;
-
-        } else {
-            self.tick += 1;
-        }
+        self.tick = self.tick.wrapping_add(1);
 
     }
 
-    pub fn tick_client<
-        E: Event,
-        I: FnMut(EntityControlState, &mut Entity<S, L, R>, u8)
-    >(
+    pub fn tick_client<E: Event>(
         &mut self,
         renderer: &mut R,
         handler: &mut client::Handler<E, S, L, R>,
-        level: &Level<S, L>,
-        mut input_handler: I
-    ) {
+        level: &Level<S, L>
+
+    ) -> Option<Vec<u8>> {
+
+        let mut local_inputs: Option<Vec<u8>> = None;
 
         let dt = self.dt();
         for (_, entity) in self.entities.iter_mut() {
@@ -159,19 +153,15 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
             entity.event(EntityEvent::Tick(self.tick, dt)); // TODO useful?
             entity.tick(level, self.tick, dt, self.server_mode);
 
-            match handler.tick_entity_after(renderer, level, entity, self.tick, dt) {
-                EntityControlState::None => {},
-                state => input_handler(state, entity, self.tick)
+            if handler.tick_entity_after(renderer, level, entity, self.tick, dt) {
+                local_inputs = entity.serialized_inputs();
             }
 
         }
 
-        if self.tick == 255 {
-            self.tick = 0;
+        self.tick = self.tick.wrapping_add(1);
 
-        } else {
-            self.tick += 1;
-        }
+        local_inputs
 
     }
 
@@ -380,13 +370,5 @@ impl<'a, S: EntityState, L: BaseLevel<S>, R: Renderer> Drop for StateRewinder<'a
     fn drop(&mut self) {
         self.manager.forward();
     }
-}
-
-
-// Client Entity Control State ------------------------------------------------
-pub enum EntityControlState {
-    Local,
-    Remote,
-    None
 }
 

@@ -12,7 +12,7 @@ use lithium::{
 
 // Internal Dependencies ------------------------------------------------------
 use game::Game;
-use shared::{Color, SharedEvent, SharedLevel, SharedState};
+use shared::{Color, SharedEvent, SharedCommand, SharedLevel, SharedState};
 
 
 // Type Aliases ---------------------------------------------------------------
@@ -29,15 +29,15 @@ impl ServerHandler<SharedEvent, SharedState, SharedLevel, DefaultRenderer> for G
     }
 
     fn connect(&mut self, _: Handle, conn: &mut Connection) {
-        println!("[Client {}] Connected", conn.peer_addr());
+        println!("[Server] [Client {}] Connected", conn.peer_addr());
     }
 
-    fn disconnect(&mut self, server: Handle, conn: &mut Connection) {
+    fn disconnect(&mut self, handle: Handle, conn: &mut Connection) {
 
-        println!("[Client {}] Disconnected", conn.peer_addr());
+        println!("[Server] [Client {}] Disconnected", conn.peer_addr());
 
-        while let Some(id) = server.entities.get_entity_id_for_owner(&conn.id()) {
-            if let Some(entity) = server.entities.destroy(id) {
+        while let Some(id) = handle.entities.get_entity_id_for_owner(&conn.id()) {
+            if let Some(entity) = handle.entities.destroy(id) {
                 let color = Color::from_flags(entity.state().flags);
                 println!("[Client {}] Destroyed entity ({:?})", conn.peer_addr(), color);
                 self.available_colors.push(color);
@@ -47,24 +47,24 @@ impl ServerHandler<SharedEvent, SharedState, SharedLevel, DefaultRenderer> for G
     }
 
     fn event(
-        &mut self, server: Handle, _: &mut ConnectionMap, owner: ConnectionID, event: SharedEvent
+        &mut self, handle: Handle, _: &mut ConnectionMap, owner: ConnectionID, event: SharedEvent
         // TODO pass in connection map?
     ) {
 
-        println!("[Client {:?}] Event: {:?}", owner, event);
+        println!("[Server] [Client {:?}] Event: {:?}", owner, event);
 
         match event {
             SharedEvent::JoinGame => {
 
-                if let Some(_) = server.entities.get_entity_for_owner(&owner) {
-                    println!("[Client {:?}] Already has a entity.", owner);
+                if let Some(_) = handle.entities.get_entity_for_owner(&owner) {
+                    println!("[Server] [Client {:?}] Already has a entity.", owner);
 
                 } else {
 
                     // Create a ship entity from one of the available colors
                     if let Some(color) = self.available_colors.pop() {
 
-                        let (x, y) = server.level.center();
+                        let (x, y) = handle.level.center();
                         let state = SharedState {
                             x: x as f32,
                             y: y as f32,
@@ -72,20 +72,24 @@ impl ServerHandler<SharedEvent, SharedState, SharedLevel, DefaultRenderer> for G
                             .. Default::default() // TODO implement default trait
                         };
 
-                        server.entities.create(
+                        handle.entities.create(
                             0,
                             Some(state),
                             Some(&owner)
                         );
 
-                        server.events.send(Some(owner), SharedEvent::GameJoined);
-                        server.events.send(None, SharedEvent::PlayerJoined);
+                        handle.events.send(Some(owner), SharedEvent::GameJoined);
+                        handle.events.send(None, SharedEvent::PlayerJoined);
 
                     }
 
                 }
             },
-            _ => {}
+            SharedEvent::Command(SharedCommand::Shutdown) if self.loopback_mode => {
+                println!("[Server] [Client {:?}] Received Shutdown Command", owner);
+                handle.server.shutdown().unwrap();
+            },
+            _ => { println!("Unknown Event") }
         }
 
     }

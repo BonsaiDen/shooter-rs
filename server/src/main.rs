@@ -6,7 +6,8 @@ extern crate shared;
 
 
 // External Dependencies ------------------------------------------------------
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::str::FromStr;
+use std::net::SocketAddr;
 use lithium::Server;
 
 
@@ -32,13 +33,11 @@ fn main() {
     let server_addr = value_t!(
         args.value_of("address:port"), SocketAddr
 
-    ).unwrap_or(SocketAddr::V4(
-        SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 31476)
-    ));
+    ).unwrap_or(SocketAddr::from_str("127.0.0.1:31475").unwrap());
 
 
     // Server Setup -----------------------------------------------------------
-    Server::run(server_addr, game::Game::server(30));
+    Server::run(server_addr, game::Game::server(30, false));
 
 }
 

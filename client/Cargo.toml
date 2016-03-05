@@ -7,6 +7,7 @@ authors = ["Ivo Wetzel <ivo.wetzel@googlemail.com>"]
 clap = "1.4.0"
 cobalt = { version = "0.7.0", path = "../../cobalt-rs" }
 lithium = { version = "0.1.0", path = "../lithium" }
+shooter-server = { version = "0.1.0", path = "../server" }
 shared = { version = "0.1.0", path = "../shared" }
 
 rand = "0.3.13"
