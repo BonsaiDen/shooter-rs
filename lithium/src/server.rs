@@ -183,7 +183,7 @@ impl<
             if let Some(ref events) = self.events.serialize_events(Some(&id)) {
                 let mut data = [network::Message::ServerEvents as u8].to_vec();
                 data.extend(events.clone());
-                conn.send(MessageKind::Reliable, data);
+                conn.send(MessageKind::Ordered, data);
             }
 
         }

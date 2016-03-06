@@ -198,7 +198,7 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
         if let Some(ref events) = self.events.serialize_events(None) {
             let mut data = [network::Message::ClientEvents as u8].to_vec();
             data.extend(events);
-            self.network.send_message(MessageKind::Reliable, data);
+            self.network.send_message(MessageKind::Ordered, data);
         }
 
         self.events.flush();
