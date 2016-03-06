@@ -26,6 +26,11 @@ impl<S: EntityState, L: BaseLevel<S>> Level<S, L> {
         }
     }
 
+    pub fn set(&mut self, level: Level<S, L>)  {
+        self.level = level.level;
+        self.drawable = level.drawable;
+    }
+
     pub fn limit_state(&self, state: &mut S) {
         self.level.limit_state(state);
     }

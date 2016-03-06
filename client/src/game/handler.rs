@@ -28,18 +28,13 @@ pub type ClientLevel = Level<SharedState, SharedLevel>;
 impl ClientHandler<SharedEvent, SharedState, SharedLevel, AllegroRenderer> for Game {
 
     fn init(&mut self, client: Handle) {
-
         client.renderer.set_fps(60);
         client.renderer.set_title("Rustgame: Shooter");
         client.renderer.resize(client.level.width() as i32, client.level.height() as i32);
-
     }
 
-    fn level(&mut self, _: Handle, level_data: &[u8]) -> Level<SharedState, SharedLevel> {
-        RenderedLevel::from_serialized(level_data)
-    }
-
-    fn config(&mut self, client: Handle) {
+    fn config(&mut self, client: Handle, level_data: &[u8]) {
+        client.level.set(RenderedLevel::from_serialized(level_data));
         self.state = GameState::Connected;
         self.init(client);
     }
@@ -106,11 +101,10 @@ impl ClientHandler<SharedEvent, SharedState, SharedLevel, AllegroRenderer> for G
         &mut self,
         _: &mut AllegroRenderer,
         _: &ClientLevel,
-        entity: &mut ClientEntity,
+        _: &mut ClientEntity,
         _: u8, _: f32
+    ) {
 
-    ) -> bool {
-        entity.local() && self.state == GameState::Connected
     }
 
     fn tick_after(&mut self, _: Handle) {

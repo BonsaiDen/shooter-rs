@@ -23,7 +23,8 @@ impl Game {
     }
 
     pub fn server(
-        tick_rate: u32, loopback_mode: bool
+        tick_rate: u32,
+        loopback_mode: bool
 
     ) -> Server<SharedEvent, SharedState, SharedLevel, DefaultRenderer>{
         Server::new(

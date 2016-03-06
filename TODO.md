@@ -2,7 +2,6 @@
 
 - Try to remove all boxing outside of entities
 - Clean up client side network stream
-- Implement server commands / server command flag
 
 # General
 

@@ -153,8 +153,11 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
             entity.event(EntityEvent::Tick(self.tick, dt)); // TODO useful?
             entity.tick(level, self.tick, dt, self.server_mode);
 
-            if handler.tick_entity_after(renderer, level, entity, self.tick, dt) {
-                local_inputs = entity.serialized_inputs();
+            handler.tick_entity_after(renderer, level, entity, self.tick, dt);
+
+            // Use serialized inputs from the locally controlled entities
+            if let Some(inputs) = entity.serialized_inputs() {
+                local_inputs = Some(inputs);
             }
 
         }

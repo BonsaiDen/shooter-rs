@@ -103,16 +103,14 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
                     handler.connect(self.handle(renderer));
                 },
 
-                // TODO clean up / validate message
                 network::StreamEvent::Message(_, data) =>  {
                     match network::Message::from_u8(data[0]) {
                         network::Message::ServerConfig => {
-                            let level_data = self.manager.receive_config(&data[1..]);
-                            self.level = handler.level(self.handle(renderer), level_data);
+                            let config_data = self.manager.receive_config(&data[1..]);
                             self.network.set_tick_rate(self.manager.config().tick_rate as u32);
                             renderer.set_tick_rate(self.manager.config().tick_rate as u32);
                             renderer.set_interpolation_ticks(self.manager.config().interpolation_ticks as usize);
-                            handler.config(self.handle(renderer));
+                            handler.config(self.handle(renderer), config_data);
                         },
                         network::Message::ServerState => {
                             self.manager.receive_state(&data[1..]);
@@ -179,12 +177,9 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
     }
 
     fn tick_entities(
-        &mut self,
-        handler: &mut Handler<E, S, L, R>,
-        renderer: &mut R
+        &mut self, handler: &mut Handler<E, S, L, R>, renderer: &mut R
     ) {
 
-        // Tick entities
         let local_inputs = self.manager.tick_client(
             renderer, handler, &self.level
         );
@@ -200,7 +195,6 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
 
     fn send_events(&mut self) {
 
-        // Send events
         if let Some(ref events) = self.events.serialize_events(None) {
             let mut data = [network::Message::ClientEvents as u8].to_vec();
             data.extend(events);
@@ -214,7 +208,7 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
 }
 
 
-// Client Handle for Access from Handler ------------------------------------
+// Client Handle for Access from Handler --------------------------------------
 pub struct Handle<
     'a,
     E: Event + 'a,
@@ -237,10 +231,10 @@ pub trait Handler<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> {
     fn connect(&mut self, Handle<E, S, L, R>);
     fn disconnect(&mut self, Handle<E, S, L, R>);
 
-    fn level(&mut self, Handle<E, S, L, R>, &[u8]) -> Level<S, L>;
-    fn config(&mut self, Handle<E, S, L, R>);
+    fn config(&mut self, Handle<E, S, L, R>, &[u8]);
 
     fn event(&mut self, Handle<E, S, L, R>, ConnectionID, E);
+
     fn tick_before(&mut self, Handle<E, S, L, R>);
 
     fn tick_entity_before(
@@ -249,8 +243,7 @@ pub trait Handler<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> {
 
     fn tick_entity_after(
         &mut self, &mut R, &Level<S, L>, &mut Entity<S, L, R>, u8, f32
-
-    ) -> bool;
+    );
 
     fn tick_after(&mut self, Handle<E, S, L, R>);
 

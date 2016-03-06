@@ -1,6 +1,6 @@
 // External Dependencies ------------------------------------------------------
-use cobalt::ConnectionID;
 use bincode::SizeLimit;
+use cobalt::ConnectionID;
 use rustc_serialize::{Encodable, Decodable};
 use bincode::rustc_serialize::{encode,decode_from};
 
@@ -35,7 +35,9 @@ impl<T: Event> EventHandler<T> {
     pub fn receive_events(&mut self, owner_id: ConnectionID, mut data: &[u8]) {
 
         let mut incoming = Vec::new();
-        while let Ok(event) = decode_from::<&[u8], T>(&mut data, SizeLimit::Bounded(256)) {
+        while let Ok(event) = decode_from::<&[u8], T>(
+            &mut data, SizeLimit::Bounded(256)
+        ) {
             incoming.push((owner_id, event));
         }
 

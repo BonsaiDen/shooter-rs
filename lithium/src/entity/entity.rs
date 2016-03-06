@@ -248,10 +248,6 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> Entity<S, L, R> {
 
 
     // Input ------------------------------------------------------------------
-    pub fn confirmed_tick(&self) -> u8 {
-        self.confirmed_input_tick
-    }
-
     pub fn local_input(&mut self, input: EntityInput) {
 
         self.input(input);
