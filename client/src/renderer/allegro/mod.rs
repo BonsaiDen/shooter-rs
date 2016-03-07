@@ -46,7 +46,7 @@ pub struct AllegroRenderer {
     interpolation_ticks: usize,
 
     // Input
-    key_state: [bool; 255],
+    key_state: [bool; 256],
 
     // Internal State
     rng: XorShiftRng,
@@ -85,7 +85,7 @@ impl AllegroRenderer {
             time: 0.0,
             dt: 0.0,
             u: 0.0,
-            key_state: [false; 255],
+            key_state: [false; 256],
             rng: XorShiftRng::new_unseeded(),
             interpolation_ticks: 0
         }

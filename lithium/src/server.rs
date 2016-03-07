@@ -180,9 +180,9 @@ impl<
             // TODO potential issues with events for entities which
             // do not yet exist or have already been destroyed
             // fix: delay events and drop them eventually (after some specified time)?
-            if let Some(ref events) = self.events.serialize_events(Some(&id)) {
+            if let Some(events) = self.events.serialize_events(Some(&id)) {
                 let mut data = [network::Message::ServerEvents as u8].to_vec();
-                data.extend(events.clone());
+                data.extend(events);
                 conn.send(MessageKind::Ordered, data);
             }
 
@@ -216,7 +216,11 @@ impl<
 
 // Server Handle for Access from Handler ------------------------------------
 pub struct Handle<
-    'a, E: Event + 'a, S: EntityState + 'a, L: BaseLevel<S> + 'a, R: Renderer + 'a
+    'a,
+    E: Event + 'a,
+    S: EntityState + 'a,
+    L: BaseLevel<S> + 'a,
+    R: Renderer + 'a
 > {
     pub level: &'a mut Level<S, L>,
     pub entities: &'a mut EntityManager<S, L, R>,
