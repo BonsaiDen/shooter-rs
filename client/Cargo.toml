@@ -4,13 +4,11 @@ version = "0.1.0"
 authors = ["Ivo Wetzel <ivo.wetzel@googlemail.com>"]
 
 [dependencies]
-clap = "1.4.0"
-cobalt = { version = "0.7.0", path = "../../cobalt-rs" }
-lithium = { version = "0.1.0", path = "../lithium" }
+clap = "1.5.5"
 shooter-server = { version = "0.1.0", path = "../server" }
 shared = { version = "0.1.0", path = "../shared" }
 
-rand = "0.3.13"
+rand = "0.3.14"
 allegro = "0.0.22"
 allegro-sys = "0.0.22"
 allegro_primitives = "0.0.22"

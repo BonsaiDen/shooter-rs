@@ -19,7 +19,7 @@ use allegro_primitives::PrimitivesAddon;
 // Internal Dependencies ------------------------------------------------------
 mod traits;
 use shared::Color;
-use lithium::Renderer;
+use shared::Lithium::Renderer;
 use renderer::particle::{Particle, ParticleSystem};
 
 

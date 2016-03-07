@@ -18,6 +18,7 @@ mod idpool;
 
 
 // Re-Exports -----------------------------------------------------------------
+pub use cobalt as Cobalt;
 pub use entity::*;
 pub use level::*;
 pub use event::Event;

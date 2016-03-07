@@ -1,21 +1,15 @@
-// External Dependencies ------------------------------------------------------
-use cobalt::ConnectionID;
-use lithium::{
-    Entity,
-    EntityInput,
-    EntityState,
-    ClientHandle,
-    ClientHandler,
-    Level,
-    Renderer
-};
-
-
 // Internal Dependencies ------------------------------------------------------
 use level::RenderedLevel;
 use game::{Game, GameState};
 use renderer::AllegroRenderer;
-use shared::{Color, ColorName, SharedEvent, SharedCommand, SharedLevel, SharedState};
+use shared::Lithium::Cobalt::ConnectionID;
+use shared::Lithium::{
+    Entity, EntityInput, EntityState, ClientHandle,
+    ClientHandler, Level, Renderer
+};
+use shared::{
+    Color, ColorName, SharedEvent, SharedCommand, SharedLevel, SharedState
+};
 
 
 // Type Aliases ---------------------------------------------------------------

@@ -1,23 +1,13 @@
 // External Dependencies ------------------------------------------------------
 use allegro::{
-    Core,
-    Display,
-    DisplayOption,
-    DisplayOptionImportance,
-    EventQueue,
-    OPENGL
-};
-use lithium::{
-    Client,
-    ClientHandler,
-    EntityState,
-    Event,
-    BaseLevel,
-    Renderer
+    Core, Display, DisplayOption, DisplayOptionImportance, EventQueue, OPENGL
 };
 
 
 // Internal Dependencies ------------------------------------------------------
+use shared::Lithium::{
+    Client, ClientHandler, EntityState, Event, BaseLevel, Renderer
+};
 use super::AllegroRenderer;
 
 

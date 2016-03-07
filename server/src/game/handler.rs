@@ -1,13 +1,7 @@
 // External Dependencies ------------------------------------------------------
-use cobalt::{Connection, ConnectionID, ConnectionMap};
-use lithium::{
-    Entity,
-    EntityState,
-    Level,
-    DefaultRenderer,
-    ServerHandle,
-    ServerHandler
-};
+use shared::Lithium::Cobalt::{Connection, ConnectionID, ConnectionMap};
+use shared::Lithium::{Entity, EntityState, Level, DefaultRenderer,
+                      ServerHandle, ServerHandler};
 
 
 // Internal Dependencies ------------------------------------------------------
@@ -48,7 +42,6 @@ impl ServerHandler<SharedEvent, SharedState, SharedLevel, DefaultRenderer> for G
 
     fn event(
         &mut self, handle: Handle, _: &mut ConnectionMap, owner: ConnectionID, event: SharedEvent
-        // TODO pass in connection map?
     ) {
 
         println!("[Server] [Client {:?}] Event: {:?}", owner, event);

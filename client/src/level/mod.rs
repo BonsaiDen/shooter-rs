@@ -1,8 +1,5 @@
-// External Dependencies ------------------------------------------------------
-use lithium::{Level, BaseLevel, DrawableLevel, Renderer};
-
-
 // Internal Dependencies ------------------------------------------------------
+use shared::Lithium::{Level, BaseLevel, DrawableLevel, Renderer};
 use shared::{SharedLevel, SharedState};
 
 

@@ -1,0 +1,12 @@
+[package]
+name = "lithium"
+version = "0.1.0"
+authors = ["Ivo Wetzel <ivo.wetzel@googlemail.com>"]
+
+[dependencies]
+num = "~0.1.31"
+rand = "~0.3.14"
+cobalt = { version = "0.8.1", path = "../../cobalt-rs" }
+rustc-serialize = "~0.3.18"
+bincode = "~0.4.1"
+

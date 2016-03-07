@@ -1,5 +1,5 @@
 // External Dependencies ------------------------------------------------------
-use lithium::{Level, Server, DefaultRenderer};
+use shared::Lithium::{Level, Server, DefaultRenderer};
 
 
 // Internal Dependencies ------------------------------------------------------

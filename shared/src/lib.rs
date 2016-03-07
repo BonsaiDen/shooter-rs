@@ -9,6 +9,7 @@ mod event;
 mod level;
 mod state;
 
+pub use lithium as Lithium;
 pub use color::Color;
 pub use color::ColorName;
 pub use event::SharedEvent;

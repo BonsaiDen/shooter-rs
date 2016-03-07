@@ -4,6 +4,6 @@ version = "0.1.0"
 authors = ["Ivo Wetzel <ivo.wetzel@googlemail.com>"]
 
 [dependencies]
-lithium = { version = "0.1.0", path = "../lithium" }
+lithium = { version = "0.1.0", path = "../lithium-rs" }
 rustc-serialize = "0.3"
 bincode = "0.4.0"

@@ -1,8 +1,6 @@
 #[macro_use]
 extern crate clap;
 extern crate rand;
-extern crate cobalt;
-extern crate lithium;
 extern crate shared;
 extern crate shooter_server;
 
@@ -18,7 +16,7 @@ use std::thread;
 use std::str::FromStr;
 use std::net::SocketAddr;
 use std::time::Duration;
-use lithium::{Renderer, Server};
+use shared::Lithium::{Renderer, Server};
 
 
 // Internal Dependencies ------------------------------------------------------

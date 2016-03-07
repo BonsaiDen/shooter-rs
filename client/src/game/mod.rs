@@ -1,10 +1,10 @@
 // External Dependencies ------------------------------------------------------
 use std::net::SocketAddr;
-use lithium::{Client, Level};
 
 
 // Internal Dependencies ------------------------------------------------------
 use entities::Registry;
+use shared::Lithium::{Client, Level};
 use shared::{SharedEvent, SharedState, SharedLevel};
 use renderer::AllegroRenderer;
 mod handler;

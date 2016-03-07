@@ -1,8 +1,5 @@
-// External Dependencies ------------------------------------------------------
-use lithium::{Entity, EntityRegistry};
-
-
 // Internal Dependencies ------------------------------------------------------
+use shared::Lithium::{Entity, EntityRegistry};
 use shared::{SharedLevel, SharedState};
 use renderer::AllegroRenderer;
 

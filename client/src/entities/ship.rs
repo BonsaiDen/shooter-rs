@@ -1,12 +1,12 @@
 // External Dependencies ------------------------------------------------------
 use rand::Rng;
 use std::{cmp, f32};
-use lithium::{Entity, EntityState, EntityEvent, DrawableEntity, Level};
 
 
 // Internal Dependencies ------------------------------------------------------
 use shared::entities::Ship;
 use shared::{SharedState, SharedLevel, Color, ColorName};
+use shared::Lithium::{Entity, EntityState, EntityEvent, DrawableEntity, Level};
 use renderer::AllegroRenderer;
 
 
