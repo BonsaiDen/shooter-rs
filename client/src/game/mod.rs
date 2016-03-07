@@ -12,14 +12,16 @@ mod handler;
 
 // Game -----------------------------------------------------------------------
 pub struct Game {
-    state: GameState
+    state: GameState,
+    last_connection_retry: f64
 }
 
 impl Game {
 
     pub fn new() -> Game {
         Game {
-            state: GameState::Disconnected
+            state: GameState::Disconnected,
+            last_connection_retry: 0.0
         }
     }
 

@@ -342,6 +342,10 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
 
 
     // State Rewinding --------------------------------------------------------
+
+    // TODO rework this to return a HashMap copy of all entity states at the
+    // given offset instead otherwise we'll run into issues when trying to do
+    // loops over entity states
     pub fn rewind<'a>(&'a mut self, tick: u8) -> StateRewinder<'a, S, L, R> {
 
         let tick_offset = cmp::max(0, self.tick - tick) as usize;

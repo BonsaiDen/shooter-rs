@@ -1,7 +1,6 @@
 // External Dependencies ------------------------------------------------------
 use std::net::SocketAddr;
 use std::collections::VecDeque;
-use std::sync::mpsc::TryRecvError;
 use cobalt::{
     Config, Client, Connection, ConnectionID, Handler, ClientState, UdpSocket,
     Stats, MessageKind
@@ -19,6 +18,7 @@ pub enum Message {
 }
 
 impl Message {
+
     pub fn from_u8(id: u8) -> Message {
         match id {
             0 => Message::ServerConfig,
@@ -36,16 +36,8 @@ impl Message {
 pub struct Stream {
     handler: StreamHandler,
     client: Client,
-    sync_token: ClientState<UdpSocket>,
-    tick_rate: u32,
-    connected: bool,
-    connection_time: f64,
-
-    // TODO move stats out here?
-    connection_rtt: u32,
-    connection_packet_loss: f32,
-    bytes_sent: u32,
-    bytes_received: u32,
+    state: ClientState<UdpSocket>,
+    tick_rate: u32
 }
 
 impl Stream {
@@ -60,18 +52,12 @@ impl Stream {
             .. Default::default()
         });
 
-        let sync_token = client.connect_sync(&mut handler, addr).unwrap();
+        let state = client.connect_sync(&mut handler, addr).unwrap();
 
         Stream {
             handler: handler,
             client: client,
-            sync_token: sync_token,
-            connected: false,
-            connection_time: 0.0,
-            connection_rtt: 0,
-            connection_packet_loss: 0.0,
-            bytes_sent: 0,
-            bytes_received: 0,
+            state: state,
             tick_rate: tick_rate
         }
 
@@ -82,32 +68,28 @@ impl Stream {
         ConnectionID(0)
     }
 
-    pub fn connected(&self) -> bool {
-        self.connected
-    }
-
     pub fn server_addr(&self) -> Result<SocketAddr, ()> {
         self.client.peer_addr().or(Err(()))
     }
 
     pub fn rtt(&self) -> u32 {
-        self.connection_rtt
+        self.state.rtt()
     }
 
     pub fn packet_loss(&self) -> f32 {
-        self.connection_packet_loss
+        self.state.packet_loss()
+    }
+
+    pub fn stats(&self) -> Stats {
+        self.state.stats()
     }
 
     pub fn bytes_sent(&self) -> u32 {
-        self.bytes_sent
+        self.state.stats().bytes_sent
     }
 
     pub fn bytes_received(&self) -> u32 {
-        self.bytes_received
-    }
-
-    pub fn get_tick_rate(&self) -> u32 {
-        self.tick_rate
+        self.state.stats().bytes_received
     }
 
     pub fn set_tick_rate(&mut self, tick_rate: u32) {
@@ -117,89 +99,48 @@ impl Stream {
             connection_init_threshold: 250,
             .. Default::default()
 
-        }, &mut self.sync_token)
+        }, &mut self.state)
     }
 
 
     // Methods ----------------------------------------------------------------
     pub fn receive(&mut self) {
         self.client.receive_sync(
-            &mut self.handler, &mut self.sync_token, 1000 / self.tick_rate
+            &mut self.handler, &mut self.state, 1000 / self.tick_rate
         );
-        self.client.tick_sync(&mut self.handler, &mut self.sync_token);
+        self.client.tick_sync(&mut self.handler, &mut self.state);
+    }
+
+    pub fn recv_message(&mut self) -> Option<StreamEvent> {
+        self.handler.try_recv()
     }
 
     pub fn send(&mut self) {
-        self.client.send_sync(&mut self.handler, &mut self.sync_token);
+        self.client.send_sync(&mut self.handler, &mut self.state);
     }
 
-    pub fn message(&mut self, time: f64) -> Result<StreamEvent, TryRecvError> {
-
-        // Try to reconnect after 3 seconds
-        if self.connection_time != 0.0 && time - self.connection_time > 3.0 {
-            self.connection_time = 0.0;
-            self.sync_token.reset();
-        }
-
-        // Internal event handling
-        match self.handler.try_recv() {
-
-            Some(event) => {
-
-                match event {
-                    StreamEvent::ConnectionFailed(_) => {
-                        // TODO forward and handle in game code
-                        println!("Connection failed, retrying in 3 seconds...");
-                        self.connection_time = time;
-                    },
-                    StreamEvent::Connection(_) => {
-                        // TODO forward and handle in game code
-                        println!("Connection established");
-                        self.connected = true;
-                    },
-                    StreamEvent::ConnectionLost(_) => {
-                        // TODO forward and handle in game code
-                        println!("Connection lost, reconnecting in 3 seconds...");
-                        self.connection_time = time;
-                        self.connected = false;
-                    },
-                    StreamEvent::Tick(rtt, packet_loss, stats) => {
-                        self.connection_rtt = rtt;
-                        self.connection_packet_loss = packet_loss;
-                        self.bytes_sent = stats.bytes_sent;
-                        self.bytes_received = stats.bytes_received;
-                    },
-                    _ => ()
-                }
-
-                Ok(event)
-
-            },
-
-            None => Err(TryRecvError::Empty)
-
-        }
-
+    pub fn send_message(&mut self, kind: MessageKind, typ: Message, data: &Vec<u8>) {
+        let mut msg = [typ as u8].to_vec();
+        msg.extend(data);
+        self.state.send(kind, msg);
     }
 
-    pub fn send_message(&mut self, kind: MessageKind, data: Vec<u8>) {
-        self.sync_token.send(kind, data);
+    pub fn reset(&mut self) {
+        self.state.reset();
     }
 
     pub fn destroy(&mut self) {
-        self.client.close_sync(&mut self.handler, &mut self.sync_token).unwrap();
+        self.client.close_sync(&mut self.handler, &mut self.state).unwrap();
     }
 
 }
 
 
-
-
 #[derive(Debug)]
 pub enum StreamEvent {
     Connect,
+    Tick,
     Close,
-    Tick(u32, f32, Stats),
     Message(ConnectionID, Vec<u8>),
     Connection(ConnectionID),
     ConnectionFailed(ConnectionID),
@@ -240,21 +181,16 @@ impl Handler<Client> for StreamHandler {
 
     fn tick_connection(
         &mut self,
-        client: &mut Client,
+        _: &mut Client,
         conn: &mut Connection
     ) {
 
         let id = conn.id();
-
-        // Create events from received connection messages
         for msg in conn.received() {
             self.events.push_back(StreamEvent::Message(id, msg));
         }
 
-        // Create a tick event
-        self.events.push_back(
-            StreamEvent::Tick(conn.rtt(), conn.packet_loss(), client.stats())
-        );
+        self.events.push_back(StreamEvent::Tick);
 
     }
 

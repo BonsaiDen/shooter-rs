@@ -44,16 +44,35 @@ impl ClientHandler<SharedEvent, SharedState, SharedLevel, AllegroRenderer> for G
         client.events.send(None, SharedEvent::JoinGame);
     }
 
-    fn disconnect(&mut self, client: Handle) {
+    fn disconnect(&mut self, client: Handle, was_connected: bool) {
+
         self.state = GameState::Disconnected;
-        self.init(client);
+        self.last_connection_retry = client.renderer.time();
+
+        if was_connected {
+            self.init(client);
+            println!("[Client] Connection lost.");
+
+        } else {
+            println!("[Client] Connection failed.");
+        }
+
     }
 
     fn event(&mut self, _: Handle, owner: ConnectionID, event: SharedEvent) {
-        println!("Event: {:?} {:?}", owner, event);
+        println!("[Client] Event: {:?} {:?}", owner, event);
     }
 
     fn tick_before(&mut self, client: Handle) {
+
+        // Retry Connections
+        let timeout = client.renderer.time() - self.last_connection_retry;
+        if self.state == GameState::Disconnected && timeout > 3.0 {
+            println!("[Client] Establishing connection...");
+            self.last_connection_retry = 0.0;
+            client.network.reset();
+        }
+
         let tick = client.entities.tick();
         client.renderer.reseed_rng([
             ((tick as u32 + 7) * 941) as u32,
@@ -61,6 +80,8 @@ impl ClientHandler<SharedEvent, SharedState, SharedLevel, AllegroRenderer> for G
             ((tick as u32 + 13) * 227) as u32,
             ((tick as u32 + 97) * 37) as u32
         ]);
+
+
     }
 
     fn tick_entity_before(
@@ -119,8 +140,8 @@ impl ClientHandler<SharedEvent, SharedState, SharedLevel, AllegroRenderer> for G
         client.entities.draw(client.renderer, client.level);
 
         if let Ok(addr) = client.network.server_addr() {
-            let network_state = match client.network.connected() {
-                true => format!(
+            let network_state = match self.state {
+                GameState::Connected => format!(
                     "{} (Ping: {}ms, Lost: {:.2}%, Bytes: {}/{})",
                     addr,
                     client.network.rtt() / 2,
@@ -128,7 +149,7 @@ impl ClientHandler<SharedEvent, SharedState, SharedLevel, AllegroRenderer> for G
                     client.network.bytes_sent(),
                     client.network.bytes_received()
                 ),
-                false => format!("Connecting to {}...", addr)
+                _ => format!("Connecting to {}...", addr)
             };
 
             client.renderer.text(
