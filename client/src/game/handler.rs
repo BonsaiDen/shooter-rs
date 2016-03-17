@@ -21,16 +21,17 @@ pub type ClientLevel = Level<SharedState, SharedLevel>;
 // Handler Implementation -----------------------------------------------------
 impl ClientHandler<SharedEvent, SharedState, SharedLevel, AllegroRenderer> for Game {
 
+    // TODO move connect logic into a setup handler(?) rename init?
+
     fn init(&mut self, client: Handle) {
-        client.renderer.set_fps(60);
-        client.renderer.set_title("Rustgame: Shooter");
-        client.renderer.resize(client.level.width() as i32, client.level.height() as i32);
+        client.network.connect(self.server_addr).expect("Already connected!");
+        self.reset(client);
     }
 
     fn config(&mut self, client: Handle, level_data: &[u8]) {
         client.level.set(RenderedLevel::from_serialized(level_data));
         self.state = GameState::Connected;
-        self.init(client);
+        self.reset(client);
     }
 
     fn connect(&mut self, client: Handle) {
@@ -44,7 +45,7 @@ impl ClientHandler<SharedEvent, SharedState, SharedLevel, AllegroRenderer> for G
         self.last_connection_retry = client.renderer.time();
 
         if was_connected {
-            self.init(client);
+            self.reset(client);
             println!("[Client] Connection lost.");
 
         } else {
@@ -63,8 +64,8 @@ impl ClientHandler<SharedEvent, SharedState, SharedLevel, AllegroRenderer> for G
         let timeout = client.renderer.time() - self.last_connection_retry;
         if self.state == GameState::Disconnected && timeout > 3.0 {
             println!("[Client] Establishing connection...");
-            self.last_connection_retry = 0.0;
-            client.network.reset();
+            self.last_connection_retry = client.renderer.time();
+            client.network.reset().ok();
         }
 
         let tick = client.entities.tick();
@@ -133,7 +134,7 @@ impl ClientHandler<SharedEvent, SharedState, SharedLevel, AllegroRenderer> for G
 
         client.entities.draw(client.renderer, client.level);
 
-        if let Ok(addr) = client.network.server_addr() {
+        if let Ok(addr) = client.network.peer_addr() {
             let network_state = match self.state {
                 GameState::Connected => format!(
                     "{} (Ping: {}ms, Lost: {:.2}%, Bytes: {}/{})",

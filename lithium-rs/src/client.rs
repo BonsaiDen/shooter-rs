@@ -1,6 +1,5 @@
 // External Dependencies ------------------------------------------------------
-use std::net::SocketAddr;
-use cobalt::{MessageKind, ConnectionID};
+use cobalt::{Config, ConnectionID, ClientStream, ClientEvent, MessageKind};
 
 
 // Internal Dependencies ------------------------------------------------------
@@ -18,7 +17,7 @@ use renderer::Renderer;
 
 // Client Abstraction ---------------------------------------------------------
 pub struct Client<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> {
-    network: network::Stream,
+    network: ClientStream, // TODO rename to stream?
     manager: EntityManager<S, L, R>,
     events: EventHandler<E>,
     remote_states: Vec<(u8, S)>,
@@ -29,18 +28,17 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
 
     // Statics ----------------------------------------------------------------
     pub fn new(
-        server_addr: SocketAddr,
         tick_rate: u8,
         level: Level<S, L>,
         registry: Box<EntityRegistry<S, L, R>>
 
     ) -> Client<E, S, L, R> {
-
-        let mut network = network::Stream::new(server_addr);
-        network.set_tick_rate(tick_rate as u32);
-
         Client {
-            network: network,
+            network: ClientStream::new(Config {
+                send_rate: tick_rate as u32,
+                connection_init_threshold: 250,
+                .. Default::default()
+            }),
             manager: EntityManager::new(
                 tick_rate, 1000, 75,
                 false,
@@ -50,7 +48,6 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
             remote_states: Vec::new(),
             level: level
         }
-
     }
 
 
@@ -70,8 +67,8 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
 
         // Send any pending outgoing events
         self.send_events();
-        self.network.send();
-        self.network.destroy();
+        self.network.flush().unwrap();
+        self.network.close().unwrap();
 
     }
 
@@ -84,18 +81,16 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
 
         let mut ticked = false;
 
-        self.network.receive();
-
-        while let Some(event) = self.network.recv_message() {
+        while let Ok(event) = self.network.receive() {
             match event {
 
-                network::StreamEvent::Connection(_) => {
+                ClientEvent::Connection => {
                     self.remote_states.clear();
                     self.manager.reset();
                     handler.connect(self.handle(renderer));
                 },
 
-                network::StreamEvent::Message(_, data) =>  {
+                ClientEvent::Message(data) =>  {
                     match network::Message::from_u8(data[0]) {
 
                         network::Message::ServerConfig => {
@@ -110,7 +105,7 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
 
                         network::Message::ServerEvents => {
                             self.events.receive_events(
-                                self.network.id(),
+                                ConnectionID(0),
                                 &data[1..]
                             );
                         },
@@ -120,7 +115,7 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
                     }
                 },
 
-                network::StreamEvent::Tick => {
+                ClientEvent::Tick => {
 
                     if let Some(events) = self.events.received() {
                         for (owner, event) in events {
@@ -136,13 +131,13 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
 
                 },
 
-                network::StreamEvent::Close | network::StreamEvent::ConnectionLost(_) => {
+                ClientEvent::Close | ClientEvent::ConnectionLost => {
                     self.remote_states.clear();
                     self.manager.reset();
                     handler.disconnect(self.handle(renderer), true);
                 },
 
-                network::StreamEvent::ConnectionFailed(_) => {
+                ClientEvent::ConnectionFailed => {
                     handler.disconnect(self.handle(renderer), false);
                 },
 
@@ -151,7 +146,7 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
             }
         }
 
-        self.network.send();
+        self.network.flush().unwrap();
 
         ticked
 
@@ -177,7 +172,11 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
 
     fn update_tick_config(&mut self, renderer: &mut R) {
         let tick_rate = self.manager.config().tick_rate as u32;
-        self.network.set_tick_rate(tick_rate);
+        let config = self.network.config();
+        self.network.set_config(Config {
+            send_rate: tick_rate,
+            .. config
+        });
         renderer.set_tick_rate(tick_rate);
         renderer.set_interpolation_ticks(
             self.manager.config().interpolation_ticks as usize
@@ -193,7 +192,7 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
         );
 
         if let Some(inputs) = local_inputs {
-            self.network.send_message(
+            self.send_message(
                 MessageKind::Instant,
                 network::Message::ClientInput,
                 &inputs
@@ -205,7 +204,7 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
     fn send_events(&mut self) {
 
         if let Some(events) = self.events.serialize_events(None) {
-            self.network.send_message(
+            self.send_message(
                 MessageKind::Ordered,
                 network::Message::ClientEvents,
                 &events
@@ -214,6 +213,12 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
 
         self.events.flush();
 
+    }
+
+    fn send_message(&mut self, kind: MessageKind, typ: network::Message, data: &Vec<u8>) {
+        let mut msg = [typ as u8].to_vec();
+        msg.extend(data);
+        self.network.send(kind, msg).unwrap();
     }
 
 }
@@ -231,7 +236,7 @@ pub struct Handle<
     pub level: &'a mut Level<S, L>,
     pub events: &'a mut EventHandler<E>,
     pub entities: &'a mut EntityManager<S, L, R>,
-    pub network: &'a mut network::Stream
+    pub network: &'a mut ClientStream
 }
 
 

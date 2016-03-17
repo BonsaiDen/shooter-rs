@@ -67,15 +67,17 @@ allegro_main! {
 
 fn run_client(server_addr: SocketAddr) {
     AllegroRenderer::run(
-        game::Game::client(server_addr),
-        game::Game::new()
+        game::Game::client(),
+        game::Game::new(server_addr)
     );
 }
 
 fn run_server(server_addr: SocketAddr, tick_rate: u32) {
-    Server::run(
+    if let Err(err) = Server::run(
         server_addr,
         shooter_server::game::Game::server(tick_rate, true)
-    );
+    ) {
+        println!("[Server] [Fatal] {:?}", err);
+    }
 }
 

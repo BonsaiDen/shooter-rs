@@ -35,7 +35,9 @@ fn main() {
 
 
     // Server Setup -----------------------------------------------------------
-    Server::run(server_addr, game::Game::server(30, false));
+    if let Err(err) = Server::run(server_addr, game::Game::server(30, false)) {
+        println!("[Server] [Fatal] {:?}", err);
+    }
 
 }
 

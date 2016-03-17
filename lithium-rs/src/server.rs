@@ -1,4 +1,5 @@
 // External Dependencies ------------------------------------------------------
+use std::io::Error;
 use std::net::SocketAddr;
 use cobalt::{
     Config,
@@ -37,13 +38,13 @@ pub struct Server<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> {
 impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Server<E, S, L, R> {
 
     // Statics ----------------------------------------------------------------
-    pub fn run(addr: SocketAddr, mut server: Server<E, S, L, R>) where Self: Sized {
+    pub fn run(addr: SocketAddr, mut server: Server<E, S, L, R>) -> Result<(), Error> where Self: Sized {
 
         let mut cobalt_server = CobaltServer::new(Config {
             send_rate: server.config().tick_rate as u32,
             .. Default::default()
         });
-        cobalt_server.bind(&mut server, addr).unwrap();
+        cobalt_server.bind(&mut server, addr)
 
     }
 

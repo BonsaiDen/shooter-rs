@@ -420,4 +420,3 @@ pub fn tick_is_more_recent(a: u8, b: u8) -> bool {
     (a > b) && (a - b <= 128) || (b > a) && (b - a > 128)
 }
 
-

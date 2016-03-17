@@ -86,7 +86,11 @@ impl Renderer for AllegroRenderer {
                 renderer.draw();
 
                 last_frame_time = frame_time;
-                frames_per_tick -= 1;
+
+                // TODO handle this more cleanly?
+                if frames_per_tick > 0 {
+                    frames_per_tick -= 1;
+                }
 
             }
 
