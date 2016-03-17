@@ -35,7 +35,7 @@ impl ClientHandler<SharedEvent, SharedState, SharedLevel, AllegroRenderer> for G
 
     fn connect(&mut self, client: Handle) {
         self.state = GameState::Pending;
-        client.events.send(None, SharedEvent::JoinGame);
+        client.events.send(SharedEvent::JoinGame);
     }
 
     fn disconnect(&mut self, client: Handle, was_connected: bool) {
@@ -157,7 +157,7 @@ impl ClientHandler<SharedEvent, SharedState, SharedLevel, AllegroRenderer> for G
     }
 
     fn destroy(&mut self, client: Handle) {
-        client.events.send(None, SharedEvent::Command(SharedCommand::Shutdown));
+        client.events.send(SharedEvent::Command(SharedCommand::Shutdown));
     }
 
 }

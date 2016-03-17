@@ -33,7 +33,7 @@ impl ServerHandler<SharedEvent, SharedState, SharedLevel, DefaultRenderer> for G
         while let Some(id) = handle.entities.get_entity_id_for_owner(&conn.id()) {
             if let Some(entity) = handle.entities.destroy(id) {
                 let color = Color::from_flags(entity.state().flags);
-                println!("[Client {}] Destroyed entity ({:?})", conn.peer_addr(), color);
+                println!("[Server] [Client {}] Destroyed entity ({:?})", conn.peer_addr(), color);
                 self.available_colors.push(color);
             }
         }
@@ -71,8 +71,9 @@ impl ServerHandler<SharedEvent, SharedState, SharedLevel, DefaultRenderer> for G
                             Some(&owner)
                         );
 
-                        handle.events.send(Some(owner), SharedEvent::GameJoined);
-                        handle.events.send(None, SharedEvent::PlayerJoined);
+                        handle.events.send_to(Some(owner), SharedEvent::GameJoined);
+                        handle.events.send(SharedEvent::PlayerJoined);
+
 
                     }
 
@@ -82,7 +83,7 @@ impl ServerHandler<SharedEvent, SharedState, SharedLevel, DefaultRenderer> for G
                 println!("[Server] [Client {:?}] Received Shutdown Command", owner);
                 handle.server.shutdown().unwrap();
             },
-            _ => { println!("Unknown Event") }
+            _ => { println!("[Server] Unknown Event") }
         }
 
     }

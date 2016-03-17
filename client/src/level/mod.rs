@@ -3,7 +3,7 @@ use shared::Lithium::{Level, BaseLevel, DrawableLevel, Renderer};
 use shared::{SharedLevel, SharedState};
 
 
-// Level Drawable Implementation Dependencies ----------------------------------
+// Level Drawable Implementation Dependencies ---------------------------------
 pub struct RenderedLevel;
 impl RenderedLevel {
 

@@ -170,8 +170,7 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> Entity<S, L, R> {
         &self.state
     }
 
-    /*
-    fn buffered_state(&self, tick_offset: usize) -> &S {
+    pub fn buffered_state(&self, tick_offset: usize) -> &S {
         let buffer_len = self.state_buffer.len();
         if buffer_len > 0 && tick_offset < buffer_len {
             &self.state_buffer[tick_offset].1
@@ -180,7 +179,6 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> Entity<S, L, R> {
             &self.state
         }
     }
-    */
 
     fn buffered_states(
         &self, tick_offset: usize
@@ -200,6 +198,7 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> Entity<S, L, R> {
         }
     }
 
+    /*
     pub fn rewind_state(&mut self, tick_offset: usize) {
         // TODO clean up
         let (state, last_state) = {
@@ -214,7 +213,7 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> Entity<S, L, R> {
     pub fn forward_state(&mut self) {
         self.rewind_state(0);
     }
-
+    */
     pub fn set_state(&mut self, state: S) {
         self.set_entity_state(state, true);
     }

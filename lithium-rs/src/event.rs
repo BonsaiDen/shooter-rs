@@ -24,8 +24,12 @@ impl<T: Event> EventHandler<T> {
         }
     }
 
-    pub fn send(&mut self, receiver: Option<ConnectionID>, event: T) {
+    pub fn send_to(&mut self, receiver: Option<ConnectionID>, event: T) {
         self.outgoing.push((receiver, event));
+    }
+
+    pub fn send(&mut self, event: T) {
+        self.outgoing.push((None, event));
     }
 
     pub fn received(&mut self) -> Option<Vec<(ConnectionID, T)>> {

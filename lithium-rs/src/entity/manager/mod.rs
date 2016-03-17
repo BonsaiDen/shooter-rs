@@ -342,40 +342,16 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
 
 
     // State Rewinding --------------------------------------------------------
-
-    // TODO rework this to return a HashMap copy of all entity states at the
-    // given offset instead otherwise we'll run into issues when trying to do
-    // loops over entity states
-    pub fn rewind<'a>(&'a mut self, tick: u8) -> StateRewinder<'a, S, L, R> {
+    pub fn offset_states(&self, tick: u8) -> HashMap<u16, S> {
 
         let tick_offset = cmp::max(0, self.tick - tick) as usize;
-        for (_, entity) in self.entities.iter_mut() {
-            entity.rewind_state(tick_offset);
+        let mut states = HashMap::new();
+        for (id, entity) in &self.entities {
+            states.insert(*id, entity.buffered_state(tick_offset).clone());
         }
-
-        StateRewinder {
-            manager: self
-        }
+        states
 
     }
 
-    fn forward(&mut self) {
-        for (_, entity) in self.entities.iter_mut() {
-            entity.forward_state();
-        }
-    }
-
-}
-
-
-// Handle for rewinded entity state -------------------------------------------
-pub struct StateRewinder<'a, S: EntityState + 'a, L: BaseLevel<S> + 'a, R: Renderer + 'a> {
-    manager: &'a mut EntityManager<S, L, R>
-}
-
-impl<'a, S: EntityState, L: BaseLevel<S>, R: Renderer> Drop for StateRewinder<'a, S, L, R> {
-    fn drop(&mut self) {
-        self.manager.forward();
-    }
 }
 
