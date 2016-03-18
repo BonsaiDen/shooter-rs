@@ -215,9 +215,9 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
 
     }
 
-    fn send_message(&mut self, kind: MessageKind, typ: network::Message, data: &Vec<u8>) {
+    fn send_message(&mut self, kind: MessageKind, typ: network::Message, data: &[u8]) {
         let mut msg = [typ as u8].to_vec();
-        msg.extend(data);
+        msg.extend_from_slice(data);
         self.network.send(kind, msg).unwrap();
     }
 

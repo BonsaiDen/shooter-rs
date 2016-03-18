@@ -46,7 +46,7 @@ impl<T> IdPool<T>
         if self.used_ids < T::max_value() {
 
             // Use released ids first this is O(1)
-            let id = if self.released_ids.len() > 0 {
+            let id = if !self.released_ids.is_empty() {
                 self.released_ids.pop().unwrap()
 
             // If there are no released ids available, probe the id space

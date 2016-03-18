@@ -252,7 +252,7 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> Entity<S, L, R> {
         self.input(input);
 
         let mut serialized_inputs = Vec::new();
-        for input in self.input_buffer.iter() {
+        for input in &self.input_buffer {
             serialized_inputs.extend(input.serialize());
         }
 
@@ -328,7 +328,7 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> Entity<S, L, R> {
 
         // Apply unconfirmed inputs on top of last state confirmed by the server
         let mut new_state = self.base_state.clone();
-        for input in self.input_buffer.iter() {
+        for input in &self.input_buffer {
             self.entity.apply_input(level, &mut new_state, input, dt);
         }
 

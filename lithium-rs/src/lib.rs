@@ -1,3 +1,6 @@
+#![cfg_attr(feature="clippy", feature(plugin))]
+#![cfg_attr(feature="clippy", plugin(clippy))]
+
 // Dependencies ---------------------------------------------------------------
 extern crate num;
 extern crate rand;

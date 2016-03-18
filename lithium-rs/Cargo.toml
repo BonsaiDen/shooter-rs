@@ -9,4 +9,8 @@ rand = "~0.3.14"
 cobalt = { version = "0.9.0", path = "../../cobalt-rs" }
 rustc-serialize = "~0.3.18"
 bincode = "~0.4.1"
+clippy = { version = "*", optional = true }
+
+[features]
+lint = ["clippy"]
 

@@ -69,11 +69,11 @@ impl<T: Event> EventHandler<T> {
             data
         });
 
-        if outgoing.len() > 0 {
-            Some(outgoing)
+        if outgoing.is_empty() {
+            None
 
         } else {
-            None
+            Some(outgoing)
         }
 
     }

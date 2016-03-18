@@ -125,7 +125,7 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
     ) {
 
         let dt = self.dt();
-        for (_, entity) in self.entities.iter_mut() {
+        for (_, entity) in &mut self.entities {
             handler.tick_entity_before(level, entity, self.tick, dt);
             entity.event(EntityEvent::Tick(self.tick, dt));
             entity.tick(level, self.tick, dt, self.server_mode);
@@ -147,7 +147,7 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
         let mut local_inputs: Option<Vec<u8>> = None;
 
         let dt = self.dt();
-        for (_, entity) in self.entities.iter_mut() {
+        for (_, entity) in &mut self.entities {
 
             handler.tick_entity_before(renderer, level, entity, self.tick, dt);
             entity.event(EntityEvent::Tick(self.tick, dt)); // TODO useful?
@@ -169,7 +169,7 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
     }
 
     pub fn draw(&mut self, renderer: &mut R, level: &Level<S, L>) {
-        for (_, entity) in self.entities.iter_mut() {
+        for (_, entity) in &mut self.entities {
             if entity.is_visible() {
                 entity.draw(renderer, level);
             }
@@ -195,7 +195,7 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
         &mut self, owner: &ConnectionID
 
     ) -> Option<&mut Entity<S, L, R>> {
-        for (_, entity) in self.entities.iter_mut() {
+        for (_, entity) in &mut self.entities {
             if entity.owned_by(owner) {
                 return Some(entity);
             }
@@ -207,7 +207,7 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
         &mut self, owner: &ConnectionID
 
     ) -> Option<u16> {
-        for (_, entity) in self.entities.iter_mut() {
+        for (_, entity) in &mut self.entities {
             if entity.owned_by(owner) {
                 return Some(entity.id());
             }
@@ -231,7 +231,7 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
         let mut state = Vec::new();
 
         // Serialize entity state for the connection
-        for (_, entity) in self.entities.iter() {
+        for entity in self.entities.values() {
             state.extend(entity.serialize_state(owner));
         }
 
@@ -246,7 +246,7 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
         let buffer_size = self.config.buffered_ticks as usize;
 
         // Mark all entities as dead
-        for (_, entity) in self.entities.iter_mut() {
+        for (_, entity) in &mut self.entities {
             entity.set_alive(false);
         }
 
@@ -295,7 +295,7 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
 
             // Handle entities which get hidden
             if entity.is_visible() {
-                if entity_is_visible == false {
+                if !entity_is_visible {
                     entity.hide(tick);
                 }
 
@@ -326,8 +326,8 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
 
         // Destroy dead entities...
         let mut destroyed_ids = Vec::new();
-        for (_, entity) in self.entities.iter_mut() {
-            if entity.alive() == false {
+        for (_, entity) in &mut self.entities {
+            if !entity.alive() {
                 entity.event(EntityEvent::Destroyed(tick));
                 destroyed_ids.push(entity.id());
             }
