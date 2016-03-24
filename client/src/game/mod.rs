@@ -3,29 +3,35 @@ use std::net::SocketAddr;
 
 
 // Internal Dependencies ------------------------------------------------------
+mod handler;
+mod views;
 use entities::Registry;
-use shared::Lithium::{Client, Level, Renderer};
+use shared::Lithium::{Client, ClientHandle as Handle, Entity, Level, Renderer};
 use shared::{SharedEvent, SharedState, SharedLevel};
 use renderer::AllegroRenderer;
-mod handler;
+use self::views::View;
 
-use self::handler::Handle;
+
+// Type Aliases ---------------------------------------------------------------
+pub type ClientHandle<'a> = Handle<'a, SharedEvent, SharedState, SharedLevel, AllegroRenderer>;
+pub type ClientEntity = Entity<SharedState, SharedLevel, AllegroRenderer>;
+pub type ClientLevel = Level<SharedState, SharedLevel>;
 
 
 // Game -----------------------------------------------------------------------
 pub struct Game {
-    state: GameState,
-    last_connection_retry: f64,
-    server_addr: SocketAddr
+    server_addr: Option<SocketAddr>,
+    view: Option<Box<View>>,
+    next_view: Option<Box<View>>
 }
 
 impl Game {
 
-    pub fn new(server_addr: SocketAddr) -> Game {
+    pub fn new(server_addr: Option<SocketAddr>) -> Game {
         Game {
-            state: GameState::Disconnected,
-            last_connection_retry: 0.0,
-            server_addr: server_addr
+            server_addr: server_addr,
+            view: Some(Box::new(views::InitView)),
+            next_view: None
         }
     }
 
@@ -43,19 +49,15 @@ impl Game {
         SharedLevel::create(384, 384, 16)
     }
 
-    fn reset(&mut self, client: Handle) {
+    pub fn set_view(&mut self, view: Box<View>) {
+        self.next_view = Some(view);
+    }
+
+    fn reset(&mut self, client: &mut ClientHandle) {
         client.renderer.set_fps(60);
         client.renderer.set_title("Rustgame: Shooter");
         client.renderer.resize(client.level.width() as i32, client.level.height() as i32);
     }
 
-}
-
-// Game State -----------------------------------------------------------------
-#[derive(PartialEq)]
-enum GameState {
-    Disconnected,
-    Pending,
-    Connected
 }
 

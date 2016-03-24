@@ -67,8 +67,8 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
 
         // Send any pending outgoing events
         self.send_events();
-        self.network.flush().unwrap();
-        self.network.close().unwrap();
+        self.network.flush().ok();
+        self.network.close().ok();
 
     }
 
@@ -135,10 +135,20 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
                     self.remote_states.clear();
                     self.manager.reset();
                     handler.disconnect(self.handle(renderer), true);
+                    self.network.close().ok();
+                },
+
+                ClientEvent::ConnectionClosed(by_remote) => {
+                    self.remote_states.clear();
+                    self.manager.reset();
+                    // TODO by_remote should be there along with was_connected?
+                    handler.disconnect(self.handle(renderer), by_remote);
+                    self.network.close().ok();
                 },
 
                 ClientEvent::ConnectionFailed => {
                     handler.disconnect(self.handle(renderer), false);
+                    self.network.close().ok();
                 },
 
                 _ => {}
@@ -146,7 +156,7 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
             }
         }
 
-        self.network.flush().unwrap();
+        self.network.flush().ok();
 
         ticked
 
@@ -218,7 +228,7 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
     fn send_message(&mut self, kind: MessageKind, typ: network::Message, data: &[u8]) {
         let mut msg = [typ as u8].to_vec();
         msg.extend_from_slice(data);
-        self.network.send(kind, msg).unwrap();
+        self.network.send(kind, msg).ok();
     }
 
 }

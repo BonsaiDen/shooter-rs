@@ -10,6 +10,7 @@ use command::SharedCommand;
 pub enum SharedEvent {
     JoinGame,
     GameJoined,
+    LeaveGame,
     PlayerJoined,
     PlayerLeft,
     Command(SharedCommand),

@@ -1,10 +1,16 @@
 // External Dependencies ------------------------------------------------------
-use shared::Lithium::{Level, Server, DefaultRenderer};
+use shared::Lithium::{Level, Server, DefaultRenderer, Entity, ServerHandle as Handle};
 
 
 // Internal Dependencies ------------------------------------------------------
 use shared::{Color, SharedEvent, SharedLevel, SharedState, SharedRegistry};
 mod handler;
+
+
+// Type Aliases ---------------------------------------------------------------
+pub type ServerHandle<'a> = Handle<'a, SharedEvent, SharedState, SharedLevel, DefaultRenderer>;
+pub type ServerLevel = Level<SharedState, SharedLevel>;
+pub type ServerEntity = Entity<SharedState, SharedLevel, DefaultRenderer>;
 
 
 // Server Side Game Logic -----------------------------------------------------

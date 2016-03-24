@@ -1,164 +1,122 @@
 // Internal Dependencies ------------------------------------------------------
-use level::RenderedLevel;
-use game::{Game, GameState};
-use renderer::AllegroRenderer;
+use shared::Lithium::ClientHandler;
 use shared::Lithium::Cobalt::ConnectionID;
-use shared::Lithium::{
-    Entity, EntityInput, EntityState, ClientHandle,
-    ClientHandler, Level, Renderer
-};
-use shared::{
-    Color, ColorName, SharedEvent, SharedCommand, SharedLevel, SharedState
-};
+use renderer::AllegroRenderer;
+use shared::{SharedEvent, SharedLevel, SharedState};
+use game::{Game, ClientHandle, ClientEntity, ClientLevel};
 
 
-// Type Aliases ---------------------------------------------------------------
-pub type Handle<'a> = ClientHandle<'a, SharedEvent, SharedState, SharedLevel, AllegroRenderer>;
-pub type ClientEntity = Entity<SharedState, SharedLevel, AllegroRenderer>;
-pub type ClientLevel = Level<SharedState, SharedLevel>;
+// Macros ---------------------------------------------------------------------
+macro_rules! with_view_state {
+    ($s:ident, $v:ident, $c:ident, $b:block) => ({
+        if let Some(mut $v) = $s.view.take() {
+
+            $b;
+
+            if let Some(mut next) = $s.next_view.take() {
+                $v.pop($s, &mut $c);
+                println!("[View] {} was popped", $v.name());
+                next.push($s, &mut $c);
+                println!("[View] {} was pushed", next.name());
+                $s.view = Some(next);
+
+            } else {
+                $s.view = Some($v);
+            }
+
+        }
+    })
+}
+
+macro_rules! with_view {
+    ($s:ident, $v:ident, $b:block) => ({
+        if let Some(mut $v) = $s.view.take() {
+            $b;
+            $s.view = Some($v);
+        }
+    })
+}
 
 
 // Handler Implementation -----------------------------------------------------
 impl ClientHandler<SharedEvent, SharedState, SharedLevel, AllegroRenderer> for Game {
 
-    // TODO move connect logic into a setup handler(?) rename init?
-
-    fn init(&mut self, client: Handle) {
-        client.network.connect(self.server_addr).expect("Already connected!");
-        self.reset(client);
+    fn init(&mut self, mut client: ClientHandle) {
+        with_view_state!(self, view, client, {
+            view.init(self, &mut client);
+        });
     }
 
-    fn config(&mut self, client: Handle, level_data: &[u8]) {
-        client.level.set(RenderedLevel::from_serialized(level_data));
-        self.state = GameState::Connected;
-        self.reset(client);
+    fn config(&mut self, mut client: ClientHandle, level_data: &[u8]) {
+        with_view_state!(self, view, client, {
+            view.config(self, &mut client, level_data);
+        });
     }
 
-    fn connect(&mut self, client: Handle) {
-        self.state = GameState::Pending;
-        client.events.send(SharedEvent::JoinGame);
+    fn connect(&mut self, mut client: ClientHandle) {
+        with_view_state!(self, view, client, {
+            view.connect(self, &mut client);
+        });
     }
 
-    fn disconnect(&mut self, client: Handle, was_connected: bool) {
-
-        self.state = GameState::Disconnected;
-        self.last_connection_retry = client.renderer.time();
-
-        if was_connected {
-            self.reset(client);
-            println!("[Client] Connection lost.");
-
-        } else {
-            println!("[Client] Connection failed.");
-        }
-
+    fn disconnect(&mut self, mut client: ClientHandle, was_connected: bool) {
+        with_view_state!(self, view, client, {
+            view.disconnect(self, &mut client, was_connected);
+        });
     }
 
-    fn event(&mut self, _: Handle, owner: ConnectionID, event: SharedEvent) {
-        println!("[Client] Event: {:?} {:?}", owner, event);
+    fn event(&mut self, mut client: ClientHandle, owner: ConnectionID, event: SharedEvent) {
+        with_view_state!(self, view, client, {
+            view.event(self, &mut client, owner, event);
+        });
     }
 
-    fn tick_before(&mut self, client: Handle) {
-
-        // Retry Connections
-        let timeout = client.renderer.time() - self.last_connection_retry;
-        if self.state == GameState::Disconnected && timeout > 3.0 {
-            println!("[Client] Establishing connection...");
-            self.last_connection_retry = client.renderer.time();
-            client.network.reset().ok();
-        }
-
-        let tick = client.entities.tick();
-        client.renderer.reseed_rng([
-            ((tick as u32 + 7) * 941) as u32,
-            ((tick as u32 + 659) * 461) as u32,
-            ((tick as u32 + 13) * 227) as u32,
-            ((tick as u32 + 97) * 37) as u32
-        ]);
-
-
+    fn tick_before(&mut self, mut client: ClientHandle) {
+        with_view_state!(self, view, client, {
+            view.tick_before(self, &mut client);
+        });
     }
 
     fn tick_entity_before(
         &mut self,
         renderer: &mut AllegroRenderer,
-        _: &ClientLevel,
+        level: &ClientLevel,
         entity: &mut ClientEntity,
-        tick: u8, _: f32
+        tick: u8, dt: f32
     ) {
-
-        if entity.local() {
-
-            let mut buttons = 0;
-            if renderer.key_down(1) || renderer.key_down(82) {
-                buttons |= 0x01;
-            }
-
-            if renderer.key_down(4) || renderer.key_down(83) {
-                buttons |= 0x02;
-            }
-
-            if renderer.key_down(23) || renderer.key_down(84) {
-                buttons |= 0x04;
-            }
-
-            let input = EntityInput {
-                tick: tick,
-                fields: buttons
-            };
-
-            entity.local_input(input);
-
-        }
-
+        with_view!(self, view, {
+            view.tick_entity_before(self, renderer, level, entity, tick, dt);
+        });
     }
 
     fn tick_entity_after(
         &mut self,
-        _: &mut AllegroRenderer,
-        _: &ClientLevel,
-        _: &mut ClientEntity,
-        _: u8, _: f32
+        renderer: &mut AllegroRenderer,
+        level: &ClientLevel,
+        entity: &mut ClientEntity,
+        tick: u8, dt: f32
     ) {
-
+        with_view!(self, view, {
+            view.tick_entity_after(self, renderer, level, entity, tick, dt);
+        });
     }
 
-    fn tick_after(&mut self, _: Handle) {
+    fn tick_after(&mut self, mut client: ClientHandle) {
+        with_view_state!(self, view, client, {
+            view.tick_after(self, &mut client);
+        });
     }
 
-    fn draw(&mut self, client: Handle) {
-
-        client.renderer.clear(&Color::from_name(ColorName::Black));
-
-        client.level.draw(client.renderer);
-
-        client.entities.draw(client.renderer, client.level);
-
-        if let Ok(addr) = client.network.peer_addr() {
-            let network_state = match self.state {
-                GameState::Connected => format!(
-                    "{} (Ping: {}ms, Lost: {:.2}%, Bytes: {}/{})",
-                    addr,
-                    client.network.rtt() / 2,
-                    client.network.packet_loss(),
-                    client.network.bytes_sent(),
-                    client.network.bytes_received()
-                ),
-                _ => format!("Connecting to {}...", addr)
-            };
-
-            client.renderer.text(
-                &Color::from_name(ColorName::White),
-                0.0, 0.0,
-                &network_state[..]
-            );
-
-        }
-
+    fn draw(&mut self, mut client: ClientHandle) {
+        with_view_state!(self, view, client, {
+            view.draw(self, &mut client);
+        });
     }
 
-    fn destroy(&mut self, client: Handle) {
-        client.events.send(SharedEvent::Command(SharedCommand::Shutdown));
+    fn destroy(&mut self, mut client: ClientHandle) {
+        with_view_state!(self, view, client, {
+            view.destroy(self, &mut client);
+        });
     }
 
 }

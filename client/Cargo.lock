@@ -128,7 +128,7 @@ dependencies = [
 
 [[package]]
 name = "cobalt"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "clock_ticks 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -149,7 +149,7 @@ name = "lithium"
 version = "0.1.0"
 dependencies = [
  "bincode 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "cobalt 0.9.0",
+ "cobalt 0.10.0",
  "num 0.1.31 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.18 (registry+https://github.com/rust-lang/crates.io-index)",

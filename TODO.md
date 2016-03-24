@@ -1,10 +1,7 @@
-# TODOs
+# Client
 
-- Try to remove all boxing outside of entities
-- Clean up client side network stream
+- Add colored border to screen to indicate player color
 
-# General
+- Fix push / pop order for views
 
-- Game / Player and Entity Events
-- Add concept of Players?
 

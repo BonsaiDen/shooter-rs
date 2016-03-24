@@ -342,10 +342,10 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
 
 
     // State Rewinding --------------------------------------------------------
-    pub fn offset_states(&self, tick: u8) -> HashMap<u16, S> {
+    pub fn offset_states(&self, remote_tick: u8) -> HashMap<u16, S> {
 
-        let tick_offset = cmp::max(0, self.tick - tick) as usize;
-        let mut states = HashMap::new();
+        let tick_offset = cmp::max(0, self.tick - remote_tick) as usize;
+        let mut states = HashMap::with_capacity(self.entities.len());
         for (id, entity) in &self.entities {
             states.insert(*id, entity.buffered_state(tick_offset).clone());
         }

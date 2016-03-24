@@ -47,6 +47,7 @@ pub struct AllegroRenderer {
 
     // Input
     key_state: [bool; 256],
+    key_state_old: [bool; 256],
 
     // Internal State
     rng: XorShiftRng,
@@ -86,6 +87,7 @@ impl AllegroRenderer {
             dt: 0.0,
             u: 0.0,
             key_state: [false; 256],
+            key_state_old: [false; 256],
             rng: XorShiftRng::new_unseeded(),
             interpolation_ticks: 0
         }
@@ -106,6 +108,14 @@ impl AllegroRenderer {
     // Input ------------------------------------------------------------------
     pub fn key_down(&mut self, key_code: u8) -> bool {
         self.key_state[key_code as usize]
+    }
+
+    pub fn key_pressed(&mut self, key_code: u8) -> bool {
+        self.key_state[key_code as usize] && !self.key_state_old[key_code as usize]
+    }
+
+    pub fn key_released(&mut self, key_code: u8) -> bool {
+        !self.key_state[key_code as usize] && self.key_state_old[key_code as usize]
     }
 
 
@@ -134,6 +144,16 @@ impl AllegroRenderer {
 
     pub fn particle(&mut self) -> Option<&mut Particle> {
         self.particle_system.get()
+    }
+
+    pub fn draw_particles(&mut self) {
+        let prim = &self.prim;
+        self.particle_system.draw(self.dt, |ref color, s, x, y| {
+            prim.draw_filled_rectangle(
+                x - s + 0.5, y - s + 0.5, x + s + 0.5, y + s + 0.5,
+                AllegroRenderer::get_color(color)
+            );
+        });
     }
 
 
@@ -170,6 +190,7 @@ impl AllegroRenderer {
     }
 
     fn events(&mut self) {
+
         match self.queue.wait_for_event() {
 
             DisplayClose{ ..} => {
@@ -180,6 +201,8 @@ impl AllegroRenderer {
 
                 self.key_state[k as usize] = true;
 
+                //println!("key down {:?}", k as usize);
+
                 // Exit via Ctrl-C
                 if k == KeyCode::C && self.key_state[KeyCode::LCtrl as usize] {
                     self.is_running = false;
@@ -188,6 +211,7 @@ impl AllegroRenderer {
             },
 
             KeyUp{keycode: k, ..} if (k as u32) < 255 => {
+                //println!("key up {:?}", k as usize);
                 self.key_state[k as usize] = false;
             },
 
@@ -206,14 +230,8 @@ impl AllegroRenderer {
     }
 
     fn draw(&mut self) {
-        let prim = &self.prim;
-        self.particle_system.draw(self.dt, |ref color, s, x, y| {
-            prim.draw_filled_rectangle(
-                x - s + 0.5, y - s + 0.5, x + s + 0.5, y + s + 0.5,
-                AllegroRenderer::get_color(color)
-            );
-        });
         self.core.flip_display();
+        self.key_state_old = self.key_state;
     }
 
 }
