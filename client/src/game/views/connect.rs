@@ -8,20 +8,22 @@ use shooter_server::game::Game as ServerGame;
 // Internal Dependencies ------------------------------------------------------
 use game::{Game, ClientHandle};
 use shared::{Color, ColorName};
-use shared::Lithium::Server;
+use shared::Lithium::{Server, Renderer};
 use self::super::{View, MenuView, GameView};
 
 
 // View Implementation --------------------------------------------------------
 #[derive(Debug)]
 pub struct ConnectView {
-    server_addr: Option<SocketAddr>
+    server_addr: Option<SocketAddr>,
+    last_connection_retry: f64
 }
 
 impl ConnectView {
     pub fn new(server_addr: Option<SocketAddr>) -> ConnectView {
         ConnectView {
-            server_addr: server_addr
+            server_addr: server_addr,
+            last_connection_retry: 0.0
         }
     }
 }
@@ -55,6 +57,7 @@ impl View for ConnectView {
         println!("[Client] Connecting...");
 
         // Connect to server
+        self.last_connection_retry = client.renderer.time();
         client.network.connect(self.server_addr.unwrap()).expect("Already connected!");
         game.reset(client);
 
@@ -64,29 +67,38 @@ impl View for ConnectView {
         game.set_view(Box::new(GameView::new(self.server_addr.unwrap())));
     }
 
-    fn disconnect(&mut self, game: &mut Game, _: &mut ClientHandle, _: bool) {
+    fn disconnect(&mut self, _: &mut Game, _: &mut ClientHandle, _: bool) {
         // TODO implement retry when connecting to remote server
         println!("[Client] Connection failed.");
-        game.set_view(Box::new(MenuView));
+        //client.network.reset();
+        //game.set_view(Box::new(MenuView));
     }
 
-    fn draw(&mut self, _: &mut Game, client: &mut ClientHandle) {
+    fn draw(&mut self, game: &mut Game, client: &mut ClientHandle) {
 
         // Retry Connections
-        //let timeout = client.renderer.time() - game.last_connection_retry;
-        //if game.state == GameState::Disconnected && timeout > 3.0 {
-        //    println!("[Client] Establishing connection...");
-        //    game.last_connection_retry = client.renderer.time();
-        //    client.network.reset().ok();
-        //}
+        let timeout = client.renderer.time() - self.last_connection_retry;
+        if timeout > 3.0 {
+            println!("[Client] Retrying connection...");
+            self.last_connection_retry = client.renderer.time();
+            client.network.reset().ok();
+        }
+
+        client.renderer.clear(&Color::from_name(ColorName::Black));
 
         if let Ok(addr) = client.network.peer_addr() {
             client.renderer.text(
                 &Color::from_name(ColorName::White),
                 0.0, 0.0,
-                &format!("Connecting to {}...", addr)[..]
+                &format!("Connecting to {}... (press ESC to cancel)", addr)[..]
             );
         }
+
+        if client.renderer.key_released(59) {
+            client.network.close().ok();
+            game.set_view(Box::new(MenuView));
+        }
+
     }
 
 }

@@ -25,7 +25,7 @@ impl View for MenuView {
         client.renderer.text(
             &Color::from_name(ColorName::White),
             0.0, 0.0,
-            &format!("Menu")[..]
+            &format!("Menu - Press Enter to connect")[..]
         );
 
         if client.renderer.key_released(67) {

@@ -148,7 +148,7 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
 
                 ClientEvent::ConnectionFailed => {
                     handler.disconnect(self.handle(renderer), false);
-                    self.network.close().ok();
+                    //self.network.close().ok(); // TODO this screws up reconnect logic
                 },
 
                 _ => {}

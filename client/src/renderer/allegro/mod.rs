@@ -136,10 +136,14 @@ impl AllegroRenderer {
         );
     }
 
-    pub fn text(&mut self, color: &Color, x: f32, y: f32, text: &str) {
-        self.core.draw_text(
-            &self.font, AllegroRenderer::get_color(color), x, y, FontAlign::Left, text
-        );
+    pub fn text(&mut self, color: &Color, x: f32, mut y: f32, text: &str) {
+        for s in text.split('\n') {
+            self.core.draw_text(
+                &self.font, AllegroRenderer::get_color(color),
+                x, y, FontAlign::Left, s
+            );
+            y += 12.0;
+        }
     }
 
     pub fn particle(&mut self) -> Option<&mut Particle> {

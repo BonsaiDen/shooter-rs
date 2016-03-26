@@ -26,8 +26,6 @@ impl GameView {
     }
 }
 
-// TODO re-implement retry logic
-
 impl View for GameView {
 
     fn name(&self) -> &str {
@@ -103,12 +101,12 @@ impl View for GameView {
         client.renderer.draw_particles();
 
         let network_state = format!(
-            "{} (Ping: {}ms, Lost: {:.2}%, Bytes: {}/{})",
+            "Press ESC to return to Menu - {}\nPing: {}ms - sent/recv: {}/{} - loss: {:.2}%",
             self.server_addr,
             client.network.rtt() / 2,
-            client.network.packet_loss(),
             client.network.bytes_sent(),
-            client.network.bytes_received()
+            client.network.bytes_received(),
+            client.network.packet_loss()
         );
 
         client.renderer.text(
