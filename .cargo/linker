@@ -1,0 +1,4 @@
+#!/bin/sh
+export WINEPATH='C:\Program Files (x86)\Rust stable GNU 1.7\lib\rustlib\i686-pc-windows-gnu\bin'
+exec wine ~/.wine/drive_c/Program\ Files\ \(x86\)/Rust\ stable\ GNU\ 1.7/lib/rustlib/i686-pc-windows-gnu/bin/gcc.exe "$@" "-l" "allegro"
+

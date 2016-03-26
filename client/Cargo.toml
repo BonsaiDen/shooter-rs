@@ -7,10 +7,17 @@ authors = ["Ivo Wetzel <ivo.wetzel@googlemail.com>"]
 clap = "1.5.5"
 shooter-server = { version = "0.1.0", path = "../server" }
 shared = { version = "0.1.0", path = "../shared" }
-
 rand = "0.3.14"
-allegro = "0.0.22"
-allegro-sys = "0.0.22"
-allegro_primitives = "0.0.22"
-allegro_font = "0.0.22"
+
+[target.x86_64-unknown-linux-gnu.dependencies]
+allegro = "0.0.23"
+allegro-sys = "0.0.23"
+allegro_font = "0.0.23"
+allegro_primitives = "0.0.23"
+
+#[target.i686-pc-windows-gnu.dependencies]
+#allegro = { version = "0.0.23", features = ["link_none"] }
+#allegro-sys = "0.0.23"
+#allegro_font = { version = "0.0.23", features = ["link_none"] }
+#allegro_primitives = { version = "0.0.23", features = ["link_none"] }
 
