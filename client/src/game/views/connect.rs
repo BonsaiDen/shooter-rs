@@ -34,7 +34,7 @@ impl View for ConnectView {
         "Connect"
     }
 
-    fn push(&mut self, game: &mut Game, client: &mut ClientHandle) {
+    fn push(&mut self, game: &mut Game, handle: &mut ClientHandle) {
 
         if self.server_addr.is_none() {
 
@@ -57,9 +57,9 @@ impl View for ConnectView {
         println!("[Client] Connecting...");
 
         // Connect to server
-        self.last_connection_retry = client.renderer.time();
-        client.network.connect(self.server_addr.unwrap()).expect("Already connected!");
-        game.reset(client);
+        self.last_connection_retry = handle.renderer.time();
+        handle.client.connect(self.server_addr.unwrap()).expect("Already connected!");
+        game.reset(handle);
 
     }
 
@@ -70,32 +70,32 @@ impl View for ConnectView {
     fn disconnect(&mut self, _: &mut Game, _: &mut ClientHandle, _: bool) {
         // TODO implement retry when connecting to remote server
         println!("[Client] Connection failed.");
-        //client.network.reset();
+        //client.client.reset();
         //game.set_view(Box::new(MenuView));
     }
 
-    fn draw(&mut self, game: &mut Game, client: &mut ClientHandle) {
+    fn draw(&mut self, game: &mut Game, handle: &mut ClientHandle) {
 
         // Retry Connections
-        let timeout = client.renderer.time() - self.last_connection_retry;
+        let timeout = handle.renderer.time() - self.last_connection_retry;
         if timeout > 3.0 {
             println!("[Client] Retrying connection...");
-            self.last_connection_retry = client.renderer.time();
-            client.network.reset().ok();
+            self.last_connection_retry = handle.renderer.time();
+            handle.client.reset().ok();
         }
 
-        client.renderer.clear(&Color::from_name(ColorName::Black));
+        handle.renderer.clear(&Color::from_name(ColorName::Black));
 
-        if let Ok(addr) = client.network.peer_addr() {
-            client.renderer.text(
+        if let Ok(addr) = handle.client.peer_addr() {
+            handle.renderer.text(
                 &Color::from_name(ColorName::White),
                 0.0, 0.0,
                 &format!("Connecting to {}... (press ESC to cancel)", addr)[..]
             );
         }
 
-        if client.renderer.key_released(59) {
-            client.network.close().ok();
+        if handle.renderer.key_released(59) {
+            handle.client.close().ok();
             game.set_view(Box::new(MenuView));
         }
 

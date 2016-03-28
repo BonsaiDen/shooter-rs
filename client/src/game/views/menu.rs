@@ -14,21 +14,21 @@ impl View for MenuView {
         "Menu"
     }
 
-    fn push(&mut self, game: &mut Game, client: &mut ClientHandle) {
-        game.reset(client);
+    fn push(&mut self, game: &mut Game, handle: &mut ClientHandle) {
+        game.reset(handle);
     }
 
-    fn draw(&mut self, game: &mut Game, client: &mut ClientHandle) {
+    fn draw(&mut self, game: &mut Game, handle: &mut ClientHandle) {
 
-        client.renderer.clear(&Color::from_name(ColorName::Black));
+        handle.renderer.clear(&Color::from_name(ColorName::Black));
 
-        client.renderer.text(
+        handle.renderer.text(
             &Color::from_name(ColorName::White),
             0.0, 0.0,
             &format!("Menu - Press Enter to connect")[..]
         );
 
-        if client.renderer.key_released(67) {
+        if handle.renderer.key_released(67) {
             let view = Box::new(ConnectView::new(game.server_addr));
             game.set_view(view);
         }

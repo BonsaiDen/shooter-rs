@@ -41,39 +41,39 @@ macro_rules! with_view {
 // Handler Implementation -----------------------------------------------------
 impl ClientHandler<SharedEvent, SharedState, SharedLevel, AllegroRenderer> for Game {
 
-    fn init(&mut self, mut client: ClientHandle) {
-        with_view_state!(self, view, client, {
-            view.init(self, &mut client);
+    fn init(&mut self, mut handle: ClientHandle) {
+        with_view_state!(self, view, handle, {
+            view.init(self, &mut handle);
         });
     }
 
-    fn config(&mut self, mut client: ClientHandle, level_data: &[u8]) {
-        with_view_state!(self, view, client, {
-            view.config(self, &mut client, level_data);
+    fn config(&mut self, mut handle: ClientHandle, level_data: &[u8]) {
+        with_view_state!(self, view, handle, {
+            view.config(self, &mut handle, level_data);
         });
     }
 
-    fn connect(&mut self, mut client: ClientHandle) {
-        with_view_state!(self, view, client, {
-            view.connect(self, &mut client);
+    fn connect(&mut self, mut handle: ClientHandle) {
+        with_view_state!(self, view, handle, {
+            view.connect(self, &mut handle);
         });
     }
 
-    fn disconnect(&mut self, mut client: ClientHandle, was_connected: bool) {
-        with_view_state!(self, view, client, {
-            view.disconnect(self, &mut client, was_connected);
+    fn disconnect(&mut self, mut handle: ClientHandle, was_connected: bool) {
+        with_view_state!(self, view, handle, {
+            view.disconnect(self, &mut handle, was_connected);
         });
     }
 
-    fn event(&mut self, mut client: ClientHandle, owner: ConnectionID, event: SharedEvent) {
-        with_view_state!(self, view, client, {
-            view.event(self, &mut client, owner, event);
+    fn event(&mut self, mut handle: ClientHandle, owner: ConnectionID, event: SharedEvent) {
+        with_view_state!(self, view, handle, {
+            view.event(self, &mut handle, owner, event);
         });
     }
 
-    fn tick_before(&mut self, mut client: ClientHandle) {
-        with_view_state!(self, view, client, {
-            view.tick_before(self, &mut client);
+    fn tick_before(&mut self, mut handle: ClientHandle) {
+        with_view_state!(self, view, handle, {
+            view.tick_before(self, &mut handle);
         });
     }
 
@@ -101,21 +101,21 @@ impl ClientHandler<SharedEvent, SharedState, SharedLevel, AllegroRenderer> for G
         });
     }
 
-    fn tick_after(&mut self, mut client: ClientHandle) {
-        with_view_state!(self, view, client, {
-            view.tick_after(self, &mut client);
+    fn tick_after(&mut self, mut handle: ClientHandle) {
+        with_view_state!(self, view, handle, {
+            view.tick_after(self, &mut handle);
         });
     }
 
-    fn draw(&mut self, mut client: ClientHandle) {
-        with_view_state!(self, view, client, {
-            view.draw(self, &mut client);
+    fn draw(&mut self, mut handle: ClientHandle) {
+        with_view_state!(self, view, handle, {
+            view.draw(self, &mut handle);
         });
     }
 
-    fn destroy(&mut self, mut client: ClientHandle) {
-        with_view_state!(self, view, client, {
-            view.destroy(self, &mut client);
+    fn destroy(&mut self, mut handle: ClientHandle) {
+        with_view_state!(self, view, handle, {
+            view.destroy(self, &mut handle);
         });
     }
 

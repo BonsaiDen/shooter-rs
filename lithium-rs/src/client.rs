@@ -26,7 +26,7 @@ macro_rules! handle {
             events: &mut $s.events,
             entities: &mut $s.manager,
             timer: &mut $s.timer,
-            network: &mut $s.network
+            client: &mut $s.client
        }
     }
 }
@@ -35,7 +35,7 @@ macro_rules! handle {
 // Client Abstraction ---------------------------------------------------------
 pub struct Client<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Handler<E, S, L, R>> {
     handler: H,
-    network: ClientStream,
+    client: ClientStream,
     manager: EntityManager<S, L, R>,
     events: EventHandler<E>,
     level: Level<S, L>,
@@ -54,7 +54,7 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Handler<E, S, L,
     ) -> Client<E, S, L, R, H> {
         Client {
             handler: handler,
-            network: ClientStream::new(Config {
+            client: ClientStream::new(Config {
                 send_rate: tick_rate as u32,
                 connection_init_threshold: 250,
                 .. Default::default()
@@ -83,8 +83,8 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Handler<E, S, L,
 
         // Send any pending outgoing events
         self.send_events();
-        self.network.flush().ok();
-        self.network.close().ok();
+        self.client.flush().ok();
+        self.client.close().ok();
 
     }
 
@@ -94,7 +94,7 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Handler<E, S, L,
 
         let mut ticked = false;
 
-        while let Ok(event) = self.network.receive() {
+        while let Ok(event) = self.client.receive() {
             match event {
 
                 ClientEvent::Connection => {
@@ -149,14 +149,14 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Handler<E, S, L,
                 ClientEvent::Close | ClientEvent::ConnectionLost => {
                     self.manager.reset();
                     self.handler.disconnect(handle!(self, renderer), true);
-                    self.network.close().ok();
+                    self.client.close().ok();
                 },
 
                 ClientEvent::ConnectionClosed(by_remote) => {
                     self.manager.reset();
                     // TODO by_remote should be there along with was_connected?
                     self.handler.disconnect(handle!(self, renderer), by_remote);
-                    self.network.close().ok();
+                    self.client.close().ok();
                 },
 
                 ClientEvent::ConnectionFailed => {
@@ -169,7 +169,7 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Handler<E, S, L,
             }
         }
 
-        self.network.flush().ok();
+        self.client.flush().ok();
 
         ticked
 
@@ -192,8 +192,8 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Handler<E, S, L,
     // Internal ---------------------------------------------------------------
     fn update_tick_config(&mut self, renderer: &mut R) {
         let tick_rate = self.manager.config().tick_rate as u32;
-        let config = self.network.config();
-        self.network.set_config(Config {
+        let config = self.client.config();
+        self.client.set_config(Config {
             send_rate: tick_rate,
             .. config
         });
@@ -236,7 +236,7 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Handler<E, S, L,
     fn send_message(&mut self, kind: MessageKind, typ: network::Message, data: &[u8]) {
         let mut msg = [typ as u8].to_vec();
         msg.extend_from_slice(data);
-        self.network.send(kind, msg).ok();
+        self.client.send(kind, msg).ok();
     }
 
 }
@@ -256,7 +256,7 @@ pub struct Handle<
     pub events: &'a mut EventHandler<E>,
     pub entities: &'a mut EntityManager<S, L, R>,
     pub timer: &'a mut Timer<E, S, L, R, H>,
-    pub network: &'a mut ClientStream // TODO rename to client
+    pub client: &'a mut ClientStream
 }
 
 
