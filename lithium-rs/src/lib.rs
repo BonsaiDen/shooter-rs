@@ -10,6 +10,7 @@ extern crate rustc_serialize;
 
 
 // Module Declarations --------------------------------------------------------
+#[macro_use] mod timer;
 mod client;
 pub mod entity;
 mod event;
