@@ -1,4 +1,4 @@
-#[derive(PartialEq)]
+#[derive(Hash, Eq, PartialEq)]
 pub struct TimerId(pub u32);
 
 macro_rules! impl_timer {
@@ -16,6 +16,7 @@ macro_rules! impl_timer {
             S: $s
         > {
             callbacks: BinaryHeap<TimerCallback<H, R, G, L, E, S>>,
+            canceled: HashSet<TimerId>,
             time: u64,
             id: u32
         }
@@ -33,6 +34,7 @@ macro_rules! impl_timer {
             pub fn new() -> Timer<H, R, G, L, E, S> {
                 Timer {
                     callbacks: BinaryHeap::new(),
+                    canceled: HashSet::new(),
                     time: 0,
                     id: 0
                 }
@@ -52,8 +54,15 @@ macro_rules! impl_timer {
                         c.time <= self.time
                     })
                 } {
-                    // TODO check cancel list
-                    callbacks.push(self.callbacks.pop().unwrap().func);
+
+                    let callback = self.callbacks.pop().unwrap();
+                    if !self.canceled.contains(&callback.id) {
+                        callbacks.push(callback.func);
+
+                    } else {
+                        self.canceled.remove(&callback.id);
+                    }
+
                 }
 
                 callbacks
@@ -65,18 +74,18 @@ macro_rules! impl_timer {
                 f: Box<FnMut(&mut H, Handle<H, R, G, L, E, S>)>,
                 time: u64
 
-            ) -> u32 {
-                self.id += 1;
+            ) -> TimerId {
+                self.id = self.id.wrapping_add(1);
                 self.callbacks.push(TimerCallback {
                     func: f,
                     time: self.time + time,
                     id: TimerId(self.id)
                 });
-                self.id
+                TimerId(self.id)
             }
 
-            pub fn cancel(&mut self, _: TimerId) {
-                // TODO push into cancel list
+            pub fn cancel(&mut self, id: TimerId) {
+                self.canceled.insert(id);
             }
 
         }

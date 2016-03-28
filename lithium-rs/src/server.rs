@@ -2,7 +2,7 @@
 use std::cmp;
 use std::io::Error;
 use std::net::SocketAddr;
-use std::collections::BinaryHeap;
+use std::collections::{BinaryHeap, HashSet};
 use cobalt::{
     Config,
     Connection,

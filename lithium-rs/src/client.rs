@@ -1,6 +1,6 @@
 // External Dependencies ------------------------------------------------------
 use std::cmp;
-use std::collections::BinaryHeap;
+use std::collections::{BinaryHeap, HashSet};
 use cobalt::{Config, ConnectionID, ClientStream, ClientEvent, MessageKind};
 
 
