@@ -6,7 +6,7 @@ use allegro::{
 
 // Internal Dependencies ------------------------------------------------------
 use shared::Lithium::{
-    Client, ClientHandler, EntityState, Event, BaseLevel, Renderer
+    Client, ClientHandler, EntityState, EntityRegistry, Event, BaseLevel, Renderer
 };
 use super::AllegroRenderer;
 
@@ -16,12 +16,13 @@ impl Renderer for AllegroRenderer {
 
     // Statics ----------------------------------------------------------------
     fn run<
-        H: ClientHandler<E, S, L, Self>,
+        H: ClientHandler<E, S, L, Self, G>,
         E: Event,
         S: EntityState,
-        L: BaseLevel<S>
+        L: BaseLevel<S>,
+        G: EntityRegistry<S, L, Self>
 
-    >(mut client: Client<E, S, L, Self, H>) where Self: Sized {
+    >(mut client: Client<E, S, L, Self, H, G>) where Self: Sized {
 
         // Init Allegro
         let mut core = Core::init().unwrap();

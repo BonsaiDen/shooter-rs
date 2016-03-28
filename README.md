@@ -2,11 +2,6 @@
 
 A minimal 2D, asteroids like multiplayer shooter. 
 
-## WIP
-
-There's currently just a local steering demo. Basic networking functionality
-will be integrated shortly.
-
 
 ## Licensed under MIT
 

@@ -8,7 +8,7 @@ mod handler;
 
 
 // Type Aliases ---------------------------------------------------------------
-pub type ServerHandle<'a> = Handle<'a, SharedEvent, SharedState, SharedLevel, DefaultRenderer, Game>;
+pub type ServerHandle<'a> = Handle<'a, SharedEvent, SharedState, SharedLevel, DefaultRenderer, Game, SharedRegistry>;
 pub type ServerLevel = Level<SharedState, SharedLevel>;
 pub type ServerEntity = Entity<SharedState, SharedLevel, DefaultRenderer>;
 
@@ -36,12 +36,12 @@ impl Game {
 
     ) -> Server<
         SharedEvent, SharedState, SharedLevel, DefaultRenderer,
-        Game
+        Game, SharedRegistry
     > {
         Server::new(
             tick_rate, 1000, 75,
             Game::default_level(),
-            Box::new(SharedRegistry),
+            SharedRegistry,
             Game::new(loopback_mode)
         )
     }

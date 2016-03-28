@@ -1,7 +1,7 @@
 // Internal -------------------------------------------------------------------
 use event::Event;
 use level::BaseLevel;
-use entity::EntityState;
+use entity::{EntityState, EntityRegistry};
 use client::{Client, Handler};
 
 
@@ -10,12 +10,13 @@ pub trait Renderer {
 
     // Statics ----------------------------------------------------------------
     fn run<
-        H: Handler<E, S, L, Self>,
+        H: Handler<E, S, L, Self, G>,
         E: Event,
         S: EntityState,
-        L: BaseLevel<S>
+        L: BaseLevel<S>,
+        G: EntityRegistry<S, L, Self>
 
-    >(_: Client<E, S, L, Self, H>) where Self: Sized {}
+    >(_: Client<E, S, L, Self, H, G>) where Self: Sized {}
 
     // Time Related -----------------------------------------------------------
     fn time(&self) -> f64;

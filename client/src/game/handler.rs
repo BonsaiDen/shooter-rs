@@ -1,6 +1,7 @@
 // Internal Dependencies ------------------------------------------------------
 use shared::Lithium::ClientHandler;
 use shared::Lithium::Cobalt::ConnectionID;
+use entities::Registry;
 use renderer::AllegroRenderer;
 use shared::{SharedEvent, SharedLevel, SharedState};
 use game::{Game, ClientHandle, ClientEntity, ClientLevel};
@@ -39,7 +40,7 @@ macro_rules! with_view {
 
 
 // Handler Implementation -----------------------------------------------------
-impl ClientHandler<SharedEvent, SharedState, SharedLevel, AllegroRenderer> for Game {
+impl ClientHandler<SharedEvent, SharedState, SharedLevel, AllegroRenderer, Registry> for Game {
 
     fn init(&mut self, mut handle: ClientHandle) {
         with_view_state!(self, view, handle, {

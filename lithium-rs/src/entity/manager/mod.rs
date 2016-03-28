@@ -20,7 +20,7 @@ use self::registry::EntityRegistry;
 
 
 // Entity Manager Implementation ----------------------------------------------
-pub struct EntityManager<S: EntityState, L: BaseLevel<S>, R: Renderer> {
+pub struct EntityManager<S: EntityState, L: BaseLevel<S>, R: Renderer, G: EntityRegistry<S, L, R>> {
 
     // Id pool for entities
     id_pool: IdPool<u16>,
@@ -38,20 +38,20 @@ pub struct EntityManager<S: EntityState, L: BaseLevel<S>, R: Renderer> {
     server_mode: bool,
 
     // Entity Registry
-    registry: Box<EntityRegistry<S, L, R>>
+    registry: G
 
 }
 
-impl<S: EntityState, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
+impl<S: EntityState, L: BaseLevel<S>, R: Renderer, G: EntityRegistry<S, L, R>> EntityManager<S, L, R, G> {
 
     pub fn new(
         tick_rate: u8,
         buffer_ms: u32,
         interp_ms: u32,
         server_mode: bool,
-        registry: Box<EntityRegistry<S, L, R>>
+        registry: G
 
-    ) -> EntityManager<S, L, R> {
+    ) -> EntityManager<S, L, R, G> {
         EntityManager {
             id_pool: IdPool::new(),
             entities: HashMap::new(),
@@ -118,7 +118,7 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
         }
     }
 
-    pub fn tick_server<E: Event, H: server::Handler<E, S, L, R>>(
+    pub fn tick_server<E: Event, H: server::Handler<E, S, L, R, G>>(
         &mut self, level: &Level<S, L>, handler: &mut H
     ) {
 
@@ -134,7 +134,7 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
 
     }
 
-    pub fn tick_client<E: Event, H: client::Handler<E, S, L, R>>(
+    pub fn tick_client<E: Event, H: client::Handler<E, S, L, R, G>>(
         &mut self,
         renderer: &mut R,
         level: &Level<S, L>,

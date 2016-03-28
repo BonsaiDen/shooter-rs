@@ -5,11 +5,11 @@ use shared::Lithium::{DefaultRenderer, ServerHandler};
 
 // Internal Dependencies ------------------------------------------------------
 use game::{Game, ServerHandle, ServerLevel, ServerEntity};
-use shared::{Color, SharedEvent, SharedCommand, SharedLevel, SharedState};
+use shared::{Color, SharedEvent, SharedCommand, SharedLevel, SharedState, SharedRegistry};
 
 
 // Handler Implementation -----------------------------------------------------
-impl ServerHandler<SharedEvent, SharedState, SharedLevel, DefaultRenderer> for Game {
+impl ServerHandler<SharedEvent, SharedState, SharedLevel, DefaultRenderer, SharedRegistry> for Game {
 
     fn bind(&mut self, handle: ServerHandle) {
         println!("[Server] Started");

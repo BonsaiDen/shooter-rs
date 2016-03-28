@@ -33,25 +33,25 @@ macro_rules! handle {
 
 
 // Client Abstraction ---------------------------------------------------------
-pub struct Client<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Handler<E, S, L, R>> {
+pub struct Client<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Handler<E, S, L, R, G>, G: EntityRegistry<S, L, R>> {
     handler: H,
     client: ClientStream,
-    manager: EntityManager<S, L, R>,
+    manager: EntityManager<S, L, R, G>,
     events: EventHandler<E>,
     level: Level<S, L>,
-    timer: Timer<E, S, L, R, H>
+    timer: Timer<E, S, L, R, H, G>
 }
 
-impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Handler<E, S, L, R>> Client<E, S, L, R, H> {
+impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Handler<E, S, L, R, G>, G: EntityRegistry<S, L, R>> Client<E, S, L, R, H, G> {
 
     // Statics ----------------------------------------------------------------
     pub fn new(
         tick_rate: u8,
         level: Level<S, L>,
-        registry: Box<EntityRegistry<S, L, R>>,
+        registry: G,
         handler: H
 
-    ) -> Client<E, S, L, R, H> {
+    ) -> Client<E, S, L, R, H, G> {
         Client {
             handler: handler,
             client: ClientStream::new(Config {
@@ -249,29 +249,31 @@ pub struct Handle<
     S: EntityState + 'a,
     L: BaseLevel<S> + 'a,
     R: Renderer + 'a,
-    H: Handler<E, S, L, R> + 'a
+    H: Handler<E, S, L, R, G> + 'a,
+    G: EntityRegistry<S, L, R> + 'a
+
 > {
     pub renderer: &'a mut R,
     pub level: &'a mut Level<S, L>,
     pub events: &'a mut EventHandler<E>,
-    pub entities: &'a mut EntityManager<S, L, R>,
-    pub timer: &'a mut Timer<E, S, L, R, H>,
+    pub entities: &'a mut EntityManager<S, L, R, G>,
+    pub timer: &'a mut Timer<E, S, L, R, H, G>,
     pub client: &'a mut ClientStream
 }
 
 
 // Client Handler -------------------------------------------------------------
-pub trait Handler<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> {
+pub trait Handler<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, G: EntityRegistry<S, L, R>> {
 
-    fn init(&mut self, Handle<E, S, L, R, Self>) where Self: Sized;
-    fn connect(&mut self, Handle<E, S, L, R, Self>) where Self: Sized;
-    fn disconnect(&mut self, Handle<E, S, L, R, Self>, bool) where Self: Sized;
+    fn init(&mut self, Handle<E, S, L, R, Self, G>) where Self: Sized;
+    fn connect(&mut self, Handle<E, S, L, R, Self, G>) where Self: Sized;
+    fn disconnect(&mut self, Handle<E, S, L, R, Self, G>, bool) where Self: Sized;
 
-    fn config(&mut self, Handle<E, S, L, R, Self>, &[u8]) where Self: Sized;
+    fn config(&mut self, Handle<E, S, L, R, Self, G>, &[u8]) where Self: Sized;
 
-    fn event(&mut self, Handle<E, S, L, R, Self>, ConnectionID, E) where Self: Sized;
+    fn event(&mut self, Handle<E, S, L, R, Self, G>, ConnectionID, E) where Self: Sized;
 
-    fn tick_before(&mut self, Handle<E, S, L, R, Self>) where Self: Sized;
+    fn tick_before(&mut self, Handle<E, S, L, R, Self, G>) where Self: Sized;
 
     fn tick_entity_before(
         &mut self, &mut R, &Level<S, L>, &mut Entity<S, L, R>, u8, f32
@@ -281,15 +283,15 @@ pub trait Handler<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> {
         &mut self, &mut R, &Level<S, L>, &mut Entity<S, L, R>, u8, f32
     );
 
-    fn tick_after(&mut self, Handle<E, S, L, R, Self>) where Self: Sized;
+    fn tick_after(&mut self, Handle<E, S, L, R, Self, G>) where Self: Sized;
 
-    fn draw(&mut self, Handle<E, S, L, R, Self>) where Self: Sized;
+    fn draw(&mut self, Handle<E, S, L, R, Self, G>) where Self: Sized;
 
-    fn destroy(&mut self, Handle<E, S, L, R, Self>) where Self: Sized;
+    fn destroy(&mut self, Handle<E, S, L, R, Self, G>) where Self: Sized;
 
 }
 
 
 // Timer Implementation -------------------------------------------------------
-impl_timer!(Event, EntityState, BaseLevel, Renderer, Handler);
+impl_timer!(Event, EntityState, BaseLevel, Renderer, Handler, EntityRegistry);
 
