@@ -1,5 +1,10 @@
+#[derive(PartialEq)]
+pub struct TimerId(pub u32);
+
 macro_rules! impl_timer {
     ($h:ident, $r:ident, $g:ident, $l:ident, $e:ident, $s:ident) => {
+
+        use timer::TimerId;
 
         // Timer Abstraction --------------------------------------------------
         pub struct Timer<
@@ -65,12 +70,12 @@ macro_rules! impl_timer {
                 self.callbacks.push(TimerCallback {
                     func: f,
                     time: self.time + time,
-                    id: self.id
+                    id: TimerId(self.id)
                 });
                 self.id
             }
 
-            pub fn cancel(&mut self, _: u32) {
+            pub fn cancel(&mut self, _: TimerId) {
                 // TODO push into cancel list
             }
 
@@ -88,7 +93,7 @@ macro_rules! impl_timer {
         > {
             func: Box<FnMut(&mut H, Handle<H, R, G, L, E, S>)>,
             time: u64,
-            id: u32
+            id: TimerId
         }
 
         impl<

@@ -15,15 +15,13 @@ use self::super::{View, MenuView, GameView};
 // View Implementation --------------------------------------------------------
 #[derive(Debug)]
 pub struct ConnectView {
-    server_addr: Option<SocketAddr>,
-    last_connection_retry: f64
+    server_addr: Option<SocketAddr>
 }
 
 impl ConnectView {
     pub fn new(server_addr: Option<SocketAddr>) -> ConnectView {
         ConnectView {
-            server_addr: server_addr,
-            last_connection_retry: 0.0
+            server_addr: server_addr
         }
     }
 }
@@ -57,7 +55,6 @@ impl View for ConnectView {
         println!("[Client] Connecting...");
 
         // Connect to server
-        self.last_connection_retry = handle.renderer.time();
         handle.client.connect(self.server_addr.unwrap()).expect("Already connected!");
         game.reset(handle);
 
@@ -67,22 +64,16 @@ impl View for ConnectView {
         game.set_view(Box::new(GameView::new(self.server_addr.unwrap())));
     }
 
-    fn disconnect(&mut self, _: &mut Game, _: &mut ClientHandle, _: bool) {
-        // TODO implement retry when connecting to remote server
-        println!("[Client] Connection failed.");
-        //client.client.reset();
-        //game.set_view(Box::new(MenuView));
+    fn disconnect(&mut self, _: &mut Game, handle: &mut ClientHandle, _: bool) {
+        println!("[Client] Connection failed, trying again in 3 seconds...");
+        handle.timer.schedule(Box::new(|_, handle| {
+            println!("[Client] Retrying connection...");
+            handle.client.reset().ok();
+
+        }), 3000);
     }
 
     fn draw(&mut self, game: &mut Game, handle: &mut ClientHandle) {
-
-        // Retry Connections
-        let timeout = handle.renderer.time() - self.last_connection_retry;
-        if timeout > 3.0 {
-            println!("[Client] Retrying connection...");
-            self.last_connection_retry = handle.renderer.time();
-            handle.client.reset().ok();
-        }
 
         handle.renderer.clear(&Color::from_name(ColorName::Black));
 
