@@ -55,7 +55,10 @@ pub struct Server<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Han
 impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Handler<E, S, L, R>> Server<E, S, L, R, H> {
 
     // Statics ----------------------------------------------------------------
-    pub fn run(addr: SocketAddr, mut server: Server<E, S, L, R, H>) -> Result<(), Error> where Self: Sized {
+    pub fn run(
+        addr: SocketAddr, mut server: Server<E, S, L, R, H>
+
+    ) -> Result<(), Error> where Self: Sized {
 
         let mut cobalt_server = CobaltServer::new(Config {
             send_rate: server.config().tick_rate as u32,
