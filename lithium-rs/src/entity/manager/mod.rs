@@ -118,7 +118,7 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer, G: EntityRegistry<S, L, R>> E
         }
     }
 
-    pub fn tick_server<E: Event, H: server::Handler<E, S, L, R, G>>(
+    pub fn tick_server<E: Event, H: server::Handler<R, G, L, E, S>>(
         &mut self, level: &Level<S, L>, handler: &mut H
     ) {
 
@@ -134,7 +134,7 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer, G: EntityRegistry<S, L, R>> E
 
     }
 
-    pub fn tick_client<E: Event, H: client::Handler<E, S, L, R, G>>(
+    pub fn tick_client<E: Event, H: client::Handler<R, G, L, E, S>>(
         &mut self,
         renderer: &mut R,
         level: &Level<S, L>,

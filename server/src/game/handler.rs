@@ -9,7 +9,7 @@ use shared::{Color, SharedEvent, SharedCommand, SharedLevel, SharedState, Shared
 
 
 // Handler Implementation -----------------------------------------------------
-impl ServerHandler<SharedEvent, SharedState, SharedLevel, DefaultRenderer, SharedRegistry> for Game {
+impl ServerHandler<DefaultRenderer, SharedRegistry, SharedLevel, SharedEvent, SharedState> for Game {
 
     fn bind(&mut self, handle: ServerHandle) {
         println!("[Server] Started");

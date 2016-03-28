@@ -10,13 +10,13 @@ pub trait Renderer {
 
     // Statics ----------------------------------------------------------------
     fn run<
-        H: Handler<E, S, L, Self, G>,
+        H: Handler<Self, G, L, E, S>,
         E: Event,
         S: EntityState,
         L: BaseLevel<S>,
         G: EntityRegistry<S, L, Self>
 
-    >(_: Client<E, S, L, Self, H, G>) where Self: Sized {}
+    >(_: Client<H, Self, G, L, E, S>) where Self: Sized {}
 
     // Time Related -----------------------------------------------------------
     fn time(&self) -> f64;

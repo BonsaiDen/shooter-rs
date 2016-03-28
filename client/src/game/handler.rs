@@ -40,7 +40,7 @@ macro_rules! with_view {
 
 
 // Handler Implementation -----------------------------------------------------
-impl ClientHandler<SharedEvent, SharedState, SharedLevel, AllegroRenderer, Registry> for Game {
+impl ClientHandler<AllegroRenderer, Registry, SharedLevel, SharedEvent, SharedState> for Game {
 
     fn init(&mut self, mut handle: ClientHandle) {
         with_view_state!(self, view, handle, {

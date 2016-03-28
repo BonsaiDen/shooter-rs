@@ -44,19 +44,26 @@ macro_rules! handle {
 
 
 // Server Abstraction ---------------------------------------------------------
-pub struct Server<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Handler<E, S, L, R, G>, G: EntityRegistry<S, L, R>> {
+pub struct Server<
+    H: Handler<R, G, L, E, S>, R: Renderer,
+    G: EntityRegistry<S, L, R>, L: BaseLevel<S>, E: Event, S: EntityState
+> {
     handler: H,
     manager: EntityManager<S, L, R, G>,
     events: EventHandler<E>,
     level: Level<S, L>,
-    timer: Timer<E, S, L, R, H, G>
+    timer: Timer<H, R, G, L, E, S>
 }
 
-impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Handler<E, S, L, R, G>, G: EntityRegistry<S, L, R>> Server<E, S, L, R, H, G> {
+impl<
+    H: Handler<R, G, L, E, S>, R: Renderer,
+    G: EntityRegistry<S, L, R>, L: BaseLevel<S>, E: Event, S: EntityState
+
+> Server<H, R, G, L, E, S> {
 
     // Statics ----------------------------------------------------------------
     pub fn run(
-        addr: SocketAddr, mut server: Server<E, S, L, R, H, G>
+        addr: SocketAddr, mut server: Server<H, R, G, L, E, S>
 
     ) -> Result<(), Error> where Self: Sized {
 
@@ -75,7 +82,7 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Handler<E, S, L,
         registry: G,
         handler: H
 
-    ) -> Server<E, S, L, R, H, G> {
+    ) -> Server<H, R, G, L, E, S> {
         Server {
             handler: handler,
             manager: EntityManager::new(
@@ -98,10 +105,10 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Handler<E, S, L,
 }
 
 impl<
-    E: Event, S: EntityState, L: BaseLevel<S>,
-    R: Renderer, H: Handler<E, S, L, R, G>, G: EntityRegistry<S, L, R>
+    H: Handler<R, G, L, E, S>, R: Renderer,
+    G: EntityRegistry<S, L, R>, L: BaseLevel<S>, E: Event, S: EntityState
 
-> CobaltHandler<CobaltServer> for Server<E, S, L, R, H, G> {
+> CobaltHandler<CobaltServer> for Server<H, R, G, L, E, S> {
 
     fn bind(&mut self, server: &mut CobaltServer) {
         self.handler.bind(handle!(self, server));
@@ -204,42 +211,45 @@ impl<
 // Server Handle for Access from Handler ------------------------------------
 pub struct Handle<
     'a,
-    E: Event + 'a,
-    S: EntityState + 'a,
-    L: BaseLevel<S> + 'a,
+    H: Handler<R, G, L, E, S> + 'a,
     R: Renderer + 'a,
-    H: Handler<E, S, L, R, G> + 'a,
-    G: EntityRegistry<S, L, R> + 'a
+    G: EntityRegistry<S, L, R> + 'a,
+    L: BaseLevel<S> + 'a,
+    E: Event + 'a,
+    S: EntityState + 'a
 > {
     pub level: &'a mut Level<S, L>,
     pub entities: &'a mut EntityManager<S, L, R, G>,
     pub events: &'a mut EventHandler<E>,
-    pub timer: &'a mut Timer<E, S, L, R, H, G>,
+    pub timer: &'a mut Timer<H, R, G, L, E, S>,
     pub server: &'a mut CobaltServer
 }
 
 
 // Server Handler -------------------------------------------------------------
-pub trait Handler<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, G: EntityRegistry<S, L, R>> {
+pub trait Handler<
+    R: Renderer,
+    G: EntityRegistry<S, L, R>, L: BaseLevel<S>, E: Event, S: EntityState,
+> {
 
-    fn bind(&mut self, Handle<E, S, L, R, Self, G>) where Self: Sized;
-    fn connect(&mut self, Handle<E, S, L, R, Self, G>, &mut Connection) where Self: Sized;
-    fn disconnect(&mut self, Handle<E, S, L, R, Self, G>, &mut Connection) where Self: Sized;
+    fn bind(&mut self, Handle<Self, R, G, L, E, S>) where Self: Sized;
+    fn connect(&mut self, Handle<Self, R, G, L, E, S>, &mut Connection) where Self: Sized;
+    fn disconnect(&mut self, Handle<Self, R, G, L, E, S>, &mut Connection) where Self: Sized;
 
-    fn event(&mut self, Handle<E, S, L, R, Self, G>, &mut ConnectionMap, ConnectionID, E) where Self: Sized;
+    fn event(&mut self, Handle<Self, R, G, L, E, S>, &mut ConnectionMap, ConnectionID, E) where Self: Sized;
 
-    fn tick_before(&mut self, Handle<E, S, L, R, Self, G>, &mut ConnectionMap) where Self: Sized;
+    fn tick_before(&mut self, Handle<Self, R, G, L, E, S>, &mut ConnectionMap) where Self: Sized;
 
     fn tick_entity_before(&mut self, &Level<S, L>, &mut Entity<S, L, R>, u8, f32);
     fn tick_entity_after(&mut self, &Level<S, L>, &mut Entity<S, L, R>, u8, f32);
 
-    fn tick_after(&mut self, Handle<E, S, L, R, Self, G>, &mut ConnectionMap) where Self: Sized;
+    fn tick_after(&mut self, Handle<Self, R, G, L, E, S>, &mut ConnectionMap) where Self: Sized;
 
-    fn shutdown(&mut self, Handle<E, S, L, R, Self, G>) where Self: Sized;
+    fn shutdown(&mut self, Handle<Self, R, G, L, E, S>) where Self: Sized;
 
 }
 
 
 // Timer Implementation -------------------------------------------------------
-impl_timer!(Event, EntityState, BaseLevel, Renderer, Handler, EntityRegistry);
+impl_timer!(Handler, Renderer, EntityRegistry, BaseLevel, Event, EntityState);
 

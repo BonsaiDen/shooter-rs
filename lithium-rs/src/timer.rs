@@ -1,24 +1,31 @@
 macro_rules! impl_timer {
-    ($e:ident, $s:ident, $b:ident, $r:ident, $h:ident, $g:ident) => {
+    ($h:ident, $r:ident, $g:ident, $l:ident, $e:ident, $s:ident) => {
 
         // Timer Abstraction --------------------------------------------------
-        pub struct Timer<E: $e, S: $s, L: $b<S>, R: $r, H: $h<E, S, L, R, G>, G: $g<S, L, R>> {
-            callbacks: BinaryHeap<TimerCallback<E, S, L, R, H, G>>,
+        pub struct Timer<
+            H: $h<R, G, L, E, S>,
+            R: $r,
+            G: $g<S, L, R>,
+            L: $l<S>,
+            E: $e,
+            S: $s
+        > {
+            callbacks: BinaryHeap<TimerCallback<H, R, G, L, E, S>>,
             time: u64,
             id: u32
         }
 
         impl<
-            E: $e,
-            S: $s,
-            L: $b<S>,
+            H: $h<R, G, L, E, S>,
             R: $r,
-            H: $h<E, S, L, R, G>,
-            G: $g<S, L, R>
+            G: $g<S, L, R>,
+            L: $l<S>,
+            E: $e,
+            S: $s
 
-        > Timer<E, S, L, R, H, G> {
+        > Timer<H, R, G, L, E, S> {
 
-            pub fn new() -> Timer<E, S, L, R, H, G> {
+            pub fn new() -> Timer<H, R, G, L, E, S> {
                 Timer {
                     callbacks: BinaryHeap::new(),
                     time: 0,
@@ -30,7 +37,7 @@ macro_rules! impl_timer {
                 &mut self,
                 dt: u64
 
-            ) -> Vec<Box<FnMut(&mut H, Handle<E, S, L, R, H, G>)>> {
+            ) -> Vec<Box<FnMut(&mut H, Handle<H, R, G, L, E, S>)>> {
 
                 self.time += dt;
 
@@ -50,7 +57,7 @@ macro_rules! impl_timer {
 
             pub fn schedule(
                 &mut self,
-                f: Box<FnMut(&mut H, Handle<E, S, L, R, H, G>)>,
+                f: Box<FnMut(&mut H, Handle<H, R, G, L, E, S>)>,
                 time: u64
 
             ) -> u32 {
@@ -72,69 +79,69 @@ macro_rules! impl_timer {
 
         // Timer Callback Wrapper ---------------------------------------------
         struct TimerCallback<
-            E: $e,
-            S: $s,
-            L: $b<S>,
+            H: $h<R, G, L, E, S>,
             R: $r,
-            H: $h<E, S, L, R, G>,
-            G: $g<S, L, R>
+            G: $g<S, L, R>,
+            L: $l<S>,
+            E: $e,
+            S: $s
         > {
-            func: Box<FnMut(&mut H, Handle<E, S, L, R, H, G>)>,
+            func: Box<FnMut(&mut H, Handle<H, R, G, L, E, S>)>,
             time: u64,
             id: u32
         }
 
         impl<
-            E: $e,
-            S: $s,
-            L: $b<S>,
+            H: $h<R, G, L, E, S>,
             R: $r,
-            H: $h<E, S, L, R, G>,
-            G: $g<S, L, R>
+            G: $g<S, L, R>,
+            L: $l<S>,
+            E: $e,
+            S: $s
 
-        > Eq for TimerCallback<E, S, L, R, H, G> {}
+        > Eq for TimerCallback<H, R, G, L, E, S> {}
 
         impl<
-            E: $e,
-            S: $s,
-            L: $b<S>,
+            H: $h<R, G, L, E, S>,
             R: $r,
-            H: $h<E, S, L, R, G>,
-            G: $g<S, L, R>
+            G: $g<S, L, R>,
+            L: $l<S>,
+            E: $e,
+            S: $s
 
-        > PartialEq for TimerCallback<E, S, L, R, H, G> {
-            fn eq(&self, other: &TimerCallback<E, S, L, R, H, G>) -> bool {
+        > PartialEq for TimerCallback<H, R, G, L, E, S> {
+            fn eq(&self, other: &TimerCallback<H, R, G, L, E, S>) -> bool {
                 self.id == other.id
             }
         }
 
         impl<
-            E: $e,
-            S: $s,
-            L: $b<S>,
+            H: $h<R, G, L, E, S>,
             R: $r,
-            H: $h<E, S, L, R, G>,
-            G: $g<S, L, R>
+            G: $g<S, L, R>,
+            L: $l<S>,
+            E: $e,
+            S: $s
 
-        > Ord for TimerCallback<E, S, L, R, H, G> {
+        > Ord for TimerCallback<H, R, G, L, E, S> {
             // Explicitly implement the trait so the queue becomes a min-heap
             // instead of a max-heap.
-            fn cmp(&self, other: &TimerCallback<E, S, L, R, H, G>) -> cmp::Ordering {
+            fn cmp(&self, other: &TimerCallback<H, R, G, L, E, S>) -> cmp::Ordering {
                 other.time.cmp(&self.time)
             }
         }
 
         impl<
-            E: $e,
-            S: $s,
-            L: $b<S>,
+            H: $h<R, G, L, E, S>,
             R: $r,
-            H: $h<E, S, L, R, G>,
-            G: $g<S, L, R>
+            G: $g<S, L, R>,
+            L: $l<S>,
+            E: $e,
+            S: $s
 
-        > PartialOrd for TimerCallback<E, S, L, R, H, G> {
+        > PartialOrd for TimerCallback<H, R, G, L, E, S> {
             fn partial_cmp(
-                &self, other: &TimerCallback<E, S, L, R, H, G>
+                &self, other: &TimerCallback<H, R, G, L, E, S>
 
             ) -> Option<cmp::Ordering> {
                 Some(self.cmp(other))

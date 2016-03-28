@@ -13,7 +13,7 @@ use self::views::View;
 
 
 // Type Aliases ---------------------------------------------------------------
-pub type ClientHandle<'a> = Handle<'a, SharedEvent, SharedState, SharedLevel, AllegroRenderer, Game, Registry>;
+pub type ClientHandle<'a> = Handle<'a, Game, AllegroRenderer, Registry, SharedLevel, SharedEvent, SharedState>;
 pub type ClientEntity = Entity<SharedState, SharedLevel, AllegroRenderer>;
 pub type ClientLevel = Level<SharedState, SharedLevel>;
 
@@ -36,7 +36,8 @@ impl Game {
     }
 
     pub fn client(server_addr: Option<SocketAddr>) -> Client<
-        SharedEvent, SharedState, SharedLevel, AllegroRenderer, Game, Registry
+        Game, AllegroRenderer,
+        Registry, SharedLevel, SharedEvent, SharedState
     > {
         Client::new(
             30,

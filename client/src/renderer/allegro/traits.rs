@@ -16,13 +16,13 @@ impl Renderer for AllegroRenderer {
 
     // Statics ----------------------------------------------------------------
     fn run<
-        H: ClientHandler<E, S, L, Self, G>,
+        H: ClientHandler<Self, G, L, E, S>,
         E: Event,
         S: EntityState,
         L: BaseLevel<S>,
         G: EntityRegistry<S, L, Self>
 
-    >(mut client: Client<E, S, L, Self, H, G>) where Self: Sized {
+    >(mut client: Client<H, Self, G, L, E, S>) where Self: Sized {
 
         // Init Allegro
         let mut core = Core::init().unwrap();
