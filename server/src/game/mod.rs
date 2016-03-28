@@ -26,7 +26,7 @@ impl Game {
         Game {
             available_colors: Color::all_colored().into_iter().rev().collect(),
             loopback_mode: loopback_mode,
-            counter: 0
+            counter: 1
         }
     }
 
@@ -52,7 +52,7 @@ impl Game {
 
     fn count(&mut self, handle: ServerHandle) {
         handle.timer.schedule(Box::new(|game, handle| {
-            println!("Counter: {}", game.counter);
+            println!("[Server] Counter: {}", game.counter);
             game.counter += 1;
             game.count(handle);
 
