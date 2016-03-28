@@ -1,4 +1,6 @@
 // External Dependencies ------------------------------------------------------
+use std::cmp;
+use std::collections::BinaryHeap;
 use cobalt::{Config, ConnectionID, ClientStream, ClientEvent, MessageKind};
 
 
@@ -15,25 +17,43 @@ use event::{Event, EventHandler};
 use renderer::Renderer;
 
 
-// Client Abstraction ---------------------------------------------------------
-pub struct Client<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> {
-    network: ClientStream, // TODO rename to stream?
-    manager: EntityManager<S, L, R>,
-    events: EventHandler<E>,
-    remote_states: Vec<(u8, S)>,
-    level: Level<S, L>
+// Macros ---------------------------------------------------------------------
+macro_rules! handle {
+    ($s:ident, $r:ident) => {
+       Handle {
+            renderer: $r,
+            level: &mut $s.level,
+            events: &mut $s.events,
+            entities: &mut $s.manager,
+            timer: &mut $s.timer,
+            network: &mut $s.network
+       }
+    }
 }
 
-impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> {
+
+// Client Abstraction ---------------------------------------------------------
+pub struct Client<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Handler<E, S, L, R>> {
+    handler: H,
+    network: ClientStream,
+    manager: EntityManager<S, L, R>,
+    events: EventHandler<E>,
+    level: Level<S, L>,
+    timer: Timer<E, S, L, R, H>
+}
+
+impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Handler<E, S, L, R>> Client<E, S, L, R, H> {
 
     // Statics ----------------------------------------------------------------
     pub fn new(
         tick_rate: u8,
         level: Level<S, L>,
-        registry: Box<EntityRegistry<S, L, R>>
+        registry: Box<EntityRegistry<S, L, R>>,
+        handler: H
 
-    ) -> Client<E, S, L, R> {
+    ) -> Client<E, S, L, R, H> {
         Client {
+            handler: handler,
             network: ClientStream::new(Config {
                 send_rate: tick_rate as u32,
                 connection_init_threshold: 250,
@@ -45,25 +65,21 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
                 registry
             ),
             events: EventHandler::new(),
-            remote_states: Vec::new(),
-            level: level
+            level: level,
+            timer: Timer::new()
         }
     }
 
 
     // Public -----------------------------------------------------------------
-    pub fn init<H: Handler<E, S, L, R>>(
-        &mut self, handler: &mut H, renderer: &mut R
-    ) {
+    pub fn init(&mut self, renderer: &mut R) {
         self.update_tick_config(renderer);
-        handler.init(self.handle(renderer));
+        self.handler.init(handle!(self, renderer));
     }
 
-    pub fn destroy<H: Handler<E, S, L, R>>(
-        &mut self, handler: &mut H, renderer: &mut R
-    ) {
+    pub fn destroy(&mut self, renderer: &mut R) {
 
-        handler.destroy(self.handle(renderer));
+        self.handler.destroy(handle!(self, renderer));
 
         // Send any pending outgoing events
         self.send_events();
@@ -74,10 +90,7 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
 
 
     // Tick Handling ----------------------------------------------------------
-    pub fn tick<H: Handler<E, S, L, R>>(
-        &mut self, handler: &mut H, renderer: &mut R
-
-    ) -> bool {
+    pub fn tick(&mut self, renderer: &mut R) -> bool {
 
         let mut ticked = false;
 
@@ -85,9 +98,8 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
             match event {
 
                 ClientEvent::Connection => {
-                    self.remote_states.clear();
                     self.manager.reset();
-                    handler.connect(self.handle(renderer));
+                    self.handler.connect(handle!(self, renderer));
                 },
 
                 ClientEvent::Message(data) =>  {
@@ -96,7 +108,7 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
                         network::Message::ServerConfig => {
                             let data = self.manager.receive_config(&data[1..]);
                             self.update_tick_config(renderer);
-                            handler.config(self.handle(renderer), data);
+                            self.handler.config(handle!(self, renderer), data);
                         },
 
                         network::Message::ServerState => {
@@ -119,35 +131,36 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
 
                     if let Some(events) = self.events.received() {
                         for (owner, event) in events {
-                            handler.event(self.handle(renderer), owner, event);
+                            self.handler.event(handle!(self, renderer), owner, event);
                         }
                     }
 
-                    handler.tick_before(self.handle(renderer));
-                    self.tick_entities(handler, renderer);
+                    self.handler.tick_before(handle!(self, renderer));
+
+                    self.tick_entities(renderer);
                     self.send_events();
-                    handler.tick_after(self.handle(renderer));
+
+                    self.handler.tick_after(handle!(self, renderer));
+
                     ticked = true;
 
                 },
 
                 ClientEvent::Close | ClientEvent::ConnectionLost => {
-                    self.remote_states.clear();
                     self.manager.reset();
-                    handler.disconnect(self.handle(renderer), true);
+                    self.handler.disconnect(handle!(self, renderer), true);
                     self.network.close().ok();
                 },
 
                 ClientEvent::ConnectionClosed(by_remote) => {
-                    self.remote_states.clear();
                     self.manager.reset();
                     // TODO by_remote should be there along with was_connected?
-                    handler.disconnect(self.handle(renderer), by_remote);
+                    self.handler.disconnect(handle!(self, renderer), by_remote);
                     self.network.close().ok();
                 },
 
                 ClientEvent::ConnectionFailed => {
-                    handler.disconnect(self.handle(renderer), false);
+                    self.handler.disconnect(handle!(self, renderer), false);
                     //self.network.close().ok(); // TODO this screws up reconnect logic
                 },
 
@@ -162,24 +175,21 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
 
     }
 
-    pub fn draw<H: Handler<E, S, L, R>>(
-        &mut self, handler: &mut H, renderer: &mut R
-    ) {
-        handler.draw(self.handle(renderer));
+    pub fn draw(&mut self, renderer: &mut R) {
+
+        // Run Timers
+        let dt = renderer.delta_time();
+        let callbacks = self.timer.update((dt * 1000.0) as u64);
+        for mut f in callbacks {
+            f(&mut self.handler, handle!(self, renderer));
+        }
+
+        self.handler.draw(handle!(self, renderer));
+
     }
 
 
     // Internal ---------------------------------------------------------------
-    fn handle<'a>(&'a mut self, renderer: &'a mut R) -> Handle<E, S, L, R> {
-        Handle {
-            renderer: renderer,
-            level: &mut self.level,
-            events: &mut self.events,
-            entities: &mut self.manager,
-            network: &mut self.network
-        }
-    }
-
     fn update_tick_config(&mut self, renderer: &mut R) {
         let tick_rate = self.manager.config().tick_rate as u32;
         let config = self.network.config();
@@ -193,12 +203,10 @@ impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> Client<E, S, L, R> 
         );
     }
 
-    fn tick_entities<H: Handler<E, S, L, R>>(
-        &mut self, handler: &mut H, renderer: &mut R
-    ) {
+    fn tick_entities(&mut self, renderer: &mut R) {
 
         let local_inputs = self.manager.tick_client(
-            renderer, handler, &self.level
+            renderer, &self.level, &mut self.handler
         );
 
         if let Some(inputs) = local_inputs {
@@ -240,28 +248,30 @@ pub struct Handle<
     E: Event + 'a,
     S: EntityState + 'a,
     L: BaseLevel<S> + 'a,
-    R: Renderer + 'a
+    R: Renderer + 'a,
+    H: Handler<E, S, L, R> + 'a
 > {
     pub renderer: &'a mut R,
     pub level: &'a mut Level<S, L>,
     pub events: &'a mut EventHandler<E>,
     pub entities: &'a mut EntityManager<S, L, R>,
-    pub network: &'a mut ClientStream
+    pub timer: &'a mut Timer<E, S, L, R, H>,
+    pub network: &'a mut ClientStream // TODO rename to client
 }
 
 
 // Client Handler -------------------------------------------------------------
 pub trait Handler<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> {
 
-    fn init(&mut self, Handle<E, S, L, R>);
-    fn connect(&mut self, Handle<E, S, L, R>);
-    fn disconnect(&mut self, Handle<E, S, L, R>, bool);
+    fn init(&mut self, Handle<E, S, L, R, Self>) where Self: Sized;
+    fn connect(&mut self, Handle<E, S, L, R, Self>) where Self: Sized;
+    fn disconnect(&mut self, Handle<E, S, L, R, Self>, bool) where Self: Sized;
 
-    fn config(&mut self, Handle<E, S, L, R>, &[u8]);
+    fn config(&mut self, Handle<E, S, L, R, Self>, &[u8]) where Self: Sized;
 
-    fn event(&mut self, Handle<E, S, L, R>, ConnectionID, E);
+    fn event(&mut self, Handle<E, S, L, R, Self>, ConnectionID, E) where Self: Sized;
 
-    fn tick_before(&mut self, Handle<E, S, L, R>);
+    fn tick_before(&mut self, Handle<E, S, L, R, Self>) where Self: Sized;
 
     fn tick_entity_before(
         &mut self, &mut R, &Level<S, L>, &mut Entity<S, L, R>, u8, f32
@@ -271,11 +281,94 @@ pub trait Handler<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer> {
         &mut self, &mut R, &Level<S, L>, &mut Entity<S, L, R>, u8, f32
     );
 
-    fn tick_after(&mut self, Handle<E, S, L, R>);
+    fn tick_after(&mut self, Handle<E, S, L, R, Self>) where Self: Sized;
 
-    fn draw(&mut self, Handle<E, S, L, R>);
+    fn draw(&mut self, Handle<E, S, L, R, Self>) where Self: Sized;
 
-    fn destroy(&mut self, Handle<E, S, L, R>);
+    fn destroy(&mut self, Handle<E, S, L, R, Self>) where Self: Sized;
 
 }
+
+
+// Timer Abstraction ----------------------------------------------------------
+pub struct Timer<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Handler<E, S, L, R>> {
+    callbacks: BinaryHeap<TimerCallback<E, S, L, R, H>>,
+    time: u64,
+    id: u32
+}
+
+impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Handler<E, S, L, R>> Timer<E, S, L, R, H> {
+
+    pub fn new() -> Timer<E, S, L, R, H> {
+        Timer {
+            callbacks: BinaryHeap::new(),
+            time: 0,
+            id: 0
+        }
+    }
+
+    pub fn update(&mut self, dt: u64) -> Vec<Box<FnMut(&mut H, Handle<E, S, L, R, H>)>> {
+
+        self.time += dt;
+
+        let mut callbacks = Vec::new();
+        while {
+            self.callbacks.peek().map_or(false, |c| {
+                c.time <= self.time
+            })
+        } {
+            // TODO check cancel list
+            callbacks.push(self.callbacks.pop().unwrap().func);
+        }
+
+        callbacks
+
+    }
+
+    pub fn schedule(&mut self, f: Box<FnMut(&mut H, Handle<E, S, L, R, H>)>, time: u64) -> u32 {
+        self.id += 1;
+        self.callbacks.push(TimerCallback {
+            func: f,
+            time: self.time + time,
+            id: self.id
+        });
+        self.id
+    }
+
+    pub fn cancel(&mut self, _: u32) {
+        // TODO push into cancel list
+    }
+
+}
+
+
+// Timer Callback Wrapper -----------------------------------------------------
+struct TimerCallback<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Handler<E, S, L, R>> {
+    func: Box<FnMut(&mut H, Handle<E, S, L, R, H>)>,
+    time: u64,
+    id: u32
+}
+
+impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Handler<E, S, L, R>> Eq for TimerCallback<E, S, L, R, H> {}
+
+impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Handler<E, S, L, R>> PartialEq for TimerCallback<E, S, L, R, H> {
+    fn eq(&self, other: &TimerCallback<E, S, L, R, H>) -> bool {
+        self.id == other.id
+    }
+}
+
+impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Handler<E, S, L, R>> Ord for TimerCallback<E, S, L, R, H> {
+    // Explicitly implement the trait so the queue becomes a min-heap
+    // instead of a max-heap.
+    fn cmp(&self, other: &TimerCallback<E, S, L, R, H>) -> cmp::Ordering {
+        other.time.cmp(&self.time)
+    }
+}
+
+impl<E: Event, S: EntityState, L: BaseLevel<S>, R: Renderer, H: Handler<E, S, L, R>> PartialOrd for TimerCallback<E, S, L, R, H> {
+    fn partial_cmp(&self, other: &TimerCallback<E, S, L, R, H>) -> Option<cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 

@@ -21,7 +21,7 @@ impl Renderer for AllegroRenderer {
         S: EntityState,
         L: BaseLevel<S>
 
-    >(mut client: Client<E, S, L, Self>, mut handler: H) where Self: Sized {
+    >(mut client: Client<E, S, L, Self, H>) where Self: Sized {
 
         // Init Allegro
         let mut core = Core::init().unwrap();
@@ -56,7 +56,7 @@ impl Renderer for AllegroRenderer {
         let mut renderer = AllegroRenderer::new(core, disp, q);
 
         // Init callback
-        client.init(&mut handler, &mut renderer);
+        client.init(&mut renderer);
 
         // Mainloop
         let mut last_tick_time = 0.0;
@@ -71,7 +71,7 @@ impl Renderer for AllegroRenderer {
                 let tick_rate = renderer.tick_rate();
 
                 if frames_per_tick == 0 {
-                    if client.tick(&mut handler, &mut renderer) {
+                    if client.tick(&mut renderer) {
                         frames_per_tick = renderer.fps() / tick_rate;
                         last_tick_time = frame_time;
                     }
@@ -82,12 +82,12 @@ impl Renderer for AllegroRenderer {
                     1.0 / (1.0 / tick_rate as f32) * (frame_time - last_tick_time) as f32
                 );
 
-                client.draw(&mut handler, &mut renderer);
+                client.draw(&mut renderer);
                 renderer.draw();
 
                 last_frame_time = frame_time;
 
-                // TODO handle this more cleanly?
+                // TODO handle this more nicely?
                 if frames_per_tick > 0 {
                     frames_per_tick -= 1;
                 }
@@ -98,7 +98,7 @@ impl Renderer for AllegroRenderer {
 
         }
 
-        client.destroy(&mut handler, &mut renderer);
+        client.destroy(&mut renderer);
 
     }
 

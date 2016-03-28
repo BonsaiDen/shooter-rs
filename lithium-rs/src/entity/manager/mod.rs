@@ -118,10 +118,8 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
         }
     }
 
-    pub fn tick_server<E: Event>(
-        &mut self,
-        level: &Level<S, L>,
-        handler: &mut Box<server::Handler<E, S, L, R>>
+    pub fn tick_server<E: Event, H: server::Handler<E, S, L, R>>(
+        &mut self, level: &Level<S, L>, handler: &mut H
     ) {
 
         let dt = self.dt();
@@ -136,11 +134,11 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer> EntityManager<S, L, R> {
 
     }
 
-    pub fn tick_client<E: Event>(
+    pub fn tick_client<E: Event, H: client::Handler<E, S, L, R>>(
         &mut self,
         renderer: &mut R,
-        handler: &mut client::Handler<E, S, L, R>,
-        level: &Level<S, L>
+        level: &Level<S, L>,
+        handler: &mut H
 
     ) -> Option<Vec<u8>> {
 

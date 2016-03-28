@@ -13,11 +13,11 @@ extern crate rustc_serialize;
 mod client;
 pub mod entity;
 mod event;
+mod idpool;
 mod level;
 pub mod network;
 mod renderer;
 mod server;
-mod idpool;
 
 
 // Re-Exports -----------------------------------------------------------------
@@ -30,9 +30,11 @@ pub use idpool::IdPool;
 pub use client::Client;
 pub use client::Handle as ClientHandle;
 pub use client::Handler as ClientHandler;
+pub use client::Timer as ClientTimer;
 pub use server::Server;
 pub use server::Handle as ServerHandle;
 pub use server::Handler as ServerHandler;
+pub use server::Timer as ServerTimer;
 pub use renderer::Renderer;
 pub use renderer::DefaultRenderer;
 

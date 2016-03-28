@@ -15,7 +15,7 @@ pub trait Renderer {
         S: EntityState,
         L: BaseLevel<S>
 
-    >(_: Client<E, S, L, Self>, _: H) where Self: Sized {}
+    >(_: Client<E, S, L, Self, H>) where Self: Sized {}
 
     // Time Related -----------------------------------------------------------
     fn time(&self) -> f64;

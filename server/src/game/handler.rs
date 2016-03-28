@@ -11,8 +11,9 @@ use shared::{Color, SharedEvent, SharedCommand, SharedLevel, SharedState};
 // Handler Implementation -----------------------------------------------------
 impl ServerHandler<SharedEvent, SharedState, SharedLevel, DefaultRenderer> for Game {
 
-    fn bind(&mut self, _: ServerHandle) {
+    fn bind(&mut self, handle: ServerHandle) {
         println!("[Server] Started");
+        self.count(handle);
     }
 
     fn connect(&mut self, _: ServerHandle, conn: &mut Connection) {

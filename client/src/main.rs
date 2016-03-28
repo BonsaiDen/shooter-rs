@@ -39,12 +39,9 @@ allegro_main! {
 
 
     // Arguments --------------------------------------------------------------
-    AllegroRenderer::run(
-        game::Game::client(),
-        game::Game::new(
-            value_t!(args.value_of("address:port"), SocketAddr).ok()
-        )
-    );
+    AllegroRenderer::run(game::Game::client(
+        value_t!(args.value_of("address:port"), SocketAddr).ok()
+    ));
 
 }
 
