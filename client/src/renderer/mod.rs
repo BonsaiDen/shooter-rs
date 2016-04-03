@@ -1,4 +1,6 @@
+#[cfg(feature="allegro_renderer")]
 mod allegro;
-mod particle;
-pub use self::allegro::AllegroRenderer;
+
+#[cfg(feature="allegro_renderer")]
+pub use self::allegro::AllegroRenderer as Renderer;
 

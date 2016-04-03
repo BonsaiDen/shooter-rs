@@ -18,9 +18,10 @@ use allegro_primitives::PrimitivesAddon;
 
 // Internal Dependencies ------------------------------------------------------
 mod traits;
+mod particle;
 use shared::Color;
 use shared::Lithium::Renderer;
-use renderer::particle::{Particle, ParticleSystem};
+use self::particle::{Particle, ParticleSystem};
 
 
 // Allegro Based Renderer -----------------------------------------------------
@@ -205,8 +206,6 @@ impl AllegroRenderer {
 
                 self.key_state[k as usize] = true;
 
-                //println!("key down {:?}", k as usize);
-
                 // Exit via Ctrl-C
                 if k == KeyCode::C && self.key_state[KeyCode::LCtrl as usize] {
                     self.is_running = false;
@@ -215,7 +214,6 @@ impl AllegroRenderer {
             },
 
             KeyUp{keycode: k, ..} if (k as u32) < 255 => {
-                //println!("key up {:?}", k as usize);
                 self.key_state[k as usize] = false;
             },
 

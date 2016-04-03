@@ -153,22 +153,25 @@ impl<
 
                 },
 
-                ClientEvent::Close | ClientEvent::ConnectionLost => {
+                ClientEvent::ConnectionLost => {
                     self.manager.reset();
-                    self.handler.disconnect(handle!(self, renderer), true);
+                    self.handler.disconnect(handle!(self, renderer), true, false);
                     self.client.close().ok();
                 },
 
                 ClientEvent::ConnectionClosed(by_remote) => {
                     self.manager.reset();
-                    // TODO by_remote should be there along with was_connected?
-                    self.handler.disconnect(handle!(self, renderer), by_remote);
+                    self.handler.disconnect(handle!(self, renderer), true, by_remote);
                     self.client.close().ok();
                 },
 
                 ClientEvent::ConnectionFailed => {
-                    self.handler.disconnect(handle!(self, renderer), false);
+                    self.handler.disconnect(handle!(self, renderer), false, false);
                     //self.network.close().ok(); // TODO this screws up reconnect logic
+                },
+
+                ClientEvent::Close => {
+                    println!("Close event");
                 },
 
                 _ => {}
@@ -276,7 +279,7 @@ pub trait Handler<
 
     fn init(&mut self, Handle<Self, R, G, L, E, S>) where Self: Sized;
     fn connect(&mut self, Handle<Self, R, G, L, E, S>) where Self: Sized;
-    fn disconnect(&mut self, Handle<Self, R, G, L, E, S>, bool) where Self: Sized;
+    fn disconnect(&mut self, Handle<Self, R, G, L, E, S>, bool, bool) where Self: Sized;
 
     fn config(&mut self, Handle<Self, R, G, L, E, S>, &[u8]) where Self: Sized;
 

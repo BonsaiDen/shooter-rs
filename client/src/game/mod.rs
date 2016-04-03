@@ -6,15 +6,15 @@ use std::net::SocketAddr;
 mod handler;
 mod views;
 use entities::Registry;
-use shared::Lithium::{Client, ClientHandle as Handle, Entity, Level, Renderer};
+use shared::Lithium::{Client, ClientHandle as Handle, Entity, Level, Renderer as LithiumRenderer};
 use shared::{SharedEvent, SharedState, SharedLevel};
-use renderer::AllegroRenderer;
+use renderer::Renderer;
 use self::views::View;
 
 
 // Type Aliases ---------------------------------------------------------------
-pub type ClientHandle<'a> = Handle<'a, Game, AllegroRenderer, Registry, SharedLevel, SharedEvent, SharedState>;
-pub type ClientEntity = Entity<SharedState, SharedLevel, AllegroRenderer>;
+pub type ClientHandle<'a> = Handle<'a, Game, Renderer, Registry, SharedLevel, SharedEvent, SharedState>;
+pub type ClientEntity = Entity<SharedState, SharedLevel, Renderer>;
 pub type ClientLevel = Level<SharedState, SharedLevel>;
 
 
@@ -36,7 +36,7 @@ impl Game {
     }
 
     pub fn client(server_addr: Option<SocketAddr>) -> Client<
-        Game, AllegroRenderer,
+        Game, Renderer,
         Registry, SharedLevel, SharedEvent, SharedState
     > {
         Client::new(

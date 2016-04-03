@@ -51,12 +51,19 @@ impl Game {
     }
 
     fn count(&mut self, handle: ServerHandle) {
-        handle.timer.schedule(Box::new(|game, handle| {
+
+        // TODO pass in TimerId?
+        let id = handle.timer.schedule(Box::new(|game, handle| {
             println!("[Server] Counter: {}", game.counter);
             game.counter += 1;
             game.count(handle);
 
         }), 1000);
+
+        if self.counter == 5 {
+            handle.timer.cancel(id);
+        }
+
     }
 
 }

@@ -1,5 +1,5 @@
 // Internal Dependencies ------------------------------------------------------
-use renderer::AllegroRenderer;
+use renderer::Renderer;
 use shared::SharedEvent;
 use shared::Lithium::Cobalt::ConnectionID;
 use super::{Game, ClientHandle, ClientLevel, ClientEntity};
@@ -27,7 +27,7 @@ pub trait View {
 
     fn connect(&mut self, _: &mut Game, _: &mut ClientHandle) {}
 
-    fn disconnect(&mut self, _: &mut Game, _: &mut ClientHandle, _: bool) {}
+    fn disconnect(&mut self, _: &mut Game, _: &mut ClientHandle, _: bool, _: bool) {}
 
     fn config(&mut self, _: &mut Game, _: &mut ClientHandle, _: &[u8]) {}
 
@@ -36,13 +36,13 @@ pub trait View {
     fn tick_before(&mut self, _: &mut Game, _: &mut ClientHandle) {}
 
     fn tick_entity_before(
-        &mut self, _: &mut Game, _: &mut AllegroRenderer, _: &ClientLevel,
+        &mut self, _: &mut Game, _: &mut Renderer, _: &ClientLevel,
         _: &mut ClientEntity, _: u8, _: f32
     ) {
     }
 
     fn tick_entity_after(
-        &mut self, _: &mut Game, _: &mut AllegroRenderer, _: &ClientLevel,
+        &mut self, _: &mut Game, _: &mut Renderer, _: &ClientLevel,
         _: &mut ClientEntity, _: u8, _: f32
     ) {
     }

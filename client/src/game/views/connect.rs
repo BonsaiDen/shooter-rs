@@ -64,7 +64,7 @@ impl View for ConnectView {
         game.set_view(Box::new(GameView::new(self.server_addr.unwrap())));
     }
 
-    fn disconnect(&mut self, _: &mut Game, handle: &mut ClientHandle, _: bool) {
+    fn disconnect(&mut self, _: &mut Game, handle: &mut ClientHandle, _: bool, _: bool) {
         println!("[Client] Connection failed, trying again in 3 seconds...");
         handle.timer.schedule(Box::new(|_, handle| {
             println!("[Client] Retrying connection...");

@@ -2,7 +2,7 @@
 use shared::Lithium::ClientHandler;
 use shared::Lithium::Cobalt::ConnectionID;
 use entities::Registry;
-use renderer::AllegroRenderer;
+use renderer::Renderer;
 use shared::{SharedEvent, SharedLevel, SharedState};
 use game::{Game, ClientHandle, ClientEntity, ClientLevel};
 
@@ -40,7 +40,7 @@ macro_rules! with_view {
 
 
 // Handler Implementation -----------------------------------------------------
-impl ClientHandler<AllegroRenderer, Registry, SharedLevel, SharedEvent, SharedState> for Game {
+impl ClientHandler<Renderer, Registry, SharedLevel, SharedEvent, SharedState> for Game {
 
     fn init(&mut self, mut handle: ClientHandle) {
         with_view_state!(self, view, handle, {
@@ -60,9 +60,9 @@ impl ClientHandler<AllegroRenderer, Registry, SharedLevel, SharedEvent, SharedSt
         });
     }
 
-    fn disconnect(&mut self, mut handle: ClientHandle, was_connected: bool) {
+    fn disconnect(&mut self, mut handle: ClientHandle, was_connected: bool, by_remote: bool) {
         with_view_state!(self, view, handle, {
-            view.disconnect(self, &mut handle, was_connected);
+            view.disconnect(self, &mut handle, was_connected, by_remote);
         });
     }
 
@@ -80,7 +80,7 @@ impl ClientHandler<AllegroRenderer, Registry, SharedLevel, SharedEvent, SharedSt
 
     fn tick_entity_before(
         &mut self,
-        renderer: &mut AllegroRenderer,
+        renderer: &mut Renderer,
         level: &ClientLevel,
         entity: &mut ClientEntity,
         tick: u8, dt: f32
@@ -92,7 +92,7 @@ impl ClientHandler<AllegroRenderer, Registry, SharedLevel, SharedEvent, SharedSt
 
     fn tick_entity_after(
         &mut self,
-        renderer: &mut AllegroRenderer,
+        renderer: &mut Renderer,
         level: &ClientLevel,
         entity: &mut ClientEntity,
         tick: u8, dt: f32

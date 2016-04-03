@@ -9,11 +9,15 @@ shooter-server = { version = "0.1.0", path = "../server" }
 shared = { version = "0.1.0", path = "../shared" }
 rand = "0.3.14"
 
+[features]
+default = ["allegro_renderer"]
+allegro_renderer = ["allegro", "allegro-sys", "allegro_font", "allegro_primitives"]
+
 [target.x86_64-unknown-linux-gnu.dependencies]
-allegro = "0.0.23"
-allegro-sys = "0.0.23"
-allegro_font = "0.0.23"
-allegro_primitives = "0.0.23"
+allegro = { version = "0.0.23", optional = true }
+allegro-sys = { version = "0.0.23", optional = true }
+allegro_font = { version = "0.0.23", optional = true }
+allegro_primitives = { version = "0.0.23", optional = true }
 
 #[target.i686-pc-windows-gnu.dependencies]
 #allegro = { version = "0.0.23", features = ["link_none"] }

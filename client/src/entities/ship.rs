@@ -7,7 +7,7 @@ use std::{cmp, f32};
 use shared::entities::Ship;
 use shared::{SharedState, SharedLevel, Color, ColorName};
 use shared::Lithium::{Entity, EntityState, EntityEvent, DrawableEntity, Level};
-use renderer::AllegroRenderer;
+use renderer::Renderer;
 
 
 // Ship Drawable Implementation Dependencies ----------------------------------
@@ -21,7 +21,7 @@ pub struct RenderedShip {
 
 impl RenderedShip {
 
-    pub fn create_entity(scale: f32) -> Entity<SharedState, SharedLevel, AllegroRenderer> {
+    pub fn create_entity(scale: f32) -> Entity<SharedState, SharedLevel, Renderer> {
         Entity::new(
             Box::new(Ship::new(scale)),
             Box::new(RenderedShip::new(scale))
@@ -40,7 +40,7 @@ impl RenderedShip {
 
 }
 
-impl DrawableEntity<SharedState, SharedLevel, AllegroRenderer> for RenderedShip {
+impl DrawableEntity<SharedState, SharedLevel, Renderer> for RenderedShip {
 
     fn event(&mut self, event: &EntityEvent, _: &SharedState) {
         if let &EntityEvent::Flags(flags) = event {
@@ -51,7 +51,7 @@ impl DrawableEntity<SharedState, SharedLevel, AllegroRenderer> for RenderedShip 
 
     fn draw(
         &mut self,
-        renderer: &mut AllegroRenderer,
+        renderer: &mut Renderer,
         _: &Level<SharedState, SharedLevel>,
         state: SharedState
     ) {
@@ -142,7 +142,7 @@ impl DrawableEntity<SharedState, SharedLevel, AllegroRenderer> for RenderedShip 
 
 // Helpers --------------------------------------------------------------------
 fn draw_triangle(
-    renderer: &mut AllegroRenderer,
+    renderer: &mut Renderer,
     state: &SharedState, color: &Color,
     base_scale: f32, body_scale: f32, dr: f32, da: f32, db: f32
 ) {

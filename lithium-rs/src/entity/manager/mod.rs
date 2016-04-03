@@ -342,6 +342,8 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer, G: EntityRegistry<S, L, R>> E
     // State Rewinding --------------------------------------------------------
     pub fn offset_states(&self, remote_tick: u8) -> HashMap<u16, S> {
 
+        // TODO calculate remote tick by:
+        // (rtt / 2) / (1000 / tick_rate) + interpolation_ticks
         let tick_offset = cmp::max(0, self.tick - remote_tick) as usize;
         let mut states = HashMap::with_capacity(self.entities.len());
         for (id, entity) in &self.entities {

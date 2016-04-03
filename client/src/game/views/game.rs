@@ -4,7 +4,7 @@ use std::net::SocketAddr;
 
 // Internal Dependencies ------------------------------------------------------
 use shared::Lithium::Cobalt::ConnectionID;
-use renderer::AllegroRenderer;
+use renderer::Renderer;
 use level::RenderedLevel;
 use game::{Game, ClientHandle, ClientEntity, ClientLevel};
 use shared::Lithium::{EntityInput, EntityState, ClientHandler};
@@ -41,8 +41,12 @@ impl View for GameView {
         game.reset(&mut handle);
     }
 
-    fn disconnect(&mut self, game: &mut Game, _: &mut ClientHandle, _: bool) {
-        println!("[Client] Connection lost / closed."); // TODO indicate this via argument
+    fn disconnect(&mut self, game: &mut Game, _: &mut ClientHandle, was_connected: bool, by_remote: bool) {
+        match (was_connected, by_remote) {
+            (true, true) => println!("[Client] Connection closed."),
+            (true, false) => println!("[Client] Connection lost."),
+            (false, _) => println!("[Client] Connection failed."),
+        }
         game.set_view(Box::new(MenuView));
     }
 
@@ -63,7 +67,7 @@ impl View for GameView {
     fn tick_entity_before(
         &mut self,
         _: &mut Game,
-        renderer: &mut AllegroRenderer,
+        renderer: &mut Renderer,
         _: &ClientLevel,
         entity: &mut ClientEntity,
         tick: u8, _: f32

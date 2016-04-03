@@ -75,13 +75,14 @@ macro_rules! impl_timer {
                 time: u64
 
             ) -> TimerId {
+                let id = self.id;
                 self.id = self.id.wrapping_add(1);
                 self.callbacks.push(TimerCallback {
                     func: f,
                     time: self.time + time,
-                    id: TimerId(self.id)
+                    id: TimerId(id)
                 });
-                TimerId(self.id)
+                TimerId(id)
             }
 
             pub fn cancel(&mut self, id: TimerId) {
