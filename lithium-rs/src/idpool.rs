@@ -33,6 +33,10 @@ impl<T> IdPool<T>
         }
     }
 
+    pub fn len(&self) -> T {
+        self.used_ids
+    }
+
     pub fn reset(&mut self) {
         self.acquired_ids.clear();
         self.used_ids = T::zero();

@@ -30,7 +30,14 @@ use renderer::Renderer;
 
 // Main -----------------------------------------------------------------------
 #[cfg(feature="allegro_renderer")]
-allegro_main! { run(); }
+allegro_main! { 
+    run(); 
+}
+
+#[cfg(feature="glium_renderer")]
+pub fn main() { 
+    run();
+}
 
 fn run() {
 

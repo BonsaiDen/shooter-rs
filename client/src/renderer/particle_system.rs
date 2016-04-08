@@ -8,9 +8,9 @@ use shared::{Color, ColorName};
 
 // ParticleSystem -------------------------------------------------------------
 pub struct ParticleSystem {
-    first_available_particle: usize,
-    max_used_particle: usize,
-    particles: Vec<Particle>
+    pub first_available_particle: usize,
+    pub max_used_particle: usize,
+    pub particles: Vec<Particle>
 }
 
 impl ParticleSystem {
@@ -71,21 +71,24 @@ impl ParticleSystem {
 
     }
 
-    pub fn draw<F>(&mut self, dt: f32, f: F) where F: Fn(&Color, f32, f32, f32) {
+    pub fn draw<F>(&mut self, dt: f32, draw_callback: F) where F: Fn(&Particle) {
 
         let mut max_used_particle = 0;
 
         for i in 0..self.max_used_particle {
-            let p = self.particles.get_mut(i).unwrap();
-            if p.is_active() {
-                if p.step(dt) == false {
-                    p.next_available = self.first_available_particle;
-                    self.first_available_particle = p.id;
+            let particle = self.particles.get_mut(i).unwrap();
+            if particle.is_active() {
+                if particle.step(dt) == false {
+                    particle.next_available = self.first_available_particle;
+                    self.first_available_particle = particle.id;
 
                 } else {
-                    max_used_particle = cmp::max(p.id + 1, max_used_particle);
-                    p.draw(&f);
+                    max_used_particle = cmp::max(
+                        particle.id + 1,
+                        max_used_particle
+                    );
                 }
+                draw_callback(particle);
             }
         }
 
@@ -154,21 +157,6 @@ impl Particle {
             self.remaining -= dt;
             true
         }
-    }
-
-    fn draw<F>(&mut self, f: &F) where F: Fn(&Color, f32, f32, f32) {
-
-        let lp = 1.0 / self.lifetime * self.remaining;
-        let alpha = if lp <= self.fadeout {
-            255.0 / (self.lifetime * self.fadeout) * self.remaining.max(0.0)
-
-        } else {
-            255.0
-        };
-
-        self.color.a = alpha as u8;
-        f(&self.color, self.s / 2.0, self.x, self.y);
-
     }
 
 }

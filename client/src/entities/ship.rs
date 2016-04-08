@@ -15,8 +15,7 @@ pub struct RenderedShip {
     color_light: Color,
     color_mid: Color,
     scale: f32,
-    particle_count: u32,
-    last_draw_state: SharedState
+    particle_count: u32
 }
 
 impl RenderedShip {
@@ -33,36 +32,26 @@ impl RenderedShip {
             color_light: Color::from_name(ColorName::Grey),
             color_mid: Color::from_name(ColorName::Grey).darken(0.5),
             scale: scale,
-            particle_count: 5,
-            last_draw_state: Default::default()
+            particle_count: 5
         }
     }
 
-}
-
-impl DrawableEntity<SharedState, SharedLevel, Renderer> for RenderedShip {
-
-    fn event(&mut self, event: &EntityEvent, _: &SharedState) {
-        if let &EntityEvent::Flags(flags) = event {
-            self.color_light = Color::from_flags(flags);
-            self.color_mid = self.color_light.darken(0.5);
-        }
+    fn set_color(&mut self, flags: u8) {
+        self.color_light = Color::from_flags(flags);
+        self.color_mid = self.color_light.darken(0.5);
     }
 
-    fn draw(
+    #[cfg(feature="allegro_renderer")]
+    fn draw_body(
         &mut self,
         renderer: &mut Renderer,
-        _: &Level<SharedState, SharedLevel>,
-        state: SharedState
+        state: &SharedState
     ) {
 
         let light = &self.color_light;
         let mid = &self.color_mid;
         let scale = self.scale;
 
-        self.last_draw_state.set_to(&state);
-
-        // Rendering
         draw_triangle(
             renderer, &state,
             mid, scale, scale, 1.15, -9.0, 6.0
@@ -76,7 +65,39 @@ impl DrawableEntity<SharedState, SharedLevel, Renderer> for RenderedShip {
             mid, scale, scale * 0.66, (2 as f32).sqrt(), 12.0, 9.0
         );
 
-        // Effects
+    }
+
+    #[cfg(feature="glium_renderer")]
+    fn draw_body(
+        &mut self,
+        renderer: &mut Renderer,
+        state: &SharedState
+    ) {
+        // Get shape for the type and draw it
+        // TODO Automatically instance / pool shapes in the background
+        //let mut shape = renderer.get_shape(Renderer::Shape::Ship);
+        //shape.draw();
+    }
+
+}
+
+impl DrawableEntity<SharedState, SharedLevel, Renderer> for RenderedShip {
+
+    fn event(&mut self, event: &EntityEvent, _: &SharedState) {
+        if let &EntityEvent::Flags(flags) = event {
+            self.set_color(flags);
+        }
+    }
+
+    fn draw(
+        &mut self,
+        renderer: &mut Renderer,
+        _: &Level<SharedState, SharedLevel>,
+        state: SharedState
+    ) {
+
+        self.draw_body(renderer, &state);
+
         if state.flags & 0x02 == 0x02 {
 
             if renderer.rng().gen::<u8>() > 50 || self.particle_count > 1 {
@@ -141,6 +162,7 @@ impl DrawableEntity<SharedState, SharedLevel, Renderer> for RenderedShip {
 
 
 // Helpers --------------------------------------------------------------------
+#[cfg(feature="allegro_renderer")]
 fn draw_triangle(
     renderer: &mut Renderer,
     state: &SharedState, color: &Color,

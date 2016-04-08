@@ -1,5 +1,4 @@
 // External Dependencies ------------------------------------------------------
-use std::cmp;
 use std::collections::HashMap;
 use cobalt::ConnectionID;
 
@@ -79,9 +78,19 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer, G: EntityRegistry<S, L, R>> E
     }
 
     pub fn reset(&mut self) {
-        self.tick = 0;
+
+        let entity_ids: Vec<u16> = self.entities.keys().map(|id| *id).collect();
+        for entity_id in entity_ids {
+            self.destroy(entity_id);
+        }
+
+        assert_eq!(self.entities.len(), 0);
         self.entities.clear();
+
+        assert_eq!(self.id_pool.len(), 0);
         self.id_pool.reset();
+        self.tick = 0;
+
     }
 
 
@@ -108,7 +117,7 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer, G: EntityRegistry<S, L, R>> E
                 entity.set_state(state);
             }
 
-            entity.event(EntityEvent::Created(self.tick));
+            entity.event(EntityEvent::Created(self.tick, id));
 
             self.entities.insert(id, entity);
             self.entities.get_mut(&id)
@@ -178,9 +187,9 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer, G: EntityRegistry<S, L, R>> E
 
         if let Some(mut entity) = self.entities.remove(&entity_id) {
             // TODO can be an issue if re-used directly
-            self.id_pool.release_id(entity.id());
+            self.id_pool.release_id(entity_id);
             entity.set_alive(false);
-            entity.event(EntityEvent::Destroyed(self.tick));
+            entity.event(EntityEvent::Destroyed(self.tick, entity_id));
             Some(entity)
 
         } else {
@@ -285,7 +294,7 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer, G: EntityRegistry<S, L, R>> E
                     entity.hide(tick);
                 }
 
-                entity.event(EntityEvent::Created(tick));
+                entity.event(EntityEvent::Created(tick, entity_id));
 
                 entity
 
@@ -326,8 +335,9 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer, G: EntityRegistry<S, L, R>> E
         let mut destroyed_ids = Vec::new();
         for (_, entity) in &mut self.entities {
             if !entity.alive() {
-                entity.event(EntityEvent::Destroyed(tick));
-                destroyed_ids.push(entity.id());
+                let id = entity.id();
+                entity.event(EntityEvent::Destroyed(tick, id));
+                destroyed_ids.push(id);
             }
         }
 
@@ -340,11 +350,26 @@ impl<S: EntityState, L: BaseLevel<S>, R: Renderer, G: EntityRegistry<S, L, R>> E
 
 
     // State Rewinding --------------------------------------------------------
-    pub fn offset_states(&self, remote_tick: u8) -> HashMap<u16, S> {
+    pub fn offset_states(&self, remote_tick: u8, rtt: f32) -> HashMap<u16, S> {
 
-        // TODO calculate remote tick by:
-        // (rtt / 2) / (1000 / tick_rate) + interpolation_ticks
-        let tick_offset = cmp::max(0, self.tick - remote_tick) as usize;
+        // TODO add 
+
+        // Calculate the server side state tick the client was actual displaying 
+        // when they performed their action at "remote_tick".
+        //
+        // The client's server side state tick is delayed by both rtt / 2 and
+        // the configured interpolation_ticks.
+        let corrected_tick = remote_tick.wrapping_sub((
+                // Ticks taken by ping
+                (rtt / 2.0) / (1000.0 / self.config.tick_rate as f32)
+
+            // Interpolation tick delay on the client
+            ).ceil() as u8).wrapping_sub(self.config.interpolation_ticks);
+
+        // Calculate tick offset into entity state buffers 
+        let tick_offset = self.tick.wrapping_sub(corrected_tick) as usize;
+
+        // Create a copy of all entity states at the given offset
         let mut states = HashMap::with_capacity(self.entities.len());
         for (id, entity) in &self.entities {
             states.insert(*id, entity.buffered_state(tick_offset).clone());

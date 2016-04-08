@@ -93,6 +93,9 @@ impl<
         self.client.flush().ok();
         self.client.close().ok();
 
+        // Make sure to run entity destruction
+        self.manager.reset();
+
     }
 
 

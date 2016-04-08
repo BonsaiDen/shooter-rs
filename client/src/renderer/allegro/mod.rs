@@ -18,10 +18,11 @@ use allegro_primitives::PrimitivesAddon;
 
 // Internal Dependencies ------------------------------------------------------
 mod traits;
-mod particle;
+mod particle_system;
 use shared::Color;
 use shared::Lithium::Renderer;
-use self::particle::{Particle, ParticleSystem};
+use renderer::Particle;
+use self::particle_system::AllegroParticleSystem;
 
 
 // Allegro Based Renderer -----------------------------------------------------
@@ -43,7 +44,7 @@ pub struct AllegroRenderer {
     u: f32,
 
     // Drawing
-    particle_system: ParticleSystem,
+    particle_system: AllegroParticleSystem,
     interpolation_ticks: usize,
 
     // Input
@@ -79,7 +80,7 @@ impl AllegroRenderer {
             prim: prim,
             timer: timer,
             font: font,
-            particle_system: ParticleSystem::new(1000),
+            particle_system: AllegroParticleSystem::new(1000),
             is_running: true,
             redraw: false,
             frame_rate: 60,
@@ -152,13 +153,7 @@ impl AllegroRenderer {
     }
 
     pub fn draw_particles(&mut self) {
-        let prim = &self.prim;
-        self.particle_system.draw(self.dt, |ref color, s, x, y| {
-            prim.draw_filled_rectangle(
-                x - s + 0.5, y - s + 0.5, x + s + 0.5, y + s + 0.5,
-                AllegroRenderer::get_color(color)
-            );
-        });
+        self.particle_system.draw(self.dt, &self.prim);
     }
 
 
@@ -175,6 +170,15 @@ impl AllegroRenderer {
     // Color Conversion -------------------------------------------------------
     pub fn get_color(color: &Color) -> AllegroColor {
         let a = color.a as f32 / 255.0;
+        AllegroColor::from_rgb(
+            (color.r as f32 * a) as u8,
+            (color.g as f32 * a) as u8,
+            (color.b as f32 * a) as u8
+        )
+    }
+
+    pub fn get_color_with_alpha(color: &Color, alpha: u8) -> AllegroColor {
+        let a = alpha as f32 / 255.0;
         AllegroColor::from_rgb(
             (color.r as f32 * a) as u8,
             (color.g as f32 * a) as u8,
