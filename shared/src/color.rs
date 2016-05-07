@@ -84,7 +84,7 @@ impl Color {
 
     pub fn from_name(name: ColorName) -> Color {
         match name  {
-            ColorName::Red => Color::new(0xf2, 0x00, 0x26, 0xff),
+            ColorName::Red => Color::new(0xf2, 0x00, 0x00, 0xff),
             ColorName::Orange => Color::new(0xfd, 0x83, 0x1c, 0xff),
             ColorName::Yellow => Color::new(0xfd, 0xda, 0x31, 0xff),
             ColorName::Green => Color::new(0x3c, 0xdc, 0x00, 0xff),
@@ -109,7 +109,7 @@ impl Color {
     pub fn to_name(&self) -> ColorName {
         match (self.r, self.g, self.b) {
             (0x80, 0x80, 0x80) => ColorName::Grey,
-            (0xf2, 0x00, 0x26) => ColorName::Red,
+            (0xf2, 0x00, 0x00) => ColorName::Red,
             (0xfd, 0x83, 0x1c) => ColorName::Orange,
             (0xfd, 0xda, 0x31) => ColorName::Yellow,
             (0x3c, 0xdc, 0x00) => ColorName::Green,
