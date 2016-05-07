@@ -7,6 +7,7 @@ use shooter_server::game::Game as ServerGame;
 
 // Internal Dependencies ------------------------------------------------------
 use game::{Game, ClientHandle};
+use renderer::KeyCode;
 use shared::{Color, ColorName};
 use shared::Lithium::{Server, Renderer};
 use self::super::{View, MenuView, GameView};
@@ -85,7 +86,7 @@ impl View for ConnectView {
             );
         }
 
-        if handle.renderer.key_released(59) {
+        if handle.renderer.key_released(KeyCode::Escape) {
             handle.client.close().ok();
             game.set_view(Box::new(MenuView));
         }

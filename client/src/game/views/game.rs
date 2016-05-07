@@ -4,7 +4,7 @@ use std::net::SocketAddr;
 
 // Internal Dependencies ------------------------------------------------------
 use shared::Lithium::Cobalt::ConnectionID;
-use renderer::Renderer;
+use renderer::{Renderer, KeyCode};
 use level::RenderedLevel;
 use game::{Game, ClientHandle, ClientEntity, ClientLevel};
 use shared::Lithium::{EntityInput, EntityState, ClientHandler};
@@ -76,15 +76,15 @@ impl View for GameView {
         if entity.local() {
 
             let mut buttons = 0;
-            if renderer.key_down(1) || renderer.key_down(82) {
+            if renderer.key_down(KeyCode::A) || renderer.key_down(KeyCode::Left) {
                 buttons |= 0x01;
             }
 
-            if renderer.key_down(4) || renderer.key_down(83) {
+            if renderer.key_down(KeyCode::D) || renderer.key_down(KeyCode::Right) {
                 buttons |= 0x02;
             }
 
-            if renderer.key_down(23) || renderer.key_down(84) {
+            if renderer.key_down(KeyCode::W) || renderer.key_down(KeyCode::Up) {
                 buttons |= 0x04;
             }
 
@@ -119,7 +119,7 @@ impl View for GameView {
             &network_state[..]
         );
 
-        if handle.renderer.key_released(59) {
+        if handle.renderer.key_released(KeyCode::Escape) {
             handle.events.send(SharedEvent::LeaveGame);
             handle.events.send(SharedEvent::Command(SharedCommand::Shutdown));
         }

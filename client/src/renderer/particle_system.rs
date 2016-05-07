@@ -71,7 +71,10 @@ impl ParticleSystem {
 
     }
 
-    pub fn draw<F>(&mut self, dt: f32, draw_callback: F) where F: Fn(&Particle) {
+    pub fn draw<F>(
+        &mut self, dt: f32, mut draw_callback: F
+
+    ) where F: FnMut(usize, &Particle, f32) {
 
         let mut max_used_particle = 0;
 
@@ -88,7 +91,17 @@ impl ParticleSystem {
                         max_used_particle
                     );
                 }
-                draw_callback(particle);
+
+                let lp = 1.0 / particle.lifetime * particle.remaining;
+                let alpha = if lp <= particle.fadeout {
+                    255.0 / (particle.lifetime * particle.fadeout) * particle.remaining.max(0.0)
+
+                } else {
+                    255.0
+                };
+
+                draw_callback(i, particle, alpha);
+
             }
         }
 

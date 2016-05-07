@@ -1,3 +1,7 @@
+// External Dependencies ------------------------------------------------------
+use glium::{glutin, DisplayBuild, Surface};
+
+
 // Internal Dependencies ------------------------------------------------------
 use shared::Lithium::{
     Client, ClientHandler, EntityState, EntityRegistry, Event, BaseLevel, Renderer
@@ -17,6 +21,63 @@ impl Renderer for GliumRenderer {
         G: EntityRegistry<S, L, Self>
 
     >(mut client: Client<H, Self, G, L, E, S>) where Self: Sized {
+
+        let (width, height) = (256, 256);
+        let display = glutin::WindowBuilder::new()
+            .with_multisampling(4)
+            .with_dimensions(width, height)
+            //.with_max_dimensions(width, height)
+            //.with_min_dimensions(width, height)
+            //.with_title(format!("Test!"))
+            .build_glium().unwrap();
+
+        // Create renderer
+        let mut renderer = GliumRenderer::new(display, width, height);
+
+        // Init callback
+        client.init(&mut renderer);
+
+        // Mainloop
+        let mut last_tick_time = 0.0;
+        let mut last_frame_time = 0.0;
+        let mut frames_per_tick = 0;
+
+        while renderer.running() {
+
+            if renderer.should_draw() {
+
+                let frame_time = renderer.time();
+                let tick_rate = renderer.tick_rate();
+
+                if frames_per_tick == 0 {
+                    if client.tick(&mut renderer) {
+                        frames_per_tick = renderer.fps() / tick_rate;
+                        last_tick_time = frame_time;
+                    }
+                }
+
+                renderer.set_delta_time((frame_time - last_frame_time) as f32);
+                renderer.set_delta_u(
+                    1.0 / (1.0 / tick_rate as f32) * (frame_time - last_tick_time) as f32
+                );
+
+                client.draw(&mut renderer);
+                renderer.draw();
+
+                last_frame_time = frame_time;
+
+                // TODO handle this more nicely?
+                if frames_per_tick > 0 {
+                    frames_per_tick -= 1;
+                }
+
+            }
+
+            renderer.events();
+
+        }
+
+        client.destroy(&mut renderer);
 
     }
 

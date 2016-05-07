@@ -25,23 +25,13 @@ impl AllegroParticleSystem {
     }
 
     pub fn draw(&mut self, dt: f32, prim: &PrimitivesAddon) {
-        self.system.draw(dt, |ref particle| {
-
+        self.system.draw(dt, |_, ref particle, alpha| {
             let hs = particle.s / 2.0;
-            let lp = 1.0 / particle.lifetime * particle.remaining;
-            let alpha = if lp <= particle.fadeout {
-                255.0 / (particle.lifetime * particle.fadeout) * particle.remaining.max(0.0)
-
-            } else {
-                255.0
-            };
-
             prim.draw_filled_rectangle(
                 particle.x - hs + 0.5, particle.y - hs + 0.5,
                 particle.x + hs + 0.5, particle.y + hs + 0.5,
                 AllegroRenderer::get_color_with_alpha(&particle.color, alpha as u8)
             );
-
         });
     }
 

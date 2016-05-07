@@ -14,6 +14,16 @@ extern crate allegro_font;
 #[cfg(feature="allegro_renderer")]
 extern crate allegro_primitives;
 
+#[cfg(feature="glium_renderer")]
+#[macro_use]
+extern crate glium;
+#[cfg(feature="glium_renderer")]
+extern crate bmfont;
+#[cfg(feature="glium_renderer")]
+extern crate image;
+#[cfg(feature="glium_renderer")]
+extern crate clock_ticks;
+
 
 // External Dependencies ------------------------------------------------------
 use std::net::SocketAddr;
@@ -30,12 +40,12 @@ use renderer::Renderer;
 
 // Main -----------------------------------------------------------------------
 #[cfg(feature="allegro_renderer")]
-allegro_main! { 
-    run(); 
+allegro_main! {
+    run();
 }
 
 #[cfg(feature="glium_renderer")]
-pub fn main() { 
+pub fn main() {
     run();
 }
 

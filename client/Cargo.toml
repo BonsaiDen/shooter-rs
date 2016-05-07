@@ -9,11 +9,14 @@ rand = "0.3.14"
 shooter-server = { version = "0.1.0", path = "../server" }
 shared = { version = "0.1.0", path = "../shared" }
 glium = { version = "*", optional = true }
+bmfont = { git = "https://github.com/KalitaAlexey/bmfont-rust.git", optional = true }
+image = { version = "*", optional = true }
+clock_ticks = { version = "*", optional = true }
 
 [features]
-default = ["allegro_renderer"]
+default = ["glium_renderer"]
 allegro_renderer = ["allegro", "allegro-sys", "allegro_font", "allegro_primitives"]
-glium_renderer = ["glium"]
+glium_renderer = ["glium", "bmfont", "image", "clock_ticks"]
 
 [target.x86_64-unknown-linux-gnu.dependencies]
 allegro = { version = "0.0.23", optional = true }

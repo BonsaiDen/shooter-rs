@@ -4,7 +4,7 @@
 // Dependencies ---------------------------------------------------------------
 extern crate num;
 extern crate rand;
-extern crate cobalt;
+pub extern crate cobalt;
 extern crate bincode;
 extern crate rustc_serialize;
 

@@ -5,7 +5,6 @@ use allegro::{
     Display,
     DisplayClose,
     EventQueue,
-    KeyCode,
     KeyUp,
     KeyDown,
     Timer,
@@ -23,6 +22,7 @@ use shared::Color;
 use shared::Lithium::Renderer;
 use renderer::Particle;
 use self::particle_system::AllegroParticleSystem;
+pub use allegro::KeyCode as KeyCode;
 
 
 // Allegro Based Renderer -----------------------------------------------------
@@ -108,15 +108,15 @@ impl AllegroRenderer {
 
 
     // Input ------------------------------------------------------------------
-    pub fn key_down(&mut self, key_code: u8) -> bool {
+    pub fn key_down(&mut self, key_code: KeyCode) -> bool {
         self.key_state[key_code as usize]
     }
 
-    pub fn key_pressed(&mut self, key_code: u8) -> bool {
+    pub fn key_pressed(&mut self, key_code: KeyCode) -> bool {
         self.key_state[key_code as usize] && !self.key_state_old[key_code as usize]
     }
 
-    pub fn key_released(&mut self, key_code: u8) -> bool {
+    pub fn key_released(&mut self, key_code: KeyCode) -> bool {
         !self.key_state[key_code as usize] && self.key_state_old[key_code as usize]
     }
 

@@ -1,6 +1,7 @@
 // Internal Dependencies ------------------------------------------------------
 use game::{Game, ClientHandle};
 use shared::{Color, ColorName};
+use renderer::KeyCode;
 use self::super::{View, ConnectView};
 
 
@@ -28,7 +29,7 @@ impl View for MenuView {
             &format!("Menu - Press Enter to connect")[..]
         );
 
-        if handle.renderer.key_released(67) {
+        if handle.renderer.key_released(KeyCode::Enter) {
             let view = Box::new(ConnectView::new(game.server_addr));
             game.set_view(view);
         }
